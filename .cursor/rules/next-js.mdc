@@ -32,10 +32,11 @@ alwaysApply: false
     - Use MUI icons for icons across the app
     - Develop the UI with consideration for dark theme also, don't hard-code things only for light mode
     - Leave blank lines between blocks of codes
-    - Code should be structured like this: Hooks should be at the top, then other variables/state, then handlers, then useEffects
+    - Code for each component should be structured like this: Hooks should be at the top, then other variables/state, then handlers, then useEffects
     - Use tRPC for communication between client/server
     - Use Formik for handling forms
     - When you implement something similar as a feature, make sure to stay consistent and apply the approaches you had already implemented in the project
+    - Make the components reusable and avoid implementing all the business logic in the pages
     
     General preferences:
     
