@@ -3,13 +3,14 @@ import { Container, Box, Typography, IconButton } from "@mui/material";
 
 export const StyledContainer = styled(Container)(({ theme }) => ({
   minHeight: "100vh",
+  width: "100%",
   display: "flex",
   flexDirection: "column",
   justifyContent: "space-between",
   alignItems: "center",
   background: theme.palette.customBackground.gradient,
   padding: theme.spacing(2),
-  transition: "background 0.3s ease",
+  transition: "all 0.3s ease",
   position: "relative",
   [theme.breakpoints.down("sm")]: {
     padding: theme.spacing(1),

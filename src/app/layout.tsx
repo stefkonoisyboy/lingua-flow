@@ -1,22 +1,15 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
-import { ThemeProvider } from "./providers/theme-provider";
+import { ThemeProvider } from "@/providers/theme-provider";
 
-const geistSans = Geist({
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  display: "swap",
 });
 
-const geistMono = Geist_Mono({
-  subsets: ["latin"],
-  variable: "--font-geist-mono",
-});
-
-export const metadata: Metadata = {
-  title: "LinguaFlow - Web Application Localization",
-  description:
-    "Streamline your web application localization. Manage translations, collaborate seamlessly, and integrate with your workflow.",
+export const metadata = {
+  title: "LinguaFlow",
+  description: "Your AI-powered language learning companion",
 };
 
 export default function RootLayout({
@@ -25,11 +18,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable}`}
-        suppressHydrationWarning
-      >
+    <html lang="en" className={geist.className} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

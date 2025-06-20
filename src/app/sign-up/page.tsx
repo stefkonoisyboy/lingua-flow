@@ -1,19 +1,18 @@
 "use client";
 
-import { Typography } from "@mui/material";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
-import Logo from "../components/logo";
+import Logo from "@/components/logo";
 import {
   SignUpContainer,
   SignUpBox,
   LogoBox,
-  StyledTextField,
   Subtitle,
+  StyledTextField,
   SignUpButton,
   SignInText,
   SignInLink,
-} from "../styles/auth/sign-up.styles";
+} from "@/styles/auth/sign-up.styles";
 
 const SignUpSchema = Yup.object().shape({
   email: Yup.string()
@@ -47,64 +46,64 @@ export default function SignUp() {
 
   return (
     <SignUpContainer>
-      <Formik
-        initialValues={initialValues}
-        validationSchema={SignUpSchema}
-        onSubmit={handleSubmit}
-      >
-        {({ errors, touched }) => (
-          <SignUpBox as={Form}>
-            <LogoBox>
-              <Logo />
-            </LogoBox>
-
-            <Typography variant="h4" component="h2" gutterBottom>
-              Create an account
-            </Typography>
-
-            <Subtitle variant="body1" color="text.secondary">
-              Enter your details below to create your account
-            </Subtitle>
-
-            <Field
-              name="email"
-              as={StyledTextField}
-              label="Email"
-              type="email"
-              placeholder="m@example.com"
-              error={touched.email && Boolean(errors.email)}
-              helperText={touched.email && errors.email}
-            />
-
-            <Field
-              name="password"
-              as={StyledTextField}
-              label="Password"
-              type="password"
-              error={touched.password && Boolean(errors.password)}
-              helperText={touched.password && errors.password}
-            />
-
-            <Field
-              name="confirmPassword"
-              as={StyledTextField}
-              label="Confirm Password"
-              type="password"
-              error={touched.confirmPassword && Boolean(errors.confirmPassword)}
-              helperText={touched.confirmPassword && errors.confirmPassword}
-            />
-
-            <SignUpButton type="submit" variant="contained">
-              Create account
-            </SignUpButton>
-
-            <SignInText variant="body2" color="text.secondary">
-              Already have an account?
-              <SignInLink href="/sign-in">Sign in</SignInLink>
-            </SignInText>
-          </SignUpBox>
-        )}
-      </Formik>
+      <SignUpBox>
+        <LogoBox>
+          <Logo />
+        </LogoBox>
+        <Subtitle variant="h6">Create your account</Subtitle>
+        <Formik
+          initialValues={initialValues}
+          validationSchema={SignUpSchema}
+          onSubmit={handleSubmit}
+        >
+          {({ isSubmitting }) => (
+            <Form>
+              <Field
+                name="name"
+                as={StyledTextField}
+                label="Full Name"
+                variant="outlined"
+                fullWidth
+              />
+              <Field
+                name="email"
+                as={StyledTextField}
+                label="Email"
+                variant="outlined"
+                fullWidth
+              />
+              <Field
+                name="password"
+                as={StyledTextField}
+                type="password"
+                label="Password"
+                variant="outlined"
+                fullWidth
+              />
+              <Field
+                name="confirmPassword"
+                as={StyledTextField}
+                type="password"
+                label="Confirm Password"
+                variant="outlined"
+                fullWidth
+              />
+              <SignUpButton
+                type="submit"
+                variant="contained"
+                color="primary"
+                disabled={isSubmitting}
+              >
+                Create Account
+              </SignUpButton>
+            </Form>
+          )}
+        </Formik>
+        <SignInText variant="body2">
+          Already have an account?
+          <SignInLink href="/sign-in">Sign in</SignInLink>
+        </SignInText>
+      </SignUpBox>
     </SignUpContainer>
   );
 }
