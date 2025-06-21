@@ -1,7 +1,7 @@
 import { styled } from "@mui/material/styles";
-import { Box, Container, TextField, Button, Typography } from "@mui/material";
+import { Box, Container, Typography, Button } from "@mui/material";
 
-export const SignInContainer = styled(Container)(({ theme }) => ({
+export const StyledContainer = styled(Container)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -10,7 +10,7 @@ export const SignInContainer = styled(Container)(({ theme }) => ({
   padding: theme.spacing(3),
 }));
 
-export const SignInBox = styled(Box)(({ theme }) => ({
+export const ResetPasswordBox = styled(Box)(({ theme }) => ({
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -22,24 +22,18 @@ export const SignInBox = styled(Box)(({ theme }) => ({
   maxWidth: 400,
 }));
 
-export const LogoBox = styled(Box)({
+export const LogoWrapper = styled(Box)(() => ({
   marginBottom: "24px",
-});
+}));
 
-export const SignInSubtitle = styled(Typography)(({ theme }) => ({
+export const StyledTitle = styled(Typography)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+}));
+
+export const StyledSubtitle = styled(Typography)(({ theme }) => ({
   marginBottom: theme.spacing(3),
-}));
-
-export const StyledTextField = styled(TextField)(({ theme }) => ({
-  width: "100%",
-  marginBottom: theme.spacing(2),
-}));
-
-export const SignInButton = styled(Button)(({ theme }) => ({
-  width: "100%",
-  padding: theme.spacing(1.5),
-  marginTop: theme.spacing(2),
-  marginBottom: theme.spacing(2),
+  textAlign: "center",
+  color: theme.palette.text.secondary,
 }));
 
 export const AlertWrapper = styled(Box)(({ theme }) => ({
@@ -47,17 +41,14 @@ export const AlertWrapper = styled(Box)(({ theme }) => ({
   width: "100%",
 }));
 
-export const ForgotPasswordLink = styled(Typography)(({ theme }) => ({
-  alignSelf: "flex-end",
+export const SubmitButton = styled(Button)(({ theme }) => ({
+  width: "100%",
+  padding: theme.spacing(1.5),
+  marginTop: theme.spacing(3),
   marginBottom: theme.spacing(2),
-  color: theme.palette.primary.main,
-  cursor: "pointer",
-  "&:hover": {
-    textDecoration: "underline",
-  },
 }));
 
-export const SignUpText = styled(Typography)(({ theme }) => ({
+export const FooterWrapper = styled(Box)(({ theme }) => ({
   marginTop: theme.spacing(2),
   textAlign: "center",
   display: "flex",
@@ -66,7 +57,7 @@ export const SignUpText = styled(Typography)(({ theme }) => ({
   gap: theme.spacing(0.5),
 }));
 
-export const SignUpLink = styled(Typography)(({ theme }) => ({
+export const StyledLink = styled(Typography)(({ theme }) => ({
   color: theme.palette.primary.main,
   cursor: "pointer",
   "&:hover": {

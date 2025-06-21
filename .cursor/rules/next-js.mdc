@@ -37,6 +37,7 @@ alwaysApply: false
     - Use Formik for handling forms
     - When you implement something similar as a feature, make sure to stay consistent and apply the approaches you had already implemented in the project
     - Make the components reusable and avoid implementing all the business logic in the pages
+    - Use constants instead of magic strings/numbers
     
     General preferences:
     

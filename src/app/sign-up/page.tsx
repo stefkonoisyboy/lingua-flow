@@ -1,8 +1,11 @@
 "use client";
 
-import { Formik, Form, Field } from "formik";
+import { Formik, Form, Field, FormikHelpers } from "formik";
 import * as Yup from "yup";
 import Logo from "@/components/logo";
+import { useAuth } from "@/hooks/use-auth";
+import { Alert } from "@mui/material";
+import Link from "next/link";
 import {
   SignUpContainer,
   SignUpBox,
@@ -12,6 +15,7 @@ import {
   SignUpButton,
   SignInText,
   SignInLink,
+  AlertWrapper,
 } from "@/styles/auth/sign-up.styles";
 
 const SignUpSchema = Yup.object().shape({
@@ -33,15 +37,24 @@ interface SignUpValues {
 }
 
 export default function SignUp() {
+  const { signUp, loading, error } = useAuth();
+
   const initialValues: SignUpValues = {
     email: "",
     password: "",
     confirmPassword: "",
   };
 
-  const handleSubmit = async (values: SignUpValues) => {
-    // TODO: Implement sign up logic with Supabase
-    console.log(values);
+  const handleSubmit = async (
+    values: SignUpValues,
+    { setStatus, resetForm }: FormikHelpers<SignUpValues>
+  ) => {
+    const result = await signUp(values.email, values.password);
+
+    if (result) {
+      setStatus({ success: result });
+      resetForm();
+    }
   };
 
   return (
@@ -56,21 +69,17 @@ export default function SignUp() {
           validationSchema={SignUpSchema}
           onSubmit={handleSubmit}
         >
-          {({ isSubmitting }) => (
+          {({ isSubmitting, status, errors, touched }) => (
             <Form>
-              <Field
-                name="name"
-                as={StyledTextField}
-                label="Full Name"
-                variant="outlined"
-                fullWidth
-              />
               <Field
                 name="email"
                 as={StyledTextField}
                 label="Email"
                 variant="outlined"
                 fullWidth
+                disabled={loading}
+                error={touched.email && Boolean(errors.email)}
+                helperText={touched.email && errors.email}
               />
               <Field
                 name="password"
@@ -79,6 +88,9 @@ export default function SignUp() {
                 label="Password"
                 variant="outlined"
                 fullWidth
+                disabled={loading}
+                error={touched.password && Boolean(errors.password)}
+                helperText={touched.password && errors.password}
               />
               <Field
                 name="confirmPassword"
@@ -87,12 +99,32 @@ export default function SignUp() {
                 label="Confirm Password"
                 variant="outlined"
                 fullWidth
+                disabled={loading}
+                error={
+                  touched.confirmPassword && Boolean(errors.confirmPassword)
+                }
+                helperText={touched.confirmPassword && errors.confirmPassword}
               />
+
+              {error && (
+                <AlertWrapper>
+                  <Alert severity={error.type}>{error.message}</Alert>
+                </AlertWrapper>
+              )}
+
+              {status?.success && (
+                <AlertWrapper>
+                  <Alert severity={status.success.type}>
+                    {status.success.message}
+                  </Alert>
+                </AlertWrapper>
+              )}
+
               <SignUpButton
                 type="submit"
                 variant="contained"
                 color="primary"
-                disabled={isSubmitting}
+                disabled={loading || isSubmitting}
               >
                 Create Account
               </SignUpButton>
@@ -101,7 +133,9 @@ export default function SignUp() {
         </Formik>
         <SignInText variant="body2">
           Already have an account?
-          <SignInLink href="/sign-in">Sign in</SignInLink>
+          <Link href="/sign-in">
+            <SignInLink as="span">Sign in</SignInLink>
+          </Link>
         </SignInText>
       </SignUpBox>
     </SignUpContainer>
