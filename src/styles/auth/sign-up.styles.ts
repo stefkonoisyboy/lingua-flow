@@ -1,12 +1,5 @@
 import { styled } from "@mui/material/styles";
-import {
-  Box,
-  Container,
-  TextField,
-  Button,
-  Typography,
-  Link,
-} from "@mui/material";
+import { Box, Container, TextField, Button, Typography } from "@mui/material";
 
 export const SignUpContainer = styled(Container)(({ theme }) => ({
   display: "flex",
@@ -52,13 +45,21 @@ export const Subtitle = styled(Typography)(({ theme }) => ({
 export const SignInText = styled(Typography)(({ theme }) => ({
   marginTop: theme.spacing(2),
   textAlign: "center",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: theme.spacing(0.5),
 }));
 
-export const SignInLink = styled(Link)(({ theme }) => ({
-  marginLeft: theme.spacing(0.5),
-  textDecoration: "none",
+export const SignInLink = styled(Typography)(({ theme }) => ({
   color: theme.palette.primary.main,
+  cursor: "pointer",
   "&:hover": {
     textDecoration: "underline",
   },
+}));
+
+export const AlertWrapper = styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  width: "100%",
 }));
