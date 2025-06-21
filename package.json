@@ -13,6 +13,8 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^7.1.1",
     "@mui/material": "^7.1.1",
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.50.0",
     "@types/yup": "^0.32.0",
     "formik": "^2.4.6",
     "next": "15.3.4",
@@ -27,6 +29,7 @@
     "@types/react-dom": "^19.1.6",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
+    "supabase": "^2.26.9",
     "typescript": "^5"
   }
 }
