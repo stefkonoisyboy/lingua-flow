@@ -70,6 +70,7 @@ const Topbar = ({ onMenuClick }: TopbarProps) => {
         </UserSection>
 
         <Menu
+          disableScrollLock
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleCloseMenu}

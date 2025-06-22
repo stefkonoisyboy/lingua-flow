@@ -12,12 +12,11 @@ import ProjectCard from "@/components/dashboard/project-card";
 import RecentActivity from "@/components/dashboard/recent-activity";
 import {
   DashboardContainer,
-  StatsGrid,
   ProjectsSection,
   ProjectsHeader,
-  ProjectsGrid,
   CreateProjectButton,
 } from "@/styles/dashboard/dashboard.styles";
+import { Grid } from "@mui/material";
 
 const mockProjects = [
   {
@@ -49,27 +48,35 @@ const mockProjects = [
 export default function DashboardPage() {
   return (
     <DashboardContainer>
-      <StatsGrid>
-        <StatsCard
-          value={3}
-          label="Total Projects"
-          subtext="+2 since last month"
-          icon={<FolderOutlined />}
-        />
-        <StatsCard
-          value={10}
-          label="Total Languages Managed"
-          subtext="Across all projects"
-          icon={<LanguageOutlined />}
-        />
-        <StatsCard
-          value={50}
-          label="Missing Translations"
-          subtext="Needs immediate attention"
-          icon={<ErrorOutlineOutlined />}
-          mode="warning"
-        />
-      </StatsGrid>
+      <Grid container spacing={3}>
+        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+          <StatsCard
+            value={3}
+            label="Total Projects"
+            subtext="+2 since last month"
+            icon={<FolderOutlined />}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+          <StatsCard
+            value={10}
+            label="Total Languages Managed"
+            subtext="Across all projects"
+            icon={<LanguageOutlined />}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
+          <StatsCard
+            value={50}
+            label="Missing Translations"
+            subtext="Needs immediate attention"
+            icon={<ErrorOutlineOutlined />}
+            mode="warning"
+          />
+        </Grid>
+      </Grid>
 
       <ProjectsSection>
         <ProjectsHeader>
@@ -81,19 +88,21 @@ export default function DashboardPage() {
         </ProjectsHeader>
 
         <Suspense fallback={<div>Loading projects...</div>}>
-          <ProjectsGrid>
+          <Grid container spacing={3}>
             {mockProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                title={project.title}
-                languages={project.languages}
-                missingTranslations={project.missingTranslations}
-                progress={project.progress}
-                lastUpdate={project.lastUpdate}
-                onView={() => console.log(`View project ${project.id}`)}
-              />
+              <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={project.id}>
+                <ProjectCard
+                  key={project.id}
+                  title={project.title}
+                  languages={project.languages}
+                  missingTranslations={project.missingTranslations}
+                  progress={project.progress}
+                  lastUpdate={project.lastUpdate}
+                  onView={() => console.log(`View project ${project.id}`)}
+                />
+              </Grid>
             ))}
-          </ProjectsGrid>
+          </Grid>
         </Suspense>
       </ProjectsSection>
 

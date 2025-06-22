@@ -55,19 +55,6 @@ export const Sidebar = styled('div')(({ theme }) => ({
   },
 }));
 
-export const StatsGrid = styled('div')(({ theme }) => ({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
-  gap: theme.spacing(3),
-  [theme.breakpoints.down('md')]: {
-    gridTemplateColumns: 'repeat(2, 1fr)',
-  },
-  [theme.breakpoints.down('sm')]: {
-    gridTemplateColumns: '1fr',
-    gap: theme.spacing(2),
-  },
-}));
-
 export const ProjectsSection = styled('section')(() => ({
   width: '100%',
 }));
@@ -86,16 +73,6 @@ export const ProjectsHeader = styled('div')(({ theme }) => ({
   },
   [theme.breakpoints.down('sm')]: {
     marginBottom: theme.spacing(2),
-  },
-}));
-
-export const ProjectsGrid = styled('div')(({ theme }) => ({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-  gap: theme.spacing(3),
-  [theme.breakpoints.down('sm')]: {
-    gridTemplateColumns: '1fr',
-    gap: theme.spacing(2),
   },
 }));
 
