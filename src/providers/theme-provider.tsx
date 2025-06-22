@@ -13,10 +13,13 @@ import { lightTheme, darkTheme } from "@/theme/theme";
 
 interface ThemeContextType {
   theme: "light" | "dark";
-  toggleTheme: () => void;
+  toggleColorMode: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+export const ThemeContext = createContext<ThemeContextType>({
+  theme: "light",
+  toggleColorMode: () => {},
+});
 
 export function useTheme() {
   const context = useContext(ThemeContext);
@@ -38,7 +41,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
 
   // Handlers
-  const toggleTheme = () => {
+  const toggleColorMode = () => {
     const newTheme = theme === "light" ? "dark" : "light";
     setTheme(newTheme);
     localStorage.setItem("theme", newTheme);
@@ -79,7 +82,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleColorMode }}>
       <MUIThemeProvider theme={theme === "light" ? lightTheme : darkTheme}>
         <CssBaseline />
         {children}

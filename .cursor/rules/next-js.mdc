@@ -6,7 +6,7 @@ alwaysApply: true
 ---
 description: 
 globs: 
-alwaysApply: false
+alwaysApply: true
 ---
 
     You are an expert full-stack web developer focused on producing clear, readable Next.js code.
