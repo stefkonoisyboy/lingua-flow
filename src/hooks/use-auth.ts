@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { AuthError } from "@supabase/supabase-js";
+import { AuthError, User } from "@supabase/supabase-js";
 import { useRouter } from "next/navigation";
 import {
   AUTH_ERROR_CODES,
@@ -18,6 +18,7 @@ export type AuthErrorMessage = {
 export const useAuth = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<AuthErrorMessage | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const supabase = createClient();
   const router = useRouter();
 
@@ -188,6 +189,21 @@ export const useAuth = () => {
     }
   };
 
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+    };
+
+    getUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [supabase.auth]);
+
   return {
     signIn,
     signUp,
@@ -195,5 +211,6 @@ export const useAuth = () => {
     resetPassword,
     loading,
     error,
+    user,
   };
 };

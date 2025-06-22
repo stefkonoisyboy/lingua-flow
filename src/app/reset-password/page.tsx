@@ -3,7 +3,7 @@
 import { useAuth } from "@/hooks/use-auth";
 import Logo from "@/components/logo";
 import { Alert, TextField } from "@mui/material";
-import { Formik, Form, FormikHelpers } from "formik";
+import { Formik, FormikHelpers } from "formik";
 import * as Yup from "yup";
 import Link from "next/link";
 import {
@@ -16,6 +16,7 @@ import {
   SubmitButton,
   FooterWrapper,
   StyledLink,
+  StyledForm,
 } from "@/styles/auth/reset-password.styles";
 
 interface ResetPasswordValues {
@@ -65,7 +66,7 @@ const ResetPassword = () => {
           onSubmit={handleSubmit}
         >
           {({ handleChange, handleBlur, values, errors, touched, status }) => (
-            <Form style={{ width: "100%" }}>
+            <StyledForm>
               <TextField
                 margin="normal"
                 required
@@ -112,7 +113,7 @@ const ResetPassword = () => {
                   <StyledLink as="span">Sign in</StyledLink>
                 </Link>
               </FooterWrapper>
-            </Form>
+            </StyledForm>
           )}
         </Formik>
       </ResetPasswordBox>

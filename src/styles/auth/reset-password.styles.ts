@@ -1,5 +1,6 @@
 import { styled } from "@mui/material/styles";
-import { Box, Container, Typography, Button } from "@mui/material";
+import { Container, Typography, Button } from "@mui/material";
+import { Form as FormikForm } from "formik";
 
 export const StyledContainer = styled(Container)(({ theme }) => ({
   display: "flex",
@@ -10,24 +11,24 @@ export const StyledContainer = styled(Container)(({ theme }) => ({
   padding: theme.spacing(3),
 }));
 
-export const ResetPasswordBox = styled(Box)(({ theme }) => ({
+export const ResetPasswordBox = styled("div")(({ theme }) => ({
+  width: "100%",
+  maxWidth: 400,
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
-  padding: theme.spacing(4),
+  padding: theme.spacing(3),
   backgroundColor: theme.palette.background.paper,
   borderRadius: theme.shape.borderRadius,
-  boxShadow: theme.shadows[3],
-  width: "100%",
-  maxWidth: 400,
+  boxShadow: theme.shadows[1],
 }));
 
-export const LogoWrapper = styled(Box)(() => ({
-  marginBottom: "24px",
+export const LogoWrapper = styled("div")(({ theme }) => ({
+  marginBottom: theme.spacing(4),
 }));
 
 export const StyledTitle = styled(Typography)(({ theme }) => ({
-  marginBottom: theme.spacing(2),
+  marginBottom: theme.spacing(1),
 }));
 
 export const StyledSubtitle = styled(Typography)(({ theme }) => ({
@@ -36,31 +37,29 @@ export const StyledSubtitle = styled(Typography)(({ theme }) => ({
   color: theme.palette.text.secondary,
 }));
 
-export const AlertWrapper = styled(Box)(({ theme }) => ({
-  marginTop: theme.spacing(2),
+export const AlertWrapper = styled("div")(({ theme }) => ({
   width: "100%",
-}));
-
-export const SubmitButton = styled(Button)(({ theme }) => ({
-  width: "100%",
-  padding: theme.spacing(1.5),
-  marginTop: theme.spacing(3),
   marginBottom: theme.spacing(2),
 }));
 
-export const FooterWrapper = styled(Box)(({ theme }) => ({
-  marginTop: theme.spacing(2),
-  textAlign: "center",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: theme.spacing(0.5),
+export const SubmitButton = styled(Button)(({ theme }) => ({
+  margin: theme.spacing(2, 0),
 }));
 
-export const StyledLink = styled(Typography)(({ theme }) => ({
+export const FooterWrapper = styled("div")(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  textAlign: "center",
+}));
+
+export const StyledLink = styled("span")(({ theme }) => ({
+  marginLeft: theme.spacing(0.5),
   color: theme.palette.primary.main,
   cursor: "pointer",
   "&:hover": {
     textDecoration: "underline",
   },
+}));
+
+export const StyledForm = styled(FormikForm)(() => ({
+  width: "100%",
 }));

@@ -1,35 +1,103 @@
 "use client";
 
-import { useAuth } from "@/hooks/use-auth";
-import { LogoutOutlined } from "@mui/icons-material";
+import { Suspense } from "react";
 import {
-  StyledContainer,
-  HeaderContainer,
-  StyledTitle,
-  LogoutButton,
+  FolderOutlined,
+  LanguageOutlined,
+  ErrorOutlineOutlined,
+  Add,
+} from "@mui/icons-material";
+import StatsCard from "@/components/dashboard/stats-card";
+import ProjectCard from "@/components/dashboard/project-card";
+import RecentActivity from "@/components/dashboard/recent-activity";
+import {
+  DashboardContainer,
+  StatsGrid,
+  ProjectsSection,
+  ProjectsHeader,
+  ProjectsGrid,
+  CreateProjectButton,
 } from "@/styles/dashboard/dashboard.styles";
 
-export default function Dashboard() {
-  const { signOut, loading } = useAuth();
+const mockProjects = [
+  {
+    id: 1,
+    title: "E-commerce Platform",
+    languages: 5,
+    missingTranslations: 12,
+    progress: 75,
+    lastUpdate: "2 hours ago",
+  },
+  {
+    id: 2,
+    title: "Mobile App Backend",
+    languages: 3,
+    missingTranslations: 3,
+    progress: 90,
+    lastUpdate: "1 day ago",
+  },
+  {
+    id: 3,
+    title: "Marketing Website",
+    languages: 2,
+    missingTranslations: 35,
+    progress: 45,
+    lastUpdate: "3 days ago",
+  },
+];
 
-  const handleLogout = async () => {
-    await signOut();
-  };
-
+export default function DashboardPage() {
   return (
-    <StyledContainer>
-      <HeaderContainer>
-        <StyledTitle variant="h4">Welcome to LinguaFlow Dashboard</StyledTitle>
-        <LogoutButton
-          variant="outlined"
-          color="primary"
-          onClick={handleLogout}
-          disabled={loading}
-          startIcon={<LogoutOutlined />}
-        >
-          Sign out
-        </LogoutButton>
-      </HeaderContainer>
-    </StyledContainer>
+    <DashboardContainer>
+      <StatsGrid>
+        <StatsCard
+          value={3}
+          label="Total Projects"
+          subtext="+2 since last month"
+          icon={<FolderOutlined />}
+        />
+        <StatsCard
+          value={10}
+          label="Total Languages Managed"
+          subtext="Across all projects"
+          icon={<LanguageOutlined />}
+        />
+        <StatsCard
+          value={50}
+          label="Missing Translations"
+          subtext="Needs immediate attention"
+          icon={<ErrorOutlineOutlined />}
+          mode="warning"
+        />
+      </StatsGrid>
+
+      <ProjectsSection>
+        <ProjectsHeader>
+          <h2>Projects Overview</h2>
+          <p>Quick glance at your ongoing localization projects.</p>
+          <CreateProjectButton variant="contained" startIcon={<Add />}>
+            Create New Project
+          </CreateProjectButton>
+        </ProjectsHeader>
+
+        <Suspense fallback={<div>Loading projects...</div>}>
+          <ProjectsGrid>
+            {mockProjects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                title={project.title}
+                languages={project.languages}
+                missingTranslations={project.missingTranslations}
+                progress={project.progress}
+                lastUpdate={project.lastUpdate}
+                onView={() => console.log(`View project ${project.id}`)}
+              />
+            ))}
+          </ProjectsGrid>
+        </Suspense>
+      </ProjectsSection>
+
+      <RecentActivity />
+    </DashboardContainer>
   );
 }

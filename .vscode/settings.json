@@ -6,7 +6,8 @@
     "evenodd",
     "fkey",
     "pgcrypto",
-    "plpgsql"
+    "plpgsql",
+    "Topbar"
   ],
   "deno.enablePaths": [
     "supabase/functions"
