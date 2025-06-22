@@ -7,7 +7,8 @@
     "fkey",
     "pgcrypto",
     "plpgsql",
-    "Topbar"
+    "Topbar",
+    "turbopack"
   ],
   "deno.enablePaths": [
     "supabase/functions"
