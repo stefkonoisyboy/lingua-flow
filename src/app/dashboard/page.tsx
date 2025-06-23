@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { useState, Suspense } from "react";
 import {
   FolderOutlined,
   LanguageOutlined,
@@ -16,52 +16,64 @@ import {
   ProjectsHeader,
   CreateProjectButton,
 } from "@/styles/dashboard/dashboard.styles";
-import { Grid } from "@mui/material";
+import {
+  Grid,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  TextField,
+  Box,
+} from "@mui/material";
+import { trpc } from "@/utils/trpc";
+import { formatDistance } from "date-fns";
+import { Formik, Form, Field } from "formik";
+import * as Yup from "yup";
 
-const mockProjects = [
-  {
-    id: 1,
-    title: "E-commerce Platform",
-    languages: 5,
-    missingTranslations: 12,
-    progress: 75,
-    lastUpdate: "2 hours ago",
-  },
-  {
-    id: 2,
-    title: "Mobile App Backend",
-    languages: 3,
-    missingTranslations: 3,
-    progress: 90,
-    lastUpdate: "1 day ago",
-  },
-  {
-    id: 3,
-    title: "Marketing Website",
-    languages: 2,
-    missingTranslations: 35,
-    progress: 45,
-    lastUpdate: "3 days ago",
-  },
-];
+const ProjectSchema = Yup.object().shape({
+  name: Yup.string().required("Project name is required"),
+  description: Yup.string(),
+});
 
 export default function DashboardPage() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const stats = trpc.dashboard.getStats.useQuery();
+  const projects = trpc.dashboard.getProjects.useQuery();
+  const utils = trpc.useUtils();
+  const createProject = trpc.dashboard.createProject.useMutation({
+    onSuccess: () => {
+      utils.dashboard.getProjects.invalidate();
+      utils.dashboard.getStats.invalidate();
+      utils.dashboard.getRecentActivity.invalidate();
+      setIsDialogOpen(false);
+    },
+  });
+
+  const handleCreateProject = (values: {
+    name: string;
+    description: string;
+  }) => {
+    createProject.mutate(values);
+  };
+
   return (
     <DashboardContainer>
       <Grid container spacing={3}>
         <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
           <StatsCard
-            value={3}
+            value={stats.data?.projectsCount || 0}
             label="Total Projects"
-            subtext="+2 since last month"
+            subtext="Ongoing localization projects"
             icon={<FolderOutlined />}
           />
         </Grid>
 
         <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
           <StatsCard
-            value={10}
-            label="Total Languages Managed"
+            value={stats.data?.languagesCount || 0}
+            label="Total Languages"
             subtext="Across all projects"
             icon={<LanguageOutlined />}
           />
@@ -69,11 +81,15 @@ export default function DashboardPage() {
 
         <Grid size={{ xs: 12, sm: 6, lg: 4 }}>
           <StatsCard
-            value={50}
-            label="Missing Translations"
-            subtext="Needs immediate attention"
+            value={`${stats.data?.completionPercentage || 0}%`}
+            label="Translation Completion"
+            subtext={`${stats.data?.translationsCount || 0} total translations`}
             icon={<ErrorOutlineOutlined />}
-            mode="warning"
+            mode={
+              (stats.data?.completionPercentage || 0) < 70
+                ? "warning"
+                : "default"
+            }
           />
         </Grid>
       </Grid>
@@ -82,31 +98,106 @@ export default function DashboardPage() {
         <ProjectsHeader>
           <h2>Projects Overview</h2>
           <p>Quick glance at your ongoing localization projects.</p>
-          <CreateProjectButton variant="contained" startIcon={<Add />}>
+          <CreateProjectButton
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => setIsDialogOpen(true)}
+          >
             Create New Project
           </CreateProjectButton>
         </ProjectsHeader>
 
         <Suspense fallback={<div>Loading projects...</div>}>
           <Grid container spacing={3}>
-            {mockProjects.map((project) => (
-              <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={project.id}>
-                <ProjectCard
-                  key={project.id}
-                  title={project.title}
-                  languages={project.languages}
-                  missingTranslations={project.missingTranslations}
-                  progress={project.progress}
-                  lastUpdate={project.lastUpdate}
-                  onView={() => console.log(`View project ${project.id}`)}
-                />
+            {projects.isLoading ? (
+              <Grid size={{ xs: 12 }}>
+                <Box>Loading projects...</Box>
               </Grid>
-            ))}
+            ) : projects.error ? (
+              <Grid size={{ xs: 12 }}>
+                <Box>Error loading projects: {projects.error.message}</Box>
+              </Grid>
+            ) : projects.data?.length === 0 ? (
+              <Grid size={{ xs: 12 }}>
+                <Box>No projects yet. Create your first project!</Box>
+              </Grid>
+            ) : (
+              projects.data?.map((project) => (
+                <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={project?.id}>
+                  <ProjectCard
+                    title={project?.name ?? ""}
+                    languages={project?.languageCount || 0}
+                    missingTranslations={Math.round(
+                      ((100 - (project?.progress || 0)) / 100) *
+                        (project?.languageCount || 0)
+                    )}
+                    progress={project?.progress || 0}
+                    lastUpdate={formatDistance(
+                      new Date(project?.updatedAt ?? new Date()),
+                      new Date(),
+                      { addSuffix: true }
+                    )}
+                    onView={() => console.log(`View project ${project?.id}`)}
+                  />
+                </Grid>
+              ))
+            )}
           </Grid>
         </Suspense>
       </ProjectsSection>
 
       <RecentActivity />
+
+      {/* Create Project Dialog */}
+      <Dialog
+        open={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Create New Project</DialogTitle>
+        <Formik
+          initialValues={{ name: "", description: "" }}
+          validationSchema={ProjectSchema}
+          onSubmit={handleCreateProject}
+        >
+          {({ errors, touched, isSubmitting }) => (
+            <Form>
+              <DialogContent>
+                <Field
+                  as={TextField}
+                  name="name"
+                  label="Project Name"
+                  fullWidth
+                  margin="normal"
+                  error={touched.name && Boolean(errors.name)}
+                  helperText={touched.name && errors.name}
+                />
+                <Field
+                  as={TextField}
+                  name="description"
+                  label="Description (Optional)"
+                  fullWidth
+                  margin="normal"
+                  multiline
+                  rows={4}
+                />
+              </DialogContent>
+              <DialogActions>
+                <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  disabled={isSubmitting || createProject.isPending}
+                >
+                  {createProject.isPending ? "Creating..." : "Create Project"}
+                </Button>
+              </DialogActions>
+            </Form>
+          )}
+        </Formik>
+      </Dialog>
     </DashboardContainer>
   );
 }

@@ -4,6 +4,11 @@ import {
   TranslateOutlined,
   AddCircleOutlineOutlined,
   CommentOutlined,
+  LanguageOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  InfoOutlined,
+  FolderOutlined,
 } from "@mui/icons-material";
 import {
   ActivityContainer,
@@ -16,59 +21,44 @@ import {
   ActivityText,
   ActivityTime,
 } from "@/styles/dashboard/recent-activity.styles";
+import { trpc } from "@/utils/trpc";
+import { formatDistance } from "date-fns";
+import { CircularProgress } from "@mui/material";
 
-interface ActivityData {
-  id: string;
-  type: "translation" | "language" | "comment";
-  user: string;
-  action: string;
-  project: string;
-  details?: string;
-  time: string;
-}
-
-const getActivityIcon = (type: ActivityData["type"]) => {
-  switch (type) {
-    case "translation":
-      return <TranslateOutlined />;
-    case "language":
-      return <AddCircleOutlineOutlined />;
-    case "comment":
-      return <CommentOutlined />;
-    default:
-      return <TranslateOutlined />;
+const getActivityIcon = (action: string, entity: string) => {
+  if (action === "created") {
+    if (entity === "language") return <AddCircleOutlineOutlined />;
+    if (entity === "project") return <FolderOutlined />;
+    return <AddCircleOutlineOutlined />;
   }
+
+  if (action === "updated") {
+    if (entity === "translation") return <TranslateOutlined />;
+    return <EditOutlined />;
+  }
+
+  if (action === "deleted") {
+    return <DeleteOutlined />;
+  }
+
+  if (action === "commented") {
+    return <CommentOutlined />;
+  }
+
+  if (entity === "language") {
+    return <LanguageOutlined />;
+  }
+
+  if (entity === "translation") {
+    return <TranslateOutlined />;
+  }
+
+  return <EditOutlined />;
 };
 
-const recentActivities: ActivityData[] = [
-  {
-    id: "1",
-    type: "translation",
-    user: "John Doe",
-    action: "updated 'en' translations",
-    project: "E-commerce Platform",
-    time: "15 mins ago",
-  },
-  {
-    id: "2",
-    type: "language",
-    user: "New language",
-    action: "'Spanish' added to",
-    project: "Mobile App Backend",
-    time: "1 hour ago",
-  },
-  {
-    id: "3",
-    type: "comment",
-    user: "Jane Smith",
-    action: "commented on",
-    project: "Marketing Website",
-    details: "'homepage.title'",
-    time: "3 hours ago",
-  },
-];
-
 const RecentActivity = () => {
+  const activities = trpc.dashboard.getRecentActivity.useQuery();
+
   return (
     <ActivityContainer>
       <ActivityTitle variant="h2">Recent Activity</ActivityTitle>
@@ -77,19 +67,57 @@ const RecentActivity = () => {
       </ActivityDescription>
 
       <ActivityList>
-        {recentActivities.map((activity) => (
-          <ActivityItem key={activity.id}>
-            <ActivityIcon>{getActivityIcon(activity.type)}</ActivityIcon>
+        {activities.isLoading ? (
+          <ActivityItem>
+            <CircularProgress size={24} />
             <ActivityContent>
-              <ActivityText>
-                <strong>{activity.user}</strong> {activity.action}{" "}
-                <strong>{activity.project}</strong>
-                {activity.details && ` in ${activity.details}`}.
-              </ActivityText>
-              <ActivityTime>{activity.time}</ActivityTime>
+              <ActivityText>Loading activities...</ActivityText>
             </ActivityContent>
           </ActivityItem>
-        ))}
+        ) : activities.error ? (
+          <ActivityItem>
+            <ActivityIcon>
+              <DeleteOutlined color="error" />
+            </ActivityIcon>
+            <ActivityContent>
+              <ActivityText>
+                Error loading activities: {activities.error.message}
+              </ActivityText>
+            </ActivityContent>
+          </ActivityItem>
+        ) : activities.data?.length === 0 ? (
+          <ActivityItem>
+            <ActivityIcon>
+              <InfoOutlined />
+            </ActivityIcon>
+            <ActivityContent>
+              <ActivityText>No recent activity yet.</ActivityText>
+            </ActivityContent>
+          </ActivityItem>
+        ) : (
+          activities.data?.map((activity) => (
+            <ActivityItem key={activity.id}>
+              <ActivityIcon>
+                {getActivityIcon(activity.type, activity.resourceType ?? "")}
+              </ActivityIcon>
+              <ActivityContent>
+                <ActivityText>
+                  {activity.type} {activity.resourceType}{" "}
+                  {activity.projectName && (
+                    <>
+                      in <strong>{activity.projectName}</strong>
+                    </>
+                  )}
+                </ActivityText>
+                <ActivityTime>
+                  {formatDistance(new Date(activity.timestamp), new Date(), {
+                    addSuffix: true,
+                  })}
+                </ActivityTime>
+              </ActivityContent>
+            </ActivityItem>
+          ))
+        )}
       </ActivityList>
     </ActivityContainer>
   );

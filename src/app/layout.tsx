@@ -1,6 +1,7 @@
 import { Geist } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { TRPCProvider } from "@/providers/trpc-provider";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -20,7 +21,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={geist.className} suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <ThemeProvider>{children}</ThemeProvider>
+        <TRPCProvider>
+          <ThemeProvider>{children}</ThemeProvider>
+        </TRPCProvider>
       </body>
     </html>
   );
