@@ -1,0 +1,147 @@
+import { ProjectsDAL } from '../dal/projects';
+import { ActivitiesDAL } from '../dal/activities';
+import { TranslationsDAL } from '../dal/translations';
+import { SupabaseClient } from '@supabase/supabase-js';
+import { Database } from '../types/database.types';
+
+interface ProjectStats {
+  projectsCount: number;
+  languagesCount: number;
+  translationsCount: number;
+  completionPercentage: number;
+}
+
+interface ProjectLanguage {
+  id: string;
+  name: string;
+  code: string;
+  flagUrl: string | null;
+  isRtl: boolean;
+}
+
+interface Project {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  languageCount: number;
+  languages: ProjectLanguage[];
+  progress: number;
+  updatedAt: string;
+}
+
+interface RecentActivity {
+  id: string;
+  type: string;
+  details: Record<string, unknown> | null;
+  projectName: string;
+  projectId: string;
+  resourceId: string | null;
+  resourceType: string | null;
+  timestamp: string;
+}
+
+export class DashboardService {
+  private projectsDal: ProjectsDAL;
+  private activitiesDal: ActivitiesDAL;
+  private translationsDal: TranslationsDAL;
+
+  constructor(supabase: SupabaseClient<Database>) {
+    this.projectsDal = new ProjectsDAL(supabase);
+    this.activitiesDal = new ActivitiesDAL(supabase);
+    this.translationsDal = new TranslationsDAL(supabase);
+  }
+
+  async getProjectStats(userId: string): Promise<ProjectStats> {
+    const projectMembers = await this.projectsDal.getProjectsForUser(userId);
+    const projectIds = projectMembers?.map(p => p.project_id) || [];
+
+    const projectLanguages = await this.projectsDal.getProjectLanguages(projectIds);
+    const uniqueLanguages = new Set(projectLanguages?.map(pl => pl.language_id));
+
+    const translations = await this.translationsDal.getProjectTranslations(projectIds);
+    const totalTranslations = translations?.length || 0;
+    const approvedTranslations = translations?.filter(t => t.status === 'approved').length || 0;
+
+    return {
+      projectsCount: projectMembers?.length || 0,
+      languagesCount: uniqueLanguages.size,
+      translationsCount: totalTranslations,
+      completionPercentage: totalTranslations ? 
+        Math.round((approvedTranslations / totalTranslations) * 100) : 0,
+    };
+  }
+
+  async getProjects(userId: string): Promise<Project[]> {
+    const projectMembers = await this.projectsDal.getProjectsForUser(userId);
+    const projectIds = projectMembers?.map(p => p.project_id) || [];
+
+    const projectLanguages = await this.projectsDal.getProjectLanguages(projectIds);
+    const translations = await this.translationsDal.getProjectTranslations(projectIds);
+
+    return (projectMembers?.map(pm => {
+      const project = pm.projects;
+      if (!project) return null;
+
+      const projectLangs = projectLanguages?.filter(pl => pl.project_id === project.id) || [];
+      const projectTranslations = translations?.filter(t => t.translation_keys.project_id === project.id) || [];
+      
+      const totalTranslations = projectTranslations.length;
+      const approvedTranslations = projectTranslations.filter(t => t.status === 'approved').length;
+      const progress = totalTranslations ? Math.round((approvedTranslations / totalTranslations) * 100) : 0;
+
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description || '',
+        status: project.status,
+        languageCount: projectLangs.length,
+        languages: projectLangs.map(pl => ({
+          id: pl.languages?.id || '',
+          name: pl.languages?.name || '',
+          code: pl.languages?.code || '',
+          flagUrl: pl.languages?.flag_url || null,
+          isRtl: pl.languages?.is_rtl || false,
+        })),
+        progress,
+        updatedAt: project.updated_at,
+      };
+    }).filter(Boolean) as Project[]) || [];
+  }
+
+  async createProject(name: string, description: string | undefined, userId: string): Promise<void> {
+    const project = await this.projectsDal.createProject(name, description, userId);
+    
+    // Add creator as project owner
+    await this.projectsDal.addProjectMember(project.id, userId, 'owner');
+
+    // Log activity
+    await this.activitiesDal.logActivity(
+      project.id,
+      userId,
+      'member_added',
+      {
+        action: 'created_project',
+        projectName: project.name,
+      }
+    );
+  }
+
+  async getRecentActivity(userId: string): Promise<RecentActivity[]> {
+    const userProjects = await this.projectsDal.getProjectMemberProjects(userId);
+    const projectIds = userProjects?.map(p => p.project_id) || [];
+
+    const activities = await this.activitiesDal.getRecentActivities(projectIds);
+
+    return activities.map(activity => ({
+      id: activity.id,
+      type: activity.activity_type,
+      details: activity.details as Record<string, unknown> | null,
+      projectName: activity.projects?.name || '',
+      projectId: activity.projects?.id || '',
+      resourceId: activity.resource_id,
+      resourceType: activity.resource_type,
+      timestamp: activity.created_at,
+    }));
+  }
+} 
