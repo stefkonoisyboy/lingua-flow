@@ -41,7 +41,7 @@ interface RecentActivity {
   timestamp: string;
 }
 
-export class DashboardService {
+export class ProjectsService {
   private projectsDal: ProjectsDAL;
   private activitiesDal: ActivitiesDAL;
   private translationsDal: TranslationsDAL;
@@ -109,9 +109,17 @@ export class DashboardService {
     }).filter(Boolean) as Project[]) || [];
   }
 
-  async createProject(name: string, description: string | undefined, userId: string): Promise<void> {
-    const project = await this.projectsDal.createProject(name, description, userId);
+  async createProject(
+    name: string, 
+    description: string | undefined, 
+    userId: string,
+    defaultLanguageId: string
+  ): Promise<void> {
+    const project = await this.projectsDal.createProject(name, description, userId, defaultLanguageId);
     
+    // Add default language to project languages
+    await this.projectsDal.addProjectLanguage(project.id, defaultLanguageId, true);
+
     // Add creator as project owner
     await this.projectsDal.addProjectMember(project.id, userId, 'owner');
 

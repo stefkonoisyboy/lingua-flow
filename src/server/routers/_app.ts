@@ -1,8 +1,12 @@
 import { router } from '../trpc';
-import { dashboardRouter } from './dashboard';
+import { projectsRouter } from './projects';
+import { activitiesRouter } from './activities';
+import { languagesRouter } from './languages';
 
 export const appRouter = router({
-  dashboard: dashboardRouter,
+  projects: projectsRouter,
+  activities: activitiesRouter,
+  languages: languagesRouter,
 });
 
 export type AppRouter = typeof appRouter; 

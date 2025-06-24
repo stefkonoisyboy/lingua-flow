@@ -57,7 +57,7 @@ const getActivityIcon = (action: string, entity: string) => {
 };
 
 const RecentActivity = () => {
-  const activities = trpc.dashboard.getRecentActivity.useQuery();
+  const activities = trpc.activities.getRecentActivity.useQuery();
 
   return (
     <ActivityContainer>

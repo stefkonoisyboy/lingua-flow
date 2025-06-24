@@ -64,7 +64,7 @@ export class ProjectsDAL {
     return userProjects;
   }
 
-  async createProject(name: string, description: string | undefined, userId: string) {
+  async createProject(name: string, description: string | undefined, userId: string, defaultLanguageId: string) {
     const { data: project, error: projectError } = await this.supabase
       .from('projects')
       .insert({
@@ -72,7 +72,7 @@ export class ProjectsDAL {
         description,
         created_by: userId,
         status: 'active' as const,
-        default_language_id: 'en'
+        default_language_id: defaultLanguageId
       })
       .select()
       .single();
@@ -95,6 +95,20 @@ export class ProjectsDAL {
 
     if (memberError) {
       throw new Error(`Error adding project member: ${memberError.message}`);
+    }
+  }
+
+  async addProjectLanguage(projectId: string, languageId: string, isDefault: boolean) {
+    const { error } = await this.supabase
+      .from('project_languages')
+      .insert({
+        project_id: projectId,
+        language_id: languageId,
+        is_default: isDefault
+      });
+
+    if (error) {
+      throw new Error(`Error adding project language: ${error.message}`);
     }
   }
 } 

@@ -25,6 +25,11 @@ import {
   Button,
   TextField,
   Box,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormHelperText,
 } from "@mui/material";
 import { trpc } from "@/utils/trpc";
 import { formatDistance } from "date-fns";
@@ -34,19 +39,22 @@ import * as Yup from "yup";
 const ProjectSchema = Yup.object().shape({
   name: Yup.string().required("Project name is required"),
   description: Yup.string(),
+  defaultLanguageId: Yup.string().required("Default language is required"),
 });
 
 export default function DashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const stats = trpc.dashboard.getStats.useQuery();
-  const projects = trpc.dashboard.getProjects.useQuery();
+  const stats = trpc.projects.getStats.useQuery();
+  const projects = trpc.projects.getProjects.useQuery();
+  const languages = trpc.languages.getLanguages.useQuery();
   const utils = trpc.useUtils();
-  const createProject = trpc.dashboard.createProject.useMutation({
+
+  const createProject = trpc.projects.createProject.useMutation({
     onSuccess: () => {
-      utils.dashboard.getProjects.invalidate();
-      utils.dashboard.getStats.invalidate();
-      utils.dashboard.getRecentActivity.invalidate();
+      utils.projects.getProjects.invalidate();
+      utils.projects.getStats.invalidate();
+      utils.activities.getRecentActivity.invalidate();
       setIsDialogOpen(false);
     },
   });
@@ -54,6 +62,7 @@ export default function DashboardPage() {
   const handleCreateProject = (values: {
     name: string;
     description: string;
+    defaultLanguageId: string;
   }) => {
     createProject.mutate(values);
   };
@@ -157,7 +166,7 @@ export default function DashboardPage() {
       >
         <DialogTitle>Create New Project</DialogTitle>
         <Formik
-          initialValues={{ name: "", description: "" }}
+          initialValues={{ name: "", description: "", defaultLanguageId: "" }}
           validationSchema={ProjectSchema}
           onSubmit={handleCreateProject}
         >
@@ -182,6 +191,33 @@ export default function DashboardPage() {
                   multiline
                   rows={4}
                 />
+                <FormControl
+                  fullWidth
+                  margin="normal"
+                  error={
+                    touched.defaultLanguageId &&
+                    Boolean(errors.defaultLanguageId)
+                  }
+                >
+                  <InputLabel id="language-select-label">
+                    Default Language
+                  </InputLabel>
+                  <Field
+                    as={Select}
+                    labelId="language-select-label"
+                    name="defaultLanguageId"
+                    label="Default Language"
+                  >
+                    {languages.data?.map((language) => (
+                      <MenuItem key={language.id} value={language.id}>
+                        {language.name} ({language.code})
+                      </MenuItem>
+                    ))}
+                  </Field>
+                  {touched.defaultLanguageId && errors.defaultLanguageId && (
+                    <FormHelperText>{errors.defaultLanguageId}</FormHelperText>
+                  )}
+                </FormControl>
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
