@@ -3,6 +3,7 @@ import { ActivitiesDAL } from '../dal/activities';
 import { TranslationsDAL } from '../dal/translations';
 import { SupabaseClient } from '@supabase/supabase-js';
 import { Database } from '../types/database.types';
+import { IntegrationsService } from './integrations.service';
 
 interface ProjectStats {
   projectsCount: number;
@@ -30,6 +31,14 @@ interface Project {
   updatedAt: string;
 }
 
+interface GitHubConfig {
+  repository: string;
+  branch: string;
+  translationPath?: string;
+  filePattern?: string;
+  [key: string]: string | undefined;
+}
+
 interface RecentActivity {
   id: string;
   type: string;
@@ -45,11 +54,13 @@ export class ProjectsService {
   private projectsDal: ProjectsDAL;
   private activitiesDal: ActivitiesDAL;
   private translationsDal: TranslationsDAL;
+  private integrationsService: IntegrationsService;
 
   constructor(supabase: SupabaseClient<Database>) {
     this.projectsDal = new ProjectsDAL(supabase);
     this.activitiesDal = new ActivitiesDAL(supabase);
     this.translationsDal = new TranslationsDAL(supabase);
+    this.integrationsService = new IntegrationsService(supabase);
   }
 
   async getProjectStats(userId: string): Promise<ProjectStats> {
@@ -113,7 +124,8 @@ export class ProjectsService {
     name: string, 
     description: string | undefined, 
     userId: string,
-    defaultLanguageId: string
+    defaultLanguageId: string,
+    githubConfig?: GitHubConfig
   ): Promise<void> {
     const project = await this.projectsDal.createProject(name, description, userId, defaultLanguageId);
     
@@ -123,7 +135,23 @@ export class ProjectsService {
     // Add creator as project owner
     await this.projectsDal.addProjectMember(project.id, userId, 'owner');
 
-    // Log activity
+    // Create GitHub integration if config is provided
+    if (githubConfig) {
+      await this.integrationsService.createGitHubIntegration(project.id, githubConfig);
+
+      // Log GitHub integration activity
+      await this.activitiesDal.logActivity(
+        project.id,
+        userId,
+        'integration_connected',
+        {
+          action: 'connected_github',
+          repository: githubConfig.repository,
+        }
+      );
+    }
+
+    // Log project creation activity
     await this.activitiesDal.logActivity(
       project.id,
       userId,

@@ -30,6 +30,10 @@ import {
   Select,
   MenuItem,
   FormHelperText,
+  FormControlLabel,
+  Switch,
+  Typography,
+  SelectChangeEvent,
 } from "@mui/material";
 import { trpc } from "@/utils/trpc";
 import { formatDistance } from "date-fns";
@@ -40,10 +44,36 @@ const ProjectSchema = Yup.object().shape({
   name: Yup.string().required("Project name is required"),
   description: Yup.string(),
   defaultLanguageId: Yup.string().required("Default language is required"),
+  githubEnabled: Yup.boolean(),
+  githubConfig: Yup.object().when("githubEnabled", {
+    is: true,
+    then: (schema) =>
+      schema.shape({
+        repository: Yup.string().required("Repository is required"),
+        branch: Yup.string().required("Branch is required"),
+        translationPath: Yup.string(),
+        filePattern: Yup.string(),
+      }),
+  }),
 });
+
+interface ProjectFormValues {
+  name: string;
+  description: string;
+  defaultLanguageId: string;
+  githubEnabled: boolean;
+  githubConfig: {
+    repository: string;
+    branch: string;
+    translationPath: string;
+    filePattern: string;
+  };
+}
 
 export default function DashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState("");
+  const [githubEnabled, setGithubEnabled] = useState(false);
 
   const stats = trpc.projects.getStats.useQuery();
   const projects = trpc.projects.getProjects.useQuery();
@@ -59,12 +89,33 @@ export default function DashboardPage() {
     },
   });
 
-  const handleCreateProject = (values: {
-    name: string;
-    description: string;
-    defaultLanguageId: string;
-  }) => {
-    createProject.mutate(values);
+  const listRepositories = trpc.integrations.listRepositories.useQuery(
+    undefined,
+    {
+      enabled: githubEnabled,
+      retry: 1,
+    }
+  );
+
+  const listBranches = trpc.integrations.listBranches.useQuery(
+    { repository: selectedRepo },
+    { enabled: Boolean(selectedRepo) }
+  );
+
+  const getGitHubAuthUrl = trpc.integrations.getGitHubAuthUrl.useQuery(
+    undefined,
+    {
+      enabled: false,
+    }
+  );
+
+  const handleCreateProject = (values: ProjectFormValues) => {
+    createProject.mutate({
+      name: values.name,
+      description: values.description,
+      defaultLanguageId: values.defaultLanguageId,
+      githubConfig: values.githubEnabled ? values.githubConfig : undefined,
+    });
   };
 
   return (
@@ -166,11 +217,22 @@ export default function DashboardPage() {
       >
         <DialogTitle>Create New Project</DialogTitle>
         <Formik
-          initialValues={{ name: "", description: "", defaultLanguageId: "" }}
+          initialValues={{
+            name: "",
+            description: "",
+            defaultLanguageId: "",
+            githubEnabled: false,
+            githubConfig: {
+              repository: "",
+              branch: "",
+              translationPath: "",
+              filePattern: "",
+            },
+          }}
           validationSchema={ProjectSchema}
           onSubmit={handleCreateProject}
         >
-          {({ errors, touched, isSubmitting }) => (
+          {({ errors, touched, isSubmitting, values, setFieldValue }) => (
             <Form>
               <DialogContent>
                 <Field
@@ -218,6 +280,168 @@ export default function DashboardPage() {
                     <FormHelperText>{errors.defaultLanguageId}</FormHelperText>
                   )}
                 </FormControl>
+
+                <Box sx={{ mt: 2, mb: 2 }}>
+                  <Field
+                    as={FormControlLabel}
+                    control={<Switch />}
+                    name="githubEnabled"
+                    label="Connect GitHub Repository"
+                    onChange={(
+                      e: React.ChangeEvent<HTMLInputElement>,
+                      checked: boolean
+                    ) => {
+                      setFieldValue("githubEnabled", checked);
+                      setGithubEnabled(checked);
+
+                      if (!checked) {
+                        setFieldValue("githubConfig", {
+                          repository: "",
+                          branch: "",
+                          translationPath: "",
+                          filePattern: "",
+                        });
+
+                        setSelectedRepo("");
+                      }
+                    }}
+                  />
+                </Box>
+
+                {values.githubEnabled && (
+                  <Box sx={{ mt: 2 }}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      GitHub Configuration
+                    </Typography>
+
+                    {listRepositories.error?.message ===
+                    "GitHub not connected" ? (
+                      <Button
+                        variant="outlined"
+                        fullWidth
+                        onClick={async () => {
+                          const result = await getGitHubAuthUrl.refetch();
+                          if (result.data) {
+                            localStorage.setItem(
+                              "github_oauth_state",
+                              result.data.state
+                            );
+                            window.location.href = result.data.url;
+                          }
+                        }}
+                      >
+                        Connect GitHub Account
+                      </Button>
+                    ) : (
+                      <>
+                        <FormControl
+                          fullWidth
+                          margin="normal"
+                          error={
+                            touched.githubConfig?.repository &&
+                            Boolean(errors.githubConfig?.repository)
+                          }
+                        >
+                          <InputLabel id="repo-select-label">
+                            Repository
+                          </InputLabel>
+                          <Field
+                            as={Select}
+                            labelId="repo-select-label"
+                            name="githubConfig.repository"
+                            label="Repository"
+                            onChange={(e: SelectChangeEvent<string>) => {
+                              setFieldValue(
+                                "githubConfig.repository",
+                                e.target.value
+                              );
+                              setFieldValue("githubConfig.branch", ""); // Reset branch when repository changes
+                              setSelectedRepo(e.target.value);
+                            }}
+                          >
+                            <MenuItem value="">
+                              <em>Select a repository</em>
+                            </MenuItem>
+                            {listRepositories.isLoading ? (
+                              <MenuItem disabled>
+                                Loading repositories...
+                              </MenuItem>
+                            ) : (
+                              listRepositories.data?.map((repo) => (
+                                <MenuItem key={repo.id} value={repo.full_name}>
+                                  {repo.full_name}
+                                </MenuItem>
+                              ))
+                            )}
+                          </Field>
+                          {touched.githubConfig?.repository &&
+                            errors.githubConfig?.repository && (
+                              <FormHelperText>
+                                {errors.githubConfig.repository}
+                              </FormHelperText>
+                            )}
+                        </FormControl>
+
+                        <FormControl
+                          fullWidth
+                          margin="normal"
+                          error={
+                            touched.githubConfig?.branch &&
+                            Boolean(errors.githubConfig?.branch)
+                          }
+                        >
+                          <InputLabel id="branch-select-label">
+                            Branch
+                          </InputLabel>
+                          <Field
+                            as={Select}
+                            labelId="branch-select-label"
+                            name="githubConfig.branch"
+                            label="Branch"
+                            disabled={!values.githubConfig.repository}
+                          >
+                            <MenuItem value="">
+                              <em>Select a branch</em>
+                            </MenuItem>
+                            {listBranches.isLoading ? (
+                              <MenuItem disabled>Loading branches...</MenuItem>
+                            ) : (
+                              listBranches.data?.map((branch) => (
+                                <MenuItem key={branch.name} value={branch.name}>
+                                  {branch.name}
+                                </MenuItem>
+                              ))
+                            )}
+                          </Field>
+                          {touched.githubConfig?.branch &&
+                            errors.githubConfig?.branch && (
+                              <FormHelperText>
+                                {errors.githubConfig.branch}
+                              </FormHelperText>
+                            )}
+                        </FormControl>
+
+                        <Field
+                          as={TextField}
+                          name="githubConfig.translationPath"
+                          label="Translation Files Path (Optional)"
+                          fullWidth
+                          margin="normal"
+                          helperText="Example: /locales or /src/translations"
+                        />
+
+                        <Field
+                          as={TextField}
+                          name="githubConfig.filePattern"
+                          label="File Pattern (Optional)"
+                          fullWidth
+                          margin="normal"
+                          helperText="Example: *.json or translations.{lang}.yml"
+                        />
+                      </>
+                    )}
+                  </Box>
+                )}
               </DialogContent>
               <DialogActions>
                 <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
