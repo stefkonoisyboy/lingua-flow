@@ -87,6 +87,7 @@ export default function DashboardPage() {
       utils.projects.getProjects.invalidate();
       utils.projects.getStats.invalidate();
       utils.activities.getRecentActivity.invalidate();
+
       setIsDialogOpen(false);
     },
   });

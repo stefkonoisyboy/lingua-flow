@@ -1,7 +1,12 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '../types/database.types';
-import { GitHubService, Repository, Branch, TranslationFile } from './github.service';
-import { IntegrationsDAL, IntegrationConfig } from '../dal/integrations';
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "../types/database.types";
+import {
+  GitHubService,
+  Repository,
+  Branch,
+  TranslationFile,
+} from "./github.service";
+import { IntegrationsDAL, IntegrationConfig } from "../dal/integrations";
 
 export class IntegrationsService {
   private integrationsDal: IntegrationsDAL;
@@ -10,11 +15,8 @@ export class IntegrationsService {
     this.integrationsDal = new IntegrationsDAL(supabase);
   }
 
-  async createGitHubIntegration(
-    projectId: string,
-    config: IntegrationConfig
-  ) {
-    return this.integrationsDal.createIntegration(projectId, 'github', config);
+  async createGitHubIntegration(projectId: string, config: IntegrationConfig) {
+    return this.integrationsDal.createIntegration(projectId, "github", config);
   }
 
   async getProjectIntegration(projectId: string) {
@@ -26,9 +28,13 @@ export class IntegrationsService {
     return githubService.listRepositories();
   }
 
-  async listBranches(accessToken: string, owner: string, repo: string): Promise<Branch[]> {
+  async listBranches(
+    accessToken: string,
+    owner: string,
+    repo: string
+  ): Promise<Branch[]> {
     const githubService = new GitHubService(accessToken);
-    return githubService.listBranches(owner, repo);
+    return githubService.listBranches(`${owner}/${repo}`);
   }
 
   async findTranslationFiles(
@@ -39,7 +45,7 @@ export class IntegrationsService {
     path?: string
   ): Promise<TranslationFile[]> {
     const githubService = new GitHubService(accessToken);
-    return githubService.findTranslationFiles(owner, repo, branch, path);
+    return githubService.findTranslationFiles(`${owner}/${repo}`, branch, path);
   }
 
   async importTranslations(
@@ -53,22 +59,39 @@ export class IntegrationsService {
     const translations: { [key: string]: string } = {};
 
     for (const file of files) {
-      const content = await githubService.getFileContent(owner, repo, file.path, branch);
-      translations[file.path] = content;
+      const content = await githubService.getFileContent(
+        `${owner}/${repo}`,
+        file.path,
+        branch
+      );
+      if (content) {
+        translations[file.path] = content;
+      }
     }
 
     return translations;
   }
 
-  async updateIntegrationConfig(integrationId: string, config: Partial<IntegrationConfig>) {
+  async updateIntegrationConfig(
+    integrationId: string,
+    config: Partial<IntegrationConfig>
+  ) {
     return this.integrationsDal.updateIntegrationConfig(integrationId, config);
   }
 
-  async updateIntegrationStatus(integrationId: string, isConnected: boolean, lastSyncedAt?: string) {
-    return this.integrationsDal.updateIntegrationStatus(integrationId, isConnected, lastSyncedAt);
+  async updateIntegrationStatus(
+    integrationId: string,
+    isConnected: boolean,
+    lastSyncedAt?: string
+  ) {
+    return this.integrationsDal.updateIntegrationStatus(
+      integrationId,
+      isConnected,
+      lastSyncedAt
+    );
   }
 
   async deleteIntegration(integrationId: string) {
     await this.integrationsDal.deleteIntegration(integrationId);
   }
-} 
+}
