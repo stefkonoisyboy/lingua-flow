@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect, useRef } from "react";
 import {
   FolderOutlined,
   LanguageOutlined,
@@ -37,7 +37,7 @@ import {
 } from "@mui/material";
 import { trpc } from "@/utils/trpc";
 import { formatDistance } from "date-fns";
-import { Formik, Form, Field } from "formik";
+import { Formik, Form, Field, FormikProps } from "formik";
 import * as Yup from "yup";
 
 const ProjectSchema = Yup.object().shape({
@@ -74,6 +74,8 @@ export default function DashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState("");
   const [githubEnabled, setGithubEnabled] = useState(false);
+  const [isConnectingGitHub, setIsConnectingGitHub] = useState(false);
+  const formikRef = useRef<FormikProps<ProjectFormValues>>(null);
 
   const stats = trpc.projects.getStats.useQuery();
   const projects = trpc.projects.getProjects.useQuery();
@@ -89,10 +91,17 @@ export default function DashboardPage() {
     },
   });
 
+  const githubConnection = trpc.integrations.checkGitHubConnection.useQuery(
+    undefined,
+    {
+      refetchInterval: isConnectingGitHub ? 1000 : false, // Poll when waiting for connection
+    }
+  );
+
   const listRepositories = trpc.integrations.listRepositories.useQuery(
     undefined,
     {
-      enabled: githubEnabled,
+      enabled: githubEnabled && githubConnection.data?.isConnected,
       retry: 1,
     }
   );
@@ -109,6 +118,16 @@ export default function DashboardPage() {
     }
   );
 
+  const handleGitHubConnect = async () => {
+    const result = await getGitHubAuthUrl.refetch();
+
+    if (result.data) {
+      localStorage.setItem("github_oauth_state", result.data.state);
+      setIsConnectingGitHub(true);
+      window.open(result.data.url, "_blank");
+    }
+  };
+
   const handleCreateProject = (values: ProjectFormValues) => {
     createProject.mutate({
       name: values.name,
@@ -117,6 +136,32 @@ export default function DashboardPage() {
       githubConfig: values.githubEnabled ? values.githubConfig : undefined,
     });
   };
+
+  // Effect to handle GitHub connection completion
+  useEffect(() => {
+    if (isConnectingGitHub && githubConnection.data?.isConnected) {
+      setIsConnectingGitHub(false);
+      setGithubEnabled(true);
+
+      // Update Formik form value
+      if (formikRef.current) {
+        formikRef.current.setFieldValue("githubEnabled", true);
+      }
+    }
+  }, [isConnectingGitHub, githubConnection.data?.isConnected]);
+
+  // Listen for GitHub connection message
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data === "github-connected") {
+        // Force refetch GitHub connection status
+        githubConnection.refetch();
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [githubConnection]);
 
   return (
     <DashboardContainer>
@@ -217,6 +262,7 @@ export default function DashboardPage() {
       >
         <DialogTitle>Create New Project</DialogTitle>
         <Formik
+          innerRef={formikRef}
           initialValues={{
             name: "",
             description: "",
@@ -287,10 +333,15 @@ export default function DashboardPage() {
                     control={<Switch />}
                     name="githubEnabled"
                     label="Connect GitHub Repository"
+                    disabled={isConnectingGitHub}
                     onChange={(
                       e: React.ChangeEvent<HTMLInputElement>,
                       checked: boolean
                     ) => {
+                      if (checked && !githubConnection.data?.isConnected) {
+                        handleGitHubConnect();
+                        return;
+                      }
                       setFieldValue("githubEnabled", checked);
                       setGithubEnabled(checked);
 
@@ -301,11 +352,20 @@ export default function DashboardPage() {
                           translationPath: "",
                           filePattern: "",
                         });
-
                         setSelectedRepo("");
                       }
                     }}
                   />
+                  {isConnectingGitHub && (
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}
+                    >
+                      Waiting for GitHub connection... Please complete the
+                      authorization in the new tab.
+                    </Typography>
+                  )}
                 </Box>
 
                 {values.githubEnabled && (
@@ -314,24 +374,24 @@ export default function DashboardPage() {
                       GitHub Configuration
                     </Typography>
 
-                    {listRepositories.error?.message ===
-                    "GitHub not connected" ? (
-                      <Button
-                        variant="outlined"
-                        fullWidth
-                        onClick={async () => {
-                          const result = await getGitHubAuthUrl.refetch();
-                          if (result.data) {
-                            localStorage.setItem(
-                              "github_oauth_state",
-                              result.data.state
-                            );
-                            window.location.href = result.data.url;
-                          }
-                        }}
-                      >
-                        Connect GitHub Account
-                      </Button>
+                    {!githubConnection.data?.isConnected ? (
+                      <Box>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mb: 2 }}
+                        >
+                          To use GitHub integration, you need to connect your
+                          GitHub account first.
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          fullWidth
+                          onClick={handleGitHubConnect}
+                        >
+                          Connect GitHub Account
+                        </Button>
+                      </Box>
                     ) : (
                       <>
                         <FormControl

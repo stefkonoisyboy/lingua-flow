@@ -1,6 +1,6 @@
-import { z } from 'zod';
-import { publicProcedure, router } from '@/server/trpc';
-import { GitHubService } from '@/lib/services/github.service';
+import { z } from "zod";
+import { publicProcedure, router } from "@/server/trpc";
+import { GitHubService } from "@/lib/services/github.service";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
@@ -8,6 +8,41 @@ const GITHUB_CLIENT_ID = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID!;
 const GITHUB_CLIENT_SECRET = process.env.NEXT_PUBLIC_GITHUB_CLIENT_SECRET!;
 
 export const integrationsRouter = router({
+  checkGitHubConnection: publicProcedure.query(async () => {
+    const cookieStore = await cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set({ name, value, ...options })
+            );
+          },
+        },
+      }
+    );
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return { isConnected: false };
+    }
+
+    const { data: tokenData } = await supabase
+      .from("github_tokens")
+      .select("access_token")
+      .eq("user_id", user.id)
+      .single();
+
+    return { isConnected: Boolean(tokenData?.access_token) };
+  }),
+
   getGitHubAuthUrl: publicProcedure.query(() => {
     const state = Math.random().toString(36).substring(7);
     return {
@@ -24,19 +59,22 @@ export const integrationsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const response = await fetch("https://github.com/login/oauth/access_token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          client_id: GITHUB_CLIENT_ID,
-          client_secret: GITHUB_CLIENT_SECRET,
-          code: input.code,
-          state: input.state,
-        }),
-      });
+      const response = await fetch(
+        "https://github.com/login/oauth/access_token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            client_id: GITHUB_CLIENT_ID,
+            client_secret: GITHUB_CLIENT_SECRET,
+            code: input.code,
+            state: input.state,
+          }),
+        }
+      );
 
       const data = await response.json();
       if (data.error) {
@@ -89,9 +127,18 @@ export const integrationsRouter = router({
       }
     );
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      throw new Error("User not authenticated");
+    }
+
     const { data: tokenData } = await supabase
       .from("github_tokens")
       .select("access_token")
+      .eq("user_id", user.id)
       .single();
 
     if (!tokenData?.access_token) {
@@ -127,9 +174,18 @@ export const integrationsRouter = router({
         }
       );
 
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data: tokenData } = await supabase
         .from("github_tokens")
         .select("access_token")
+        .eq("user_id", user.id)
         .single();
 
       if (!tokenData?.access_token) {
@@ -167,9 +223,18 @@ export const integrationsRouter = router({
         }
       );
 
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data: tokenData } = await supabase
         .from("github_tokens")
         .select("access_token")
+        .eq("user_id", user.id)
         .single();
 
       if (!tokenData?.access_token) {
@@ -177,6 +242,7 @@ export const integrationsRouter = router({
       }
 
       const githubService = new GitHubService(tokenData.access_token);
+
       return githubService.findTranslationFiles(
         input.repository,
         input.branch,
@@ -194,6 +260,7 @@ export const integrationsRouter = router({
     )
     .query(async ({ input }) => {
       const cookieStore = await cookies();
+
       const supabase = createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -211,9 +278,18 @@ export const integrationsRouter = router({
         }
       );
 
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
+
       const { data: tokenData } = await supabase
         .from("github_tokens")
         .select("access_token")
+        .eq("user_id", user.id)
         .single();
 
       if (!tokenData?.access_token) {
@@ -221,10 +297,11 @@ export const integrationsRouter = router({
       }
 
       const githubService = new GitHubService(tokenData.access_token);
+
       return githubService.getFileContent(
         input.repository,
         input.path,
         input.branch
       );
     }),
-}); 
+});
