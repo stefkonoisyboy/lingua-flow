@@ -63,12 +63,41 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
   const languages = trpc.languages.getLanguages.useQuery();
   const utils = trpc.useUtils();
 
+  const findTranslationFiles =
+    trpc.integrations.findTranslationFiles.useMutation();
+  const importTranslations = trpc.integrations.importTranslations.useMutation();
+
   const createProject = trpc.projects.createProject.useMutation({
-    onSuccess: () => {
+    onSuccess: async (data) => {
+      if (data?.id && githubEnabled) {
+        try {
+          // Find translation files
+          const files = await findTranslationFiles.mutateAsync({
+            repository: formikRef.current?.values.githubConfig.repository || "",
+            branch: formikRef.current?.values.githubConfig.branch || "",
+            filePattern: formikRef.current?.values.githubConfig.filePattern,
+            translationPath:
+              formikRef.current?.values.githubConfig.translationPath,
+          });
+
+          if (files && files.length > 0) {
+            // Import translations
+            await importTranslations.mutateAsync({
+              projectId: data.id,
+              repository:
+                formikRef.current?.values.githubConfig.repository || "",
+              branch: formikRef.current?.values.githubConfig.branch || "",
+              files,
+            });
+          }
+        } catch (error) {
+          console.error("Error importing translations:", error);
+        }
+      }
+
       utils.projects.getProjects.invalidate();
       utils.projects.getStats.invalidate();
       utils.activities.getRecentActivity.invalidate();
-
       onClose();
     },
   });
@@ -260,9 +289,18 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
               type="submit"
               variant="contained"
               color="primary"
-              disabled={isSubmitting || createProject.isPending}
+              disabled={
+                isSubmitting ||
+                createProject.isPending ||
+                findTranslationFiles.isPending ||
+                importTranslations.isPending
+              }
             >
-              {createProject.isPending ? "Creating..." : "Create Project"}
+              {createProject.isPending ||
+              findTranslationFiles.isPending ||
+              importTranslations.isPending
+                ? "Creating Project..."
+                : "Create Project"}
             </Button>
           </DialogActions>
         </Form>

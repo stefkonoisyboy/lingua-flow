@@ -1,33 +1,15 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "../trpc";
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
 import { GitHubService } from "../../lib/services/github.service";
 import { IntegrationsService } from "../../lib/services/integrations.service";
+import { createClient } from "@/lib/supabase/server";
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET!;
 
 export const integrationsRouter = router({
   checkGitHubConnection: publicProcedure.query(async () => {
-    const cookieStore = await cookies();
-
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set({ name, value, ...options })
-            );
-          },
-        },
-      }
-    );
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -84,31 +66,24 @@ export const integrationsRouter = router({
       );
 
       const data = await response.json();
+
       if (data.error) {
         throw new Error(data.error_description || "Failed to exchange code");
       }
 
-      const cookieStore = await cookies();
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set({ name, value, ...options })
-              );
-            },
-          },
-        }
-      );
+      const supabase = await createClient();
+
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        throw new Error("User not authenticated");
+      }
 
       // Store the token in Supabase
       await supabase.from("github_tokens").upsert({
-        user_id: (await supabase.auth.getUser()).data.user?.id,
+        user_id: user?.id,
         access_token: data.access_token,
       });
 
@@ -116,23 +91,7 @@ export const integrationsRouter = router({
     }),
 
   listRepositories: publicProcedure.query(async () => {
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set({ name, value, ...options })
-            );
-          },
-        },
-      }
-    );
+    const supabase = await createClient();
 
     const {
       data: { user },
@@ -163,23 +122,7 @@ export const integrationsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const cookieStore = await cookies();
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set({ name, value, ...options })
-              );
-            },
-          },
-        }
-      );
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -212,24 +155,8 @@ export const integrationsRouter = router({
         translationPath: z.string().optional(),
       })
     )
-    .query(async ({ input }) => {
-      const cookieStore = await cookies();
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set({ name, value, ...options })
-              );
-            },
-          },
-        }
-      );
+    .mutation(async ({ input }) => {
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -274,24 +201,7 @@ export const integrationsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const cookieStore = await cookies();
-
-      const supabase = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              return cookieStore.getAll();
-            },
-            setAll(cookiesToSet) {
-              cookiesToSet.forEach(({ name, value, options }) =>
-                cookieStore.set({ name, value, ...options })
-              );
-            },
-          },
-        }
-      );
+      const supabase = await createClient();
 
       const {
         data: { user },
@@ -347,12 +257,14 @@ export const integrationsRouter = router({
       }
 
       const integrationsService = new IntegrationsService(ctx.supabase);
+
       await integrationsService.importProjectTranslations(
         input.projectId,
         tokenData.access_token,
         input.repository,
         input.branch,
-        input.files
+        input.files,
+        ctx.user.id
       );
     }),
 });

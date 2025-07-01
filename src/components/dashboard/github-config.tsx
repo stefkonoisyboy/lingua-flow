@@ -1,7 +1,5 @@
 import { useState } from "react";
 import {
-  Box,
-  Button,
   FormControl,
   FormHelperText,
   InputLabel,
@@ -9,9 +7,7 @@ import {
   Select,
   SelectChangeEvent,
   TextField,
-  Typography,
 } from "@mui/material";
-import { SearchOutlined } from "@mui/icons-material";
 import { Field } from "formik";
 import { trpc } from "@/utils/trpc";
 
@@ -38,6 +34,7 @@ interface GitHubConfigProps {
   };
   setFieldValue: (field: string, value: string) => void;
   isConnected: boolean;
+  projectId?: string;
 }
 
 export default function GitHubConfig({
@@ -48,7 +45,6 @@ export default function GitHubConfig({
   isConnected,
 }: GitHubConfigProps) {
   const [selectedRepo, setSelectedRepo] = useState("");
-  const [isSearchingFiles, setIsSearchingFiles] = useState(false);
 
   const listRepositories = trpc.integrations.listRepositories.useQuery(
     undefined,
@@ -62,43 +58,6 @@ export default function GitHubConfig({
     { repository: selectedRepo },
     { enabled: Boolean(selectedRepo) }
   );
-
-  const findTranslationFiles = trpc.integrations.findTranslationFiles.useQuery(
-    {
-      repository: selectedRepo,
-      branch: values.githubConfig.branch,
-      filePattern: values.githubConfig.filePattern,
-      translationPath: values.githubConfig.translationPath,
-    },
-    {
-      enabled: false,
-    }
-  );
-
-  const importTranslations = trpc.integrations.importTranslations.useMutation();
-
-  const handleFindTranslationFiles = async () => {
-    if (!selectedRepo || !values.githubConfig.branch) {
-      return;
-    }
-
-    setIsSearchingFiles(true);
-
-    try {
-      const files = await findTranslationFiles.refetch();
-
-      if (files.data && files.data.length > 0) {
-        await importTranslations.mutateAsync({
-          projectId: "test",
-          repository: selectedRepo,
-          branch: values.githubConfig.branch,
-          files: files.data,
-        });
-      }
-    } finally {
-      setIsSearchingFiles(false);
-    }
-  };
 
   return (
     <>
@@ -192,41 +151,6 @@ export default function GitHubConfig({
         margin="normal"
         helperText="Example: *.json or translations.{lang}.yml"
       />
-
-      {values.githubConfig.repository && values.githubConfig.branch && (
-        <Box sx={{ mt: 2 }}>
-          <Button
-            variant="outlined"
-            color="primary"
-            startIcon={<SearchOutlined />}
-            onClick={handleFindTranslationFiles}
-            disabled={isSearchingFiles}
-            fullWidth
-          >
-            {isSearchingFiles
-              ? "Searching for translation files..."
-              : "Test Translation File Import"}
-          </Button>
-          {findTranslationFiles.data && (
-            <Typography variant="body2" sx={{ mt: 1 }}>
-              Found {findTranslationFiles.data.length} translation files
-            </Typography>
-          )}
-          {importTranslations.isSuccess && (
-            <Typography variant="body2" color="success.main" sx={{ mt: 1 }}>
-              Successfully tested translation import! Check the console for
-              details.
-            </Typography>
-          )}
-          {(findTranslationFiles.error || importTranslations.error) && (
-            <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-              Error:{" "}
-              {findTranslationFiles.error?.message ||
-                importTranslations.error?.message}
-            </Typography>
-          )}
-        </Box>
-      )}
     </>
   );
 }

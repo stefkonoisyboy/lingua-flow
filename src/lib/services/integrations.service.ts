@@ -7,6 +7,7 @@ import {
   TranslationFile,
 } from "./github.service";
 import { IntegrationsDAL, IntegrationConfig } from "../dal/integrations";
+import { TranslationsDAL } from "../dal/translations";
 
 interface ParsedTranslation {
   key: string;
@@ -20,9 +21,11 @@ type NestedTranslations = {
 
 export class IntegrationsService {
   private integrationsDal: IntegrationsDAL;
+  private translationsDal: TranslationsDAL;
 
   constructor(supabase: SupabaseClient<Database>) {
     this.integrationsDal = new IntegrationsDAL(supabase);
+    this.translationsDal = new TranslationsDAL(supabase);
   }
 
   async createGitHubIntegration(projectId: string, config: IntegrationConfig) {
@@ -45,17 +48,6 @@ export class IntegrationsService {
   ): Promise<Branch[]> {
     const githubService = new GitHubService(accessToken);
     return githubService.listBranches(`${owner}/${repo}`);
-  }
-
-  async findTranslationFiles(
-    accessToken: string,
-    owner: string,
-    repo: string,
-    branch: string,
-    path?: string
-  ): Promise<TranslationFile[]> {
-    const githubService = new GitHubService(accessToken);
-    return githubService.findTranslationFiles(`${owner}/${repo}`, branch, path);
   }
 
   async importTranslations(
@@ -123,6 +115,7 @@ export class IntegrationsService {
         const flattenObject = (obj: NestedTranslations, prefix = ""): void => {
           for (const key in obj) {
             const value = obj[key];
+
             if (typeof value === "object" && value !== null) {
               flattenObject(
                 value as NestedTranslations,
@@ -158,7 +151,8 @@ export class IntegrationsService {
     accessToken: string,
     repository: string,
     branch: string,
-    files: TranslationFile[]
+    files: TranslationFile[],
+    userId: string
   ): Promise<void> {
     const githubService = new GitHubService(accessToken);
     const [owner, repo] = repository.split("/");
@@ -179,15 +173,60 @@ export class IntegrationsService {
           fileType
         );
 
-        // Log the translations that would be imported
-        console.log("Translations to be imported:", {
-          projectId,
-          repository,
-          branch,
-          file: file.path,
-          translationsCount: parsedTranslations.length,
-          translations: parsedTranslations,
-        });
+        // Store each translation
+        for (const translation of parsedTranslations) {
+          try {
+            // Get or create the language
+            const language = await this.translationsDal.getLanguageByCode(
+              translation.language
+            );
+            if (!language) {
+              console.warn(
+                `Language ${translation.language} not found, skipping translation`
+              );
+              continue;
+            }
+
+            // Get or create the translation key
+            let translationKey =
+              await this.translationsDal.getTranslationKeyByKey(
+                projectId,
+                translation.key
+              );
+
+            if (!translationKey) {
+              translationKey = await this.translationsDal.createTranslationKey(
+                projectId,
+                translation.key,
+                translation.value // Using the value as source content
+              );
+            }
+
+            // Create the translation with source information
+            await this.translationsDal.createTranslation(
+              translationKey.id,
+              language.id,
+              translation.value,
+              userId,
+              `GitHub: ${repository}/${file.path} (${branch})`
+            );
+          } catch (error) {
+            console.error("Error storing translation:", error);
+            // Continue with other translations even if one fails
+          }
+        }
+
+        // Update integration status
+        const integration = await this.integrationsDal.getProjectIntegration(
+          projectId
+        );
+        if (integration) {
+          await this.updateIntegrationStatus(
+            integration.id,
+            true,
+            new Date().toISOString()
+          );
+        }
       }
     }
   }

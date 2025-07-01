@@ -6,6 +6,7 @@
     "evenodd",
     "fkey",
     "pgcrypto",
+    "PGRST",
     "plpgsql",
     "supabase",
     "Topbar",

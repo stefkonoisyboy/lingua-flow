@@ -51,12 +51,21 @@ Key Features:
 ### 4. Translation Management Flow
 
 - Import translation files
+  - Automatic file discovery from GitHub
+  - Support for JSON, YAML, and PO files
+  - Initial version history creation for imported translations
+  - Source tracking (repository, file path, branch)
 - Create/edit translation keys
 - Batch translation updates
 - Translation progress tracking
 - Export translations
 - Version history and rollback
+  - Automatic version numbering
+  - Source tracking for each version
+  - Full audit trail of changes
+  - Ability to view and restore previous versions
 - Translation memory suggestions
+- Translation status management (pending, in_progress, reviewed, approved)
 
 ### 5. Collaboration Flow
 
