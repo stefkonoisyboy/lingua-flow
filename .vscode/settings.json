@@ -8,6 +8,7 @@
     "pgcrypto",
     "PGRST",
     "plpgsql",
+    "Postgrest",
     "supabase",
     "Topbar",
     "turbopack"

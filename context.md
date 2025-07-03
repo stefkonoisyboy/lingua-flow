@@ -53,8 +53,13 @@ Key Features:
 - Import translation files
   - Automatic file discovery from GitHub
   - Support for JSON, YAML, and PO files
+  - Batch processing for efficient imports
+    - Bulk upsert of translation keys
+    - Bulk upsert of translations
+    - Batch version history creation
   - Initial version history creation for imported translations
   - Source tracking (repository, file path, branch)
+  - Unique version tracking (translation_id, version_number)
 - Create/edit translation keys
 - Batch translation updates
 - Translation progress tracking
@@ -64,6 +69,7 @@ Key Features:
   - Source tracking for each version
   - Full audit trail of changes
   - Ability to view and restore previous versions
+  - Unique constraint on translation_id and version_number
 - Translation memory suggestions
 - Translation status management (pending, in_progress, reviewed, approved)
 
@@ -118,6 +124,14 @@ Key Features:
 - MUI icons used throughout the app
 
 ### Backend & Data Model
+
+#### Data Access Layer (DAL)
+
+- Centralized pagination handling through `PaginationDAL`
+  - Handles Supabase's 1000-row limit
+  - Provides generic `fetchAllPages` method for all DAL classes
+  - Consistent pagination implementation across the application
+  - Automatic handling of large datasets
 
 #### Supabase Tables and Enums
 

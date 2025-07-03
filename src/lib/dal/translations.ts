@@ -1,6 +1,11 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
-import { VersionHistoryDAL } from "./version-history";
+import { PaginationDAL } from "./pagination";
+
+type TranslationKey = Database["public"]["Tables"]["translation_keys"]["Row"];
+type Translation = Database["public"]["Tables"]["translations"]["Row"] & {
+  translation_keys: Pick<TranslationKey, "project_id">;
+};
 
 interface TranslationKeyInsert {
   project_id: string;
@@ -18,10 +23,10 @@ interface TranslationInsert {
 }
 
 export class TranslationsDAL {
-  private versionHistoryDal: VersionHistoryDAL;
+  private paginationDal: PaginationDAL;
 
   constructor(private supabase: SupabaseClient<Database>) {
-    this.versionHistoryDal = new VersionHistoryDAL(supabase);
+    this.paginationDal = new PaginationDAL(supabase);
   }
 
   async upsertTranslationKeys(keys: TranslationKeyInsert[]) {
@@ -66,21 +71,10 @@ export class TranslationsDAL {
       version_number: 1,
     }));
 
-    const { data: versionData, error: versionError } = await this.supabase
-      .from("version_history")
-      .upsert(versionEntries, {
-        onConflict: "translation_id,version_number",
-        ignoreDuplicates: true,
-      })
-      .select();
-
-    if (versionError) {
-      throw new Error(
-        `Failed to upsert version history: ${versionError.message}`
-      );
-    }
-
-    console.log(`Version data: ${versionData.length}`);
+    await this.supabase.from("version_history").upsert(versionEntries, {
+      onConflict: "translation_id,version_number",
+      ignoreDuplicates: true,
+    });
 
     return data;
   }
@@ -115,8 +109,19 @@ export class TranslationsDAL {
     return data;
   }
 
-  async getProjectTranslations(projectIds: string[]) {
-    const { data, error } = await this.supabase
+  async getProjectTranslationKeys(
+    projectIds: string[]
+  ): Promise<TranslationKey[]> {
+    const query = this.supabase
+      .from("translation_keys")
+      .select()
+      .in("project_id", projectIds);
+
+    return this.paginationDal.fetchAllPages<TranslationKey>(query);
+  }
+
+  async getProjectTranslations(projectIds: string[]): Promise<Translation[]> {
+    const query = this.supabase
       .from("translations")
       .select(
         `
@@ -128,10 +133,6 @@ export class TranslationsDAL {
       )
       .in("translation_keys.project_id", projectIds);
 
-    if (error) {
-      throw new Error(`Failed to get project translations: ${error.message}`);
-    }
-
-    return data;
+    return this.paginationDal.fetchAllPages<Translation>(query);
   }
 }
