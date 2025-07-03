@@ -2,6 +2,21 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
 import { VersionHistoryDAL } from "./version-history";
 
+interface TranslationKeyInsert {
+  project_id: string;
+  key: string;
+  source_content: string;
+  description?: string;
+}
+
+interface TranslationInsert {
+  key_id: string;
+  language_id: string;
+  content: string;
+  translator_id: string;
+  status: "approved";
+}
+
 export class TranslationsDAL {
   private versionHistoryDal: VersionHistoryDAL;
 
@@ -9,60 +24,63 @@ export class TranslationsDAL {
     this.versionHistoryDal = new VersionHistoryDAL(supabase);
   }
 
-  async createTranslationKey(
-    projectId: string,
-    key: string,
-    sourceContent: string,
-    description?: string
-  ) {
+  async upsertTranslationKeys(keys: TranslationKeyInsert[]) {
     const { data, error } = await this.supabase
       .from("translation_keys")
-      .insert({
-        project_id: projectId,
-        key,
-        source_content: sourceContent,
-        description,
+      .upsert(keys, {
+        onConflict: "project_id,key",
+        ignoreDuplicates: false,
       })
-      .select()
-      .single();
+      .select();
 
     if (error) {
-      throw new Error(`Failed to create translation key: ${error.message}`);
+      throw new Error(`Failed to upsert translation keys: ${error.message}`);
     }
 
     return data;
   }
 
-  async createTranslation(
-    keyId: string,
-    languageId: string,
-    content: string,
-    translatorId: string,
-    source: string = "github_import"
+  async upsertTranslations(
+    translations: TranslationInsert[],
+    userId: string,
+    source: string
   ) {
     const { data, error } = await this.supabase
       .from("translations")
-      .insert({
-        key_id: keyId,
-        language_id: languageId,
-        content,
-        translator_id: translatorId,
-        status: "approved", // Since these are imported translations, mark them as approved
+      .upsert(translations, {
+        onConflict: "key_id,language_id",
+        ignoreDuplicates: false,
       })
-      .select()
-      .single();
+      .select();
 
     if (error) {
-      throw new Error(`Failed to create translation: ${error.message}`);
+      throw new Error(`Failed to upsert translations: ${error.message}`);
     }
 
-    // Create initial version history entry
-    await this.versionHistoryDal.createVersion(
-      data.id,
-      content,
-      translatorId,
-      `Initial import from ${source}`
-    );
+    // Create version history entries in batch
+    const versionEntries = data.map((translation) => ({
+      translation_id: translation.id,
+      content: translation.content,
+      changed_by: userId,
+      version_name: `Initial import from ${source}`,
+      version_number: 1,
+    }));
+
+    const { data: versionData, error: versionError } = await this.supabase
+      .from("version_history")
+      .upsert(versionEntries, {
+        onConflict: "translation_id,version_number",
+        ignoreDuplicates: true,
+      })
+      .select();
+
+    if (versionError) {
+      throw new Error(
+        `Failed to upsert version history: ${versionError.message}`
+      );
+    }
+
+    console.log(`Version data: ${versionData.length}`);
 
     return data;
   }

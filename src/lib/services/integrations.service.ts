@@ -8,6 +8,7 @@ import {
 } from "./github.service";
 import { IntegrationsDAL, IntegrationConfig } from "../dal/integrations";
 import { TranslationsDAL } from "../dal/translations";
+import { ProjectsDAL } from "../dal/projects";
 
 interface ParsedTranslation {
   key: string;
@@ -22,10 +23,13 @@ type NestedTranslations = {
 export class IntegrationsService {
   private integrationsDal: IntegrationsDAL;
   private translationsDal: TranslationsDAL;
+  private projectsDal: ProjectsDAL;
+  private githubService: GitHubService | null = null;
 
   constructor(supabase: SupabaseClient<Database>) {
     this.integrationsDal = new IntegrationsDAL(supabase);
     this.translationsDal = new TranslationsDAL(supabase);
+    this.projectsDal = new ProjectsDAL(supabase);
   }
 
   async createGitHubIntegration(projectId: string, config: IntegrationConfig) {
@@ -153,73 +157,93 @@ export class IntegrationsService {
     branch: string,
     files: TranslationFile[],
     userId: string
-  ): Promise<void> {
-    const githubService = new GitHubService(accessToken);
-    const [owner, repo] = repository.split("/");
+  ) {
+    try {
+      // Initialize GitHub service with access token
+      this.githubService = new GitHubService(accessToken);
+      const [owner, repo] = repository.split("/");
 
-    for (const file of files) {
-      const content = await githubService.getFileContent(
-        `${owner}/${repo}`,
-        file.path,
-        branch
-      );
+      // Process each translation file
+      for (const file of files) {
+        const content = await this.githubService.getFileContent(
+          `${owner}/${repo}`,
+          file.path,
+          branch
+        );
 
-      if (content) {
+        if (!content) {
+          continue;
+        }
+
         const fileType = file.path.split(".").pop() || "unknown";
 
-        const parsedTranslations = this.parseTranslationFile(
+        // Extract language code from filename (e.g., "en.json" -> "en")
+        const languageCode = file.name.split(".")[0];
+
+        if (!languageCode) {
+          continue;
+        }
+
+        // Get or create language in the project
+        const language = await this.translationsDal.getLanguageByCode(
+          languageCode
+        );
+
+        await this.projectsDal.ensureProjectLanguage(projectId, language.id);
+
+        // Get parsed translations
+        const translations = this.parseTranslationFile(
           content,
           file.path,
           fileType
         );
 
-        // Store each translation
-        for (const translation of parsedTranslations) {
-          try {
-            // Get or create the language
-            const language = await this.translationsDal.getLanguageByCode(
-              translation.language
-            );
-            if (!language) {
-              console.warn(
-                `Language ${translation.language} not found, skipping translation`
-              );
-              continue;
-            }
+        // Prepare batch arrays for upsert operations
+        const translationKeys = [];
+        const translationValues = [];
 
-            // Get or create the translation key
-            let translationKey =
-              await this.translationsDal.getTranslationKeyByKey(
-                projectId,
-                translation.key
-              );
+        // Process each translation entry
+        for (const value of translations) {
+          translationKeys.push({
+            project_id: projectId,
+            key: value.key,
+            source_content: value.value,
+          });
+        }
 
-            if (!translationKey) {
-              translationKey = await this.translationsDal.createTranslationKey(
-                projectId,
-                translation.key,
-                translation.value // Using the value as source content
-              );
-            }
+        // First, upsert all translation keys
+        const insertedKeys = await this.translationsDal.upsertTranslationKeys(
+          translationKeys
+        );
 
-            // Create the translation with source information
-            await this.translationsDal.createTranslation(
-              translationKey.id,
-              language.id,
-              translation.value,
-              userId,
-              `GitHub: ${repository}/${file.path} (${branch})`
-            );
-          } catch (error) {
-            console.error("Error storing translation:", error);
-            // Continue with other translations even if one fails
+        // Prepare translations for batch upsert
+        for (let i = 0; i < insertedKeys.length; i++) {
+          const key = insertedKeys[i];
+          const translation = translations.find((t) => t.key === key.key);
+
+          if (translation?.value) {
+            translationValues.push({
+              key_id: key.id,
+              language_id: language.id,
+              content: translation.value,
+              translator_id: userId,
+              status: "approved" as const,
+            });
           }
         }
+
+        // Batch upsert translations and create version history
+        await this.translationsDal.upsertTranslations(
+          translationValues,
+          userId,
+          `github:${owner}/${repo}`
+        );
 
         // Update integration status
         const integration = await this.integrationsDal.getProjectIntegration(
           projectId
         );
+
         if (integration) {
           await this.updateIntegrationStatus(
             integration.id,
@@ -228,6 +252,15 @@ export class IntegrationsService {
           );
         }
       }
+
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to import translations:", error);
+      throw new Error(
+        `Failed to import translations: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     }
   }
 }
