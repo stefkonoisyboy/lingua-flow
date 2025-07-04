@@ -10,11 +10,10 @@ type Translation = Database["public"]["Tables"]["translations"]["Row"] & {
 interface TranslationKeyInsert {
   project_id: string;
   key: string;
-  source_content: string;
   description?: string;
 }
 
-interface TranslationInsert {
+export interface TranslationInsert {
   key_id: string;
   language_id: string;
   content: string;

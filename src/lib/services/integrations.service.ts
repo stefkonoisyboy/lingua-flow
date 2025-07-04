@@ -7,7 +7,7 @@ import {
   TranslationFile,
 } from "./github.service";
 import { IntegrationsDAL, IntegrationConfig } from "../dal/integrations";
-import { TranslationsDAL } from "../dal/translations";
+import { TranslationsDAL, TranslationInsert } from "../dal/translations";
 import { ProjectsDAL } from "../dal/projects";
 
 interface ParsedTranslation {
@@ -199,17 +199,10 @@ export class IntegrationsService {
         );
 
         // Prepare batch arrays for upsert operations
-        const translationKeys = [];
-        const translationValues = [];
-
-        // Process each translation entry
-        for (const value of translations) {
-          translationKeys.push({
-            project_id: projectId,
-            key: value.key,
-            source_content: value.value,
-          });
-        }
+        const translationKeys = translations.map((translation) => ({
+          project_id: projectId,
+          key: translation.key,
+        }));
 
         // First, upsert all translation keys
         const insertedKeys = await this.translationsDal.upsertTranslationKeys(
@@ -217,20 +210,23 @@ export class IntegrationsService {
         );
 
         // Prepare translations for batch upsert
-        for (let i = 0; i < insertedKeys.length; i++) {
-          const key = insertedKeys[i];
-          const translation = translations.find((t) => t.key === key.key);
+        const translationValues = insertedKeys
+          .map((key) => {
+            const translation = translations.find((t) => t.key === key.key);
 
-          if (translation?.value) {
-            translationValues.push({
+            if (!translation?.value) {
+              return null;
+            }
+
+            return {
               key_id: key.id,
               language_id: language.id,
               content: translation.value,
               translator_id: userId,
               status: "approved" as const,
-            });
-          }
-        }
+            };
+          })
+          .filter((t): t is TranslationInsert => t !== null);
 
         // Batch upsert translations and create version history
         await this.translationsDal.upsertTranslations(
