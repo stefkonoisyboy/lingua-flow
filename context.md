@@ -124,21 +124,37 @@ The application uses a custom DI system for better maintainability and testabili
      - IIntegrationsDAL
      - IPaginationDAL
      - IVersionHistoryDAL
+     - IGitHubTokensDAL
    - Service Interfaces
      - IProjectsService
      - ILanguagesService
      - IIntegrationsService
+     - IGitHubTokensService
 
 3. Implementation Pattern
    - Services depend on DAL interfaces
    - DALs implement database operations
    - Services implement business logic
    - tRPC routers use services through DI
+   - GitHub integration split into dedicated service and DAL
+   - Token management handled by GitHubTokensService
 
 4. Request Scoping
    - New container created per request
    - Supabase client injected at request level
    - Services resolved within request scope
+   - All services registered as singletons by default
+
+5. Service Dependencies
+   - ProjectsService: depends on ProjectsDAL, ActivitiesDAL, TranslationsDAL, IntegrationsService
+   - IntegrationsService: depends on IntegrationsDAL, TranslationsDAL, ProjectsDAL
+   - GitHubTokensService: depends on GitHubTokensDAL
+   - LanguagesService: depends on LanguagesDAL
+
+6. DAL Dependencies
+   - TranslationsDAL: depends on PaginationDAL
+   - VersionHistoryDAL: depends on PaginationDAL
+   - Other DALs: depend only on Supabase client
 
 ### Frontend Architecture
 

@@ -1,39 +1,26 @@
 import { z } from "zod";
-import { publicProcedure, protectedProcedure, router } from "../trpc";
-import { GitHubService } from "../../lib/services/github.service";
-import { createClient } from "@/lib/supabase/server";
-import { IIntegrationsService } from "@/lib/di/interfaces/service.interfaces";
+import { protectedProcedure, router } from "../trpc";
+import {
+  IIntegrationsService,
+  IGitHubTokensService,
+} from "@/lib/di/interfaces/service.interfaces";
 import { DI_TOKENS } from "@/lib/di/registry";
+import { GitHubService } from "@/lib/services/github.service";
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET!;
 
 export const integrationsRouter = router({
-  checkGitHubConnection: publicProcedure.query(async () => {
-    const supabase = await createClient();
+  checkGitHubConnection: protectedProcedure.query(async ({ ctx }) => {
+    const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+      DI_TOKENS.GITHUB_TOKENS_SERVICE
+    );
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
 
-    if (!user) {
-      return { isConnected: false };
-    }
-
-    const { data: tokenData, error: tokenError } = await supabase
-      .from("github_tokens")
-      .select("access_token")
-      .eq("user_id", user.id)
-      .single();
-
-    if (tokenError) {
-      throw new Error("Failed to fetch token data for current user");
-    }
-
-    return { isConnected: Boolean(tokenData?.access_token) };
+    return { isConnected: Boolean(accessToken) };
   }),
 
-  getGitHubAuthUrl: publicProcedure.query(() => {
+  getGitHubAuthUrl: protectedProcedure.query(() => {
     const state = Math.random().toString(36).substring(7);
     return {
       url: `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&scope=repo&state=${state}`,
@@ -41,113 +28,46 @@ export const integrationsRouter = router({
     };
   }),
 
-  exchangeGitHubCode: publicProcedure
-    .input(
-      z.object({
-        code: z.string(),
-        state: z.string(),
-      })
-    )
-    .mutation(async ({ input }) => {
-      const response = await fetch(
-        "https://github.com/login/oauth/access_token",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify({
-            client_id: GITHUB_CLIENT_ID,
-            client_secret: GITHUB_CLIENT_SECRET,
-            code: input.code,
-            state: input.state,
-          }),
-        }
-      );
+  listRepositories: protectedProcedure.query(async ({ ctx }) => {
+    const integrationsService = ctx.container.resolve<IIntegrationsService>(
+      DI_TOKENS.INTEGRATIONS_SERVICE
+    );
 
-      const data = await response.json();
+    const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+      DI_TOKENS.GITHUB_TOKENS_SERVICE
+    );
 
-      if (data.error) {
-        throw new Error(data.error_description || "Failed to exchange code");
-      }
+    const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
 
-      const supabase = await createClient();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      // Store the token in Supabase
-      await supabase.from("github_tokens").upsert({
-        user_id: user?.id,
-        access_token: data.access_token,
-      });
-
-      return { success: true };
-    }),
-
-  listRepositories: publicProcedure.query(async () => {
-    const supabase = await createClient();
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      throw new Error("User not authenticated");
-    }
-
-    const { data: tokenData } = await supabase
-      .from("github_tokens")
-      .select("access_token")
-      .eq("user_id", user.id)
-      .single();
-
-    if (!tokenData?.access_token) {
+    if (!accessToken) {
       throw new Error("GitHub not connected");
     }
 
-    const githubService = new GitHubService(tokenData.access_token);
-    return githubService.listRepositories();
+    return integrationsService.listRepositories(accessToken);
   }),
 
-  listBranches: publicProcedure
-    .input(
-      z.object({
-        repository: z.string(),
-      })
-    )
-    .query(async ({ input }) => {
-      const supabase = await createClient();
+  listBranches: protectedProcedure
+    .input(z.object({ repository: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+        DI_TOKENS.GITHUB_TOKENS_SERVICE
+      );
 
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
+      const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
 
-      const { data: tokenData } = await supabase
-        .from("github_tokens")
-        .select("access_token")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!tokenData?.access_token) {
+      if (!accessToken) {
         throw new Error("GitHub not connected");
       }
 
-      const githubService = new GitHubService(tokenData.access_token);
-      return githubService.listBranches(input.repository);
+      const [owner, repo] = input.repository.split("/");
+      return integrationsService.listBranches(accessToken, owner, repo);
     }),
 
-  findTranslationFiles: publicProcedure
+  findTranslationFiles: protectedProcedure
     .input(
       z.object({
         repository: z.string(),
@@ -156,28 +76,18 @@ export const integrationsRouter = router({
         translationPath: z.string().optional(),
       })
     )
-    .mutation(async ({ input }) => {
-      const supabase = await createClient();
+    .mutation(async ({ ctx, input }) => {
+      const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+        DI_TOKENS.GITHUB_TOKENS_SERVICE
+      );
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
 
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      const { data: tokenData } = await supabase
-        .from("github_tokens")
-        .select("access_token")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!tokenData?.access_token) {
+      if (!accessToken) {
         throw new Error("GitHub not connected");
       }
 
-      const githubService = new GitHubService(tokenData.access_token);
+      const githubService = new GitHubService(accessToken);
 
       // Construct the file pattern with the translation path if provided
       const fullPattern = input.translationPath
@@ -190,44 +100,6 @@ export const integrationsRouter = router({
         input.repository,
         input.branch,
         fullPattern
-      );
-    }),
-
-  getFileContent: publicProcedure
-    .input(
-      z.object({
-        repository: z.string(),
-        path: z.string(),
-        branch: z.string(),
-      })
-    )
-    .query(async ({ input }) => {
-      const supabase = await createClient();
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        throw new Error("User not authenticated");
-      }
-
-      const { data: tokenData } = await supabase
-        .from("github_tokens")
-        .select("access_token")
-        .eq("user_id", user.id)
-        .single();
-
-      if (!tokenData?.access_token) {
-        throw new Error("GitHub not connected");
-      }
-
-      const githubService = new GitHubService(tokenData.access_token);
-
-      return githubService.getFileContent(
-        input.repository,
-        input.path,
-        input.branch
       );
     }),
 
@@ -247,23 +119,23 @@ export const integrationsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { data: tokenData } = await ctx.supabase
-        .from("github_tokens")
-        .select("access_token")
-        .eq("user_id", ctx.user.id)
-        .single();
-
-      if (!tokenData?.access_token) {
-        throw new Error("GitHub not connected");
-      }
-
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
       );
 
+      const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+        DI_TOKENS.GITHUB_TOKENS_SERVICE
+      );
+
+      const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
+
+      if (!accessToken) {
+        throw new Error("GitHub not connected");
+      }
+
       await integrationsService.importProjectTranslations(
         input.projectId,
-        tokenData.access_token,
+        accessToken,
         input.repository,
         input.branch,
         input.files,

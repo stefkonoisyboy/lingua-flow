@@ -135,3 +135,8 @@ export interface IVersionHistoryDAL {
     translationIds: string[]
   ): Promise<Tables["version_history"]["Row"][]>;
 }
+
+export interface IGitHubTokensDAL {
+  getAccessToken(userId: string): Promise<string | null>;
+  saveAccessToken(userId: string, accessToken: string): Promise<void>;
+}

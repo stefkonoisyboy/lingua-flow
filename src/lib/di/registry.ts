@@ -23,33 +23,38 @@ import {
   ILanguagesDAL,
   IPaginationDAL,
   IVersionHistoryDAL,
+  IGitHubTokensDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
   ILanguagesService,
   IIntegrationsService,
+  IGitHubTokensService,
 } from "./interfaces/service.interfaces";
 import { PaginationDAL } from "../dal/pagination";
 import { VersionHistoryDAL } from "../dal/version-history";
+import { GitHubTokensService } from "../services/github-tokens.service";
+import { GitHubTokensDAL } from "../dal/github-tokens";
 
 // Token constants for dependency injection
 export const DI_TOKENS = {
   // DAL tokens
-  PROJECTS_DAL: "projectsDal",
-  ACTIVITIES_DAL: "activitiesDal",
-  TRANSLATIONS_DAL: "translationsDal",
-  INTEGRATIONS_DAL: "integrationsDal",
-  LANGUAGES_DAL: "languagesDal",
-  VERSION_HISTORY_DAL: "versionHistoryDal",
-  PAGINATION_DAL: "paginationDal",
-
+  PROJECTS_DAL: "PROJECTS_DAL",
+  ACTIVITIES_DAL: "ACTIVITIES_DAL",
+  TRANSLATIONS_DAL: "TRANSLATIONS_DAL",
+  INTEGRATIONS_DAL: "INTEGRATIONS_DAL",
+  LANGUAGES_DAL: "LANGUAGES_DAL",
+  VERSION_HISTORY_DAL: "VERSION_HISTORY_DAL",
+  PAGINATION_DAL: "PAGINATION_DAL",
+  GITHUB_TOKENS_DAL: "GITHUB_TOKENS_DAL",
   // Service tokens
-  PROJECTS_SERVICE: "projectsService",
-  LANGUAGES_SERVICE: "languagesService",
-  INTEGRATIONS_SERVICE: "integrationsService",
+  PROJECTS_SERVICE: "PROJECTS_SERVICE",
+  LANGUAGES_SERVICE: "LANGUAGES_SERVICE",
+  INTEGRATIONS_SERVICE: "INTEGRATIONS_SERVICE",
+  GITHUB_TOKENS_SERVICE: "GITHUB_TOKENS_SERVICE",
 
   // Core dependencies
-  SUPABASE: "supabase",
+  SUPABASE: "SUPABASE",
 };
 
 /**
@@ -106,6 +111,11 @@ export function registerServices(
     (c) => new PaginationDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
+  container.register<IGitHubTokensDAL>(
+    DI_TOKENS.GITHUB_TOKENS_DAL,
+    (c) => new GitHubTokensDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
   // Register services
   container.register<ILanguagesService>(
     DI_TOKENS.LANGUAGES_SERVICE,
@@ -131,5 +141,10 @@ export function registerServices(
         c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
         c.resolve(DI_TOKENS.INTEGRATIONS_SERVICE)
       )
+  );
+
+  container.register<IGitHubTokensService>(
+    DI_TOKENS.GITHUB_TOKENS_SERVICE,
+    (c) => new GitHubTokensService(c.resolve(DI_TOKENS.GITHUB_TOKENS_DAL))
   );
 }

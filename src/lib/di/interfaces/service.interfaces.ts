@@ -119,3 +119,8 @@ export interface IIntegrationsService {
     userId: string
   ): Promise<{ success: boolean }>;
 }
+
+export interface IGitHubTokensService {
+  getAccessToken(userId: string): Promise<string | null>;
+  saveAccessToken(userId: string, accessToken: string): Promise<void>;
+}
