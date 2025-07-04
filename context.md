@@ -54,12 +54,14 @@ Key Features:
   - Automatic file discovery from GitHub
   - Support for JSON, YAML, and PO files
   - Batch processing for efficient imports
-    - Bulk upsert of translation keys
-    - Bulk upsert of translations
-    - Batch version history creation
+    - Bulk upsert of translation keys with composite unique constraint (project_id, key)
+    - Bulk upsert of translations with proper conflict handling
+    - Batch version history creation with unique constraints
   - Initial version history creation for imported translations
   - Source tracking (repository, file path, branch)
   - Unique version tracking (translation_id, version_number)
+  - Enhanced error handling for translation imports
+  - Type-safe batch operations
 - Create/edit translation keys
 - Batch translation updates
 - Translation progress tracking
@@ -132,6 +134,8 @@ Key Features:
   - Provides generic `fetchAllPages` method for all DAL classes
   - Consistent pagination implementation across the application
   - Automatic handling of large datasets
+  - Type-safe pagination results
+  - Integrated into TranslationsDAL and VersionHistoryDAL
 
 #### Supabase Tables and Enums
 
@@ -178,7 +182,6 @@ Key Features:
    - id (primary key)
    - key
    - description
-   - source_content
    - project_id (foreign key to projects)
    - created_at
    - updated_at
