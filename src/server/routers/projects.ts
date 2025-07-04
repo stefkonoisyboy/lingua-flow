@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
-import { ProjectsService } from "../../lib/services/projects.service";
+import { DI_TOKENS } from "../../lib/di/registry";
+import { IProjectsService } from "../../lib/di/interfaces/service.interfaces";
 
 const githubConfigSchema = z.object({
   repository: z.string().min(1, "Repository is required"),
@@ -11,12 +12,18 @@ const githubConfigSchema = z.object({
 
 export const projectsRouter = router({
   getStats: protectedProcedure.query(async ({ ctx }) => {
-    const projectsService = new ProjectsService(ctx.supabase);
+    const projectsService = ctx.container.resolve<IProjectsService>(
+      DI_TOKENS.PROJECTS_SERVICE
+    );
+
     return projectsService.getProjectStats(ctx.user.id);
   }),
 
   getProjects: protectedProcedure.query(async ({ ctx }) => {
-    const projectsService = new ProjectsService(ctx.supabase);
+    const projectsService = ctx.container.resolve<IProjectsService>(
+      DI_TOKENS.PROJECTS_SERVICE
+    );
+
     return projectsService.getProjects(ctx.user.id);
   }),
 
@@ -30,7 +37,9 @@ export const projectsRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const projectsService = new ProjectsService(ctx.supabase);
+      const projectsService = ctx.container.resolve<IProjectsService>(
+        DI_TOKENS.PROJECTS_SERVICE
+      );
 
       const project = await projectsService.createProject(
         input.name,

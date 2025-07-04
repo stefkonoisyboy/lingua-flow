@@ -104,6 +104,42 @@ Key Features:
 
 ## Architecture Decisions
 
+### Dependency Injection (DI) System
+
+The application uses a custom DI system for better maintainability and testability:
+
+#### Core Components
+
+1. DIContainer
+   - Centralized container for managing dependencies
+   - Support for singleton and transient services
+   - Type-safe service resolution
+   - Request-scoped container creation
+
+2. Interface Structure
+   - DAL Interfaces (data access layer)
+     - IProjectsDAL
+     - IActivitiesDAL
+     - ITranslationsDAL
+     - IIntegrationsDAL
+     - IPaginationDAL
+     - IVersionHistoryDAL
+   - Service Interfaces
+     - IProjectsService
+     - ILanguagesService
+     - IIntegrationsService
+
+3. Implementation Pattern
+   - Services depend on DAL interfaces
+   - DALs implement database operations
+   - Services implement business logic
+   - tRPC routers use services through DI
+
+4. Request Scoping
+   - New container created per request
+   - Supabase client injected at request level
+   - Services resolved within request scope
+
 ### Frontend Architecture
 
 - React Server Components and Next.js SSR features are preferred

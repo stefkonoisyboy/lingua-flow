@@ -1,8 +1,9 @@
 import { z } from "zod";
 import { publicProcedure, protectedProcedure, router } from "../trpc";
 import { GitHubService } from "../../lib/services/github.service";
-import { IntegrationsService } from "../../lib/services/integrations.service";
 import { createClient } from "@/lib/supabase/server";
+import { IIntegrationsService } from "@/lib/di/interfaces/service.interfaces";
+import { DI_TOKENS } from "@/lib/di/registry";
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET!;
@@ -256,7 +257,9 @@ export const integrationsRouter = router({
         throw new Error("GitHub not connected");
       }
 
-      const integrationsService = new IntegrationsService(ctx.supabase);
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
 
       await integrationsService.importProjectTranslations(
         input.projectId,

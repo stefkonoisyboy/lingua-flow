@@ -1,67 +1,22 @@
-import { ProjectsDAL } from "../dal/projects";
-import { ActivitiesDAL } from "../dal/activities";
-import { TranslationsDAL } from "../dal/translations";
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "../types/database.types";
-import { IntegrationsService } from "./integrations.service";
+import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
+import { IActivitiesDAL } from "../di/interfaces/dal.interfaces";
+import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
+import { IIntegrationsService } from "../di/interfaces/service.interfaces";
+import {
+  IProjectsService,
+  ProjectStats,
+  Project,
+  GitHubConfig,
+  RecentActivity,
+} from "../di/interfaces/service.interfaces";
 
-interface ProjectStats {
-  projectsCount: number;
-  languagesCount: number;
-  translationsCount: number;
-  completionPercentage: number;
-}
-
-interface ProjectLanguage {
-  id: string;
-  name: string;
-  code: string;
-  flagUrl: string | null;
-  isRtl: boolean;
-}
-
-interface Project {
-  id: string;
-  name: string;
-  description: string;
-  status: string;
-  languageCount: number;
-  languages: ProjectLanguage[];
-  progress: number;
-  updatedAt: string;
-}
-
-interface GitHubConfig {
-  repository: string;
-  branch: string;
-  translationPath?: string;
-  filePattern?: string;
-  [key: string]: string | undefined;
-}
-
-interface RecentActivity {
-  id: string;
-  type: string;
-  details: Record<string, unknown> | null;
-  projectName: string;
-  projectId: string;
-  resourceId: string | null;
-  resourceType: string | null;
-  timestamp: string;
-}
-
-export class ProjectsService {
-  private projectsDal: ProjectsDAL;
-  private activitiesDal: ActivitiesDAL;
-  private translationsDal: TranslationsDAL;
-  private integrationsService: IntegrationsService;
-
-  constructor(supabase: SupabaseClient<Database>) {
-    this.projectsDal = new ProjectsDAL(supabase);
-    this.activitiesDal = new ActivitiesDAL(supabase);
-    this.translationsDal = new TranslationsDAL(supabase);
-    this.integrationsService = new IntegrationsService(supabase);
-  }
+export class ProjectsService implements IProjectsService {
+  constructor(
+    private projectsDal: IProjectsDAL,
+    private activitiesDal: IActivitiesDAL,
+    private translationsDal: ITranslationsDAL,
+    private integrationsService: IIntegrationsService
+  ) {}
 
   async getProjectStats(userId: string): Promise<ProjectStats> {
     const projectMembers = await this.projectsDal.getProjectsForUser(userId);

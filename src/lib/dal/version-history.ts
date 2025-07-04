@@ -1,49 +1,18 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
-import { PaginationDAL } from "./pagination";
+import {
+  IPaginationDAL,
+  IVersionHistoryDAL,
+} from "../di/interfaces/dal.interfaces";
+import { DEFAULT_PAGE_SIZE } from "./pagination";
 
 type VersionHistory = Database["public"]["Tables"]["version_history"]["Row"];
 
-export class VersionHistoryDAL {
-  private paginationDal: PaginationDAL;
-
-  constructor(private supabase: SupabaseClient<Database>) {
-    this.paginationDal = new PaginationDAL(supabase);
-  }
-
-  private async fetchAllPages<T>(
-    query: ReturnType<typeof this.supabase.from>,
-    pageSize: number = 1000
-  ): Promise<T[]> {
-    let allData: T[] = [];
-    let lastPage = false;
-    let page = 0;
-
-    while (!lastPage) {
-      const { data, error } = await query.range(
-        page * pageSize,
-        (page + 1) * pageSize - 1
-      );
-
-      if (error) {
-        throw new Error(`Failed to fetch data: ${error.message}`);
-      }
-
-      if (!data || data.length === 0) {
-        break;
-      }
-
-      allData = [...allData, ...data];
-
-      if (data.length < pageSize) {
-        lastPage = true;
-      }
-
-      page++;
-    }
-
-    return allData;
-  }
+export class VersionHistoryDAL implements IVersionHistoryDAL {
+  constructor(
+    private supabase: SupabaseClient<Database>,
+    private paginationDal: IPaginationDAL
+  ) {}
 
   async createVersion(
     translationId: string,
@@ -92,7 +61,10 @@ export class VersionHistoryDAL {
       .eq("translation_id", translationId)
       .order("version_number", { ascending: false });
 
-    return this.paginationDal.fetchAllPages<VersionHistory>(query);
+    return this.paginationDal.fetchAllPages<VersionHistory>(
+      query,
+      DEFAULT_PAGE_SIZE
+    );
   }
 
   async getVersionHistoryForTranslations(
@@ -104,6 +76,9 @@ export class VersionHistoryDAL {
       .in("translation_id", translationIds)
       .order("version_number", { ascending: false });
 
-    return this.paginationDal.fetchAllPages<VersionHistory>(query);
+    return this.paginationDal.fetchAllPages<VersionHistory>(
+      query,
+      DEFAULT_PAGE_SIZE
+    );
   }
 }

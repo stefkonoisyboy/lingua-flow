@@ -1,12 +1,15 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
+import { IPaginationDAL } from "../di/interfaces/dal.interfaces";
 
-export class PaginationDAL {
+export const DEFAULT_PAGE_SIZE = 1000;
+
+export class PaginationDAL implements IPaginationDAL {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   async fetchAllPages<T>(
     query: ReturnType<typeof this.supabase.from>,
-    pageSize: number = 1000
+    pageSize: number = DEFAULT_PAGE_SIZE
   ): Promise<T[]> {
     let allData: T[] = [];
     let lastPage = false;

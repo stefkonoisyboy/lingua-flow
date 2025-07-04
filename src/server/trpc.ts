@@ -1,7 +1,9 @@
-import { initTRPC, TRPCError } from '@trpc/server';
-import superjson from 'superjson';
-import { createClient } from '@/lib/supabase/server';
-import { ZodError } from 'zod';
+import { initTRPC, TRPCError } from "@trpc/server";
+import superjson from "superjson";
+import { createClient } from "@/lib/supabase/server";
+import { ZodError } from "zod";
+import { createRequestContainer } from "@/lib/di/container";
+import { registerServices } from "@/lib/di/registry";
 
 export const createTRPCContext = async () => {
   const supabase = await createClient();
@@ -10,9 +12,14 @@ export const createTRPCContext = async () => {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Create a container for this request and register all services
+  const container = createRequestContainer(supabase);
+  registerServices(container, supabase);
+
   return {
     user,
     supabase,
+    container,
   };
 };
 
@@ -40,8 +47,8 @@ export const publicProcedure = t.procedure;
 export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
   if (!ctx.user) {
     throw new TRPCError({
-      code: 'UNAUTHORIZED',
-      message: 'You must be logged in to access this resource',
+      code: "UNAUTHORIZED",
+      message: "You must be logged in to access this resource",
     });
   }
 
@@ -51,4 +58,4 @@ export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
       user: ctx.user,
     },
   });
-}); 
+});

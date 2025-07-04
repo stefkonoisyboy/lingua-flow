@@ -1,6 +1,10 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
-import { PaginationDAL } from "./pagination";
+import {
+  ITranslationsDAL,
+  IPaginationDAL,
+} from "../di/interfaces/dal.interfaces";
+import { DEFAULT_PAGE_SIZE } from "./pagination";
 
 type TranslationKey = Database["public"]["Tables"]["translation_keys"]["Row"];
 type Translation = Database["public"]["Tables"]["translations"]["Row"] & {
@@ -21,12 +25,11 @@ export interface TranslationInsert {
   status: "approved";
 }
 
-export class TranslationsDAL {
-  private paginationDal: PaginationDAL;
-
-  constructor(private supabase: SupabaseClient<Database>) {
-    this.paginationDal = new PaginationDAL(supabase);
-  }
+export class TranslationsDAL implements ITranslationsDAL {
+  constructor(
+    private supabase: SupabaseClient<Database>,
+    private paginationDal: IPaginationDAL
+  ) {}
 
   async upsertTranslationKeys(keys: TranslationKeyInsert[]) {
     const { data, error } = await this.supabase
@@ -116,7 +119,10 @@ export class TranslationsDAL {
       .select()
       .in("project_id", projectIds);
 
-    return this.paginationDal.fetchAllPages<TranslationKey>(query);
+    return this.paginationDal.fetchAllPages<TranslationKey>(
+      query,
+      DEFAULT_PAGE_SIZE
+    );
   }
 
   async getProjectTranslations(projectIds: string[]): Promise<Translation[]> {
@@ -132,6 +138,9 @@ export class TranslationsDAL {
       )
       .in("translation_keys.project_id", projectIds);
 
-    return this.paginationDal.fetchAllPages<Translation>(query);
+    return this.paginationDal.fetchAllPages<Translation>(
+      query,
+      DEFAULT_PAGE_SIZE
+    );
   }
 }

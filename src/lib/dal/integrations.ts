@@ -1,7 +1,8 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database, Json } from '../types/database.types';
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database, Json } from "../types/database.types";
+import { IIntegrationsDAL } from "../di/interfaces/dal.interfaces";
 
-export type IntegrationType = Database['public']['Enums']['integration_type'];
+export type IntegrationType = Database["public"]["Enums"]["integration_type"];
 
 export interface IntegrationConfig {
   [key: string]: string | undefined;
@@ -12,7 +13,7 @@ export interface IntegrationConfig {
   accessToken?: string;
 }
 
-export class IntegrationsDAL {
+export class IntegrationsDAL implements IIntegrationsDAL {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   async createIntegration(
@@ -22,7 +23,7 @@ export class IntegrationsDAL {
     isConnected: boolean = true
   ) {
     const { data: integration, error } = await this.supabase
-      .from('project_integrations')
+      .from("project_integrations")
       .insert({
         project_id: projectId,
         type,
@@ -41,9 +42,9 @@ export class IntegrationsDAL {
 
   async getProjectIntegration(projectId: string) {
     const { data: integration, error } = await this.supabase
-      .from('project_integrations')
-      .select('*')
-      .eq('project_id', projectId)
+      .from("project_integrations")
+      .select("*")
+      .eq("project_id", projectId)
       .single();
 
     if (error) {
@@ -58,12 +59,12 @@ export class IntegrationsDAL {
     config: Partial<IntegrationConfig>
   ) {
     const { data: integration, error } = await this.supabase
-      .from('project_integrations')
+      .from("project_integrations")
       .update({
         config: config as unknown as Json,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', integrationId)
+      .eq("id", integrationId)
       .select()
       .single();
 
@@ -79,7 +80,9 @@ export class IntegrationsDAL {
     isConnected: boolean,
     lastSyncedAt?: string
   ) {
-    const updateData: Partial<Database['public']['Tables']['project_integrations']['Update']> = {
+    const updateData: Partial<
+      Database["public"]["Tables"]["project_integrations"]["Update"]
+    > = {
       is_connected: isConnected,
       updated_at: new Date().toISOString(),
     };
@@ -89,9 +92,9 @@ export class IntegrationsDAL {
     }
 
     const { data: integration, error } = await this.supabase
-      .from('project_integrations')
+      .from("project_integrations")
       .update(updateData)
-      .eq('id', integrationId)
+      .eq("id", integrationId)
       .select()
       .single();
 
@@ -104,12 +107,24 @@ export class IntegrationsDAL {
 
   async deleteIntegration(integrationId: string) {
     const { error } = await this.supabase
-      .from('project_integrations')
+      .from("project_integrations")
       .delete()
-      .eq('id', integrationId);
+      .eq("id", integrationId);
 
     if (error) {
       throw new Error(`Error deleting integration: ${error.message}`);
     }
   }
-} 
+
+  async createGitHubIntegration(
+    projectId: string,
+    config: {
+      repository: string;
+      branch: string;
+      translationPath?: string;
+      filePattern?: string;
+    }
+  ) {
+    return this.createIntegration(projectId, "github", config);
+  }
+}

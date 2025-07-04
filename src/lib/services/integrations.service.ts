@@ -1,14 +1,18 @@
-import { SupabaseClient } from "@supabase/supabase-js";
-import { Database } from "../types/database.types";
 import {
   GitHubService,
   Repository,
   Branch,
   TranslationFile,
 } from "./github.service";
-import { IntegrationsDAL, IntegrationConfig } from "../dal/integrations";
-import { TranslationsDAL, TranslationInsert } from "../dal/translations";
-import { ProjectsDAL } from "../dal/projects";
+import { IIntegrationsDAL } from "../di/interfaces/dal.interfaces";
+import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
+import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
+import {
+  IIntegrationsService,
+  GitHubConfig,
+} from "../di/interfaces/service.interfaces";
+import { TranslationInsert } from "../dal/translations";
+import { IntegrationConfig } from "../dal/integrations";
 
 interface ParsedTranslation {
   key: string;
@@ -20,20 +24,20 @@ type NestedTranslations = {
   [key: string]: string | NestedTranslations;
 };
 
-export class IntegrationsService {
-  private integrationsDal: IntegrationsDAL;
-  private translationsDal: TranslationsDAL;
-  private projectsDal: ProjectsDAL;
+export class IntegrationsService implements IIntegrationsService {
   private githubService: GitHubService | null = null;
 
-  constructor(supabase: SupabaseClient<Database>) {
-    this.integrationsDal = new IntegrationsDAL(supabase);
-    this.translationsDal = new TranslationsDAL(supabase);
-    this.projectsDal = new ProjectsDAL(supabase);
-  }
+  constructor(
+    private integrationsDal: IIntegrationsDAL,
+    private translationsDal: ITranslationsDAL,
+    private projectsDal: IProjectsDAL
+  ) {}
 
-  async createGitHubIntegration(projectId: string, config: IntegrationConfig) {
-    return this.integrationsDal.createIntegration(projectId, "github", config);
+  async createGitHubIntegration(
+    projectId: string,
+    config: GitHubConfig
+  ): Promise<void> {
+    await this.integrationsDal.createGitHubIntegration(projectId, config);
   }
 
   async getProjectIntegration(projectId: string) {
@@ -106,7 +110,6 @@ export class IntegrationsService {
     filePath: string,
     fileType: string
   ): ParsedTranslation[] {
-    console.log("Parsing translation file:", { filePath, fileType });
     const translations: ParsedTranslation[] = [];
 
     try {

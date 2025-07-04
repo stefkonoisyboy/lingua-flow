@@ -1,7 +1,8 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
+import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
 
-export class ProjectsDAL {
+export class ProjectsDAL implements IProjectsDAL {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   async getProjectsForUser(userId: string) {
@@ -17,7 +18,8 @@ export class ProjectsDAL {
           status,
           created_at,
           updated_at,
-          default_language_id
+          default_language_id,
+          created_by
         )
       `
       )
