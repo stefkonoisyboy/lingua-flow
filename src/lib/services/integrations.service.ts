@@ -166,7 +166,14 @@ export class IntegrationsService implements IIntegrationsService {
       this.githubService = new GitHubService(accessToken);
       const [owner, repo] = repository.split("/");
 
-      // Process each translation file
+      // First collect all translations from all files
+      const allTranslations: {
+        key: string;
+        value: string;
+        languageId: string;
+      }[] = [];
+
+      // Process each translation file to collect translations
       for (const file of files) {
         const content = await this.githubService.getFileContent(
           `${owner}/${repo}`,
@@ -179,8 +186,6 @@ export class IntegrationsService implements IIntegrationsService {
         }
 
         const fileType = file.path.split(".").pop() || "unknown";
-
-        // Extract language code from filename (e.g., "en.json" -> "en")
         const languageCode = file.name.split(".")[0];
 
         if (!languageCode) {
@@ -194,67 +199,88 @@ export class IntegrationsService implements IIntegrationsService {
 
         await this.projectsDal.ensureProjectLanguage(projectId, language.id);
 
-        // Get parsed translations
-        const translations = this.parseTranslationFile(
+        // Parse translations from file
+        const parsedTranslations = this.parseTranslationFile(
           content,
           file.path,
           fileType
         );
 
-        // Prepare batch arrays for upsert operations
-        const translationKeys = translations.map((translation) => ({
+        // Add to collection with language ID
+        allTranslations.push(
+          ...parsedTranslations.map((t) => ({
+            key: t.key,
+            value: t.value,
+            languageId: language.id,
+          }))
+        );
+      }
+
+      // Process translations in batches of 500
+      const BATCH_SIZE = 500;
+      const uniqueKeys = [...new Set(allTranslations.map((t) => t.key))];
+
+      // Process translation keys in batches
+      for (let i = 0; i < uniqueKeys.length; i += BATCH_SIZE) {
+        const keysBatch = uniqueKeys.slice(i, i + BATCH_SIZE);
+
+        const translationKeysBatch = keysBatch.map((key) => ({
           project_id: projectId,
-          key: translation.key,
+          key: key,
         }));
 
-        // First, upsert all translation keys
+        // Upsert batch of translation keys
         const insertedKeys = await this.translationsDal.upsertTranslationKeys(
-          translationKeys
+          translationKeysBatch
         );
 
-        // Prepare translations for batch upsert
+        // Prepare translations for this batch of keys
         const translationValues = insertedKeys
           .map((key) => {
-            const translation = translations.find((t) => t.key === key.key);
+            const translations = allTranslations.filter(
+              (t) => t.key === key.key
+            );
 
-            if (!translation?.value) {
-              return null;
-            }
-
-            return {
+            return translations.map((translation) => ({
               key_id: key.id,
-              language_id: language.id,
+              language_id: translation.languageId,
               content: translation.value,
               translator_id: userId,
               status: "approved" as const,
-            };
+            }));
           })
+          .flat()
           .filter((t): t is TranslationInsert => t !== null);
 
-        // Batch upsert translations and create version history
-        await this.translationsDal.upsertTranslations(
-          translationValues,
-          userId,
-          `github:${owner}/${repo}`
-        );
+        // Process translations in sub-batches
+        for (let j = 0; j < translationValues.length; j += BATCH_SIZE) {
+          const translationsBatch = translationValues.slice(j, j + BATCH_SIZE);
 
-        // Update integration status
-        const integration = await this.integrationsDal.getProjectIntegration(
-          projectId
-        );
-
-        if (integration) {
-          await this.updateIntegrationStatus(
-            integration.id,
-            true,
-            new Date().toISOString()
+          await this.translationsDal.upsertTranslations(
+            translationsBatch,
+            userId,
+            `github:${owner}/${repo}`
           );
         }
+      }
+
+      // Update integration status
+      const integration = await this.integrationsDal.getProjectIntegration(
+        projectId
+      );
+
+      if (integration) {
+        await this.updateIntegrationStatus(
+          integration.id,
+          true,
+          new Date().toISOString()
+        );
       }
 
       return { success: true };
     } catch (error) {
       console.error("Failed to import translations:", error);
+
       throw new Error(
         `Failed to import translations: ${
           error instanceof Error ? error.message : "Unknown error"

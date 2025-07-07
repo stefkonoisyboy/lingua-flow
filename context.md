@@ -54,6 +54,9 @@ Key Features:
   - Automatic file discovery from GitHub
   - Support for JSON, YAML, and PO files
   - Batch processing for efficient imports
+    - Initial collection of all translations from all files
+    - Deduplication of translation keys across files
+    - Processing in batches of 500 for optimal performance
     - Bulk upsert of translation keys with composite unique constraint (project_id, key)
     - Bulk upsert of translations with proper conflict handling
     - Batch version history creation with unique constraints
