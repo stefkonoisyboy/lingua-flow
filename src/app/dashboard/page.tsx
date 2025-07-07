@@ -10,62 +10,22 @@ import {
 import StatsCard from "@/components/dashboard/stats-card";
 import ProjectCard from "@/components/dashboard/project-card";
 import RecentActivity from "@/components/dashboard/recent-activity";
+import CreateProjectForm from "@/components/dashboard/create-project-form";
 import {
   DashboardContainer,
   ProjectsSection,
   ProjectsHeader,
   CreateProjectButton,
 } from "@/styles/dashboard/dashboard.styles";
-import {
-  Grid,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  Box,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  FormHelperText,
-} from "@mui/material";
+import { Grid, Dialog, DialogTitle, Box } from "@mui/material";
 import { trpc } from "@/utils/trpc";
 import { formatDistance } from "date-fns";
-import { Formik, Form, Field } from "formik";
-import * as Yup from "yup";
-
-const ProjectSchema = Yup.object().shape({
-  name: Yup.string().required("Project name is required"),
-  description: Yup.string(),
-  defaultLanguageId: Yup.string().required("Default language is required"),
-});
 
 export default function DashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const stats = trpc.projects.getStats.useQuery();
   const projects = trpc.projects.getProjects.useQuery();
-  const languages = trpc.languages.getLanguages.useQuery();
-  const utils = trpc.useUtils();
-
-  const createProject = trpc.projects.createProject.useMutation({
-    onSuccess: () => {
-      utils.projects.getProjects.invalidate();
-      utils.projects.getStats.invalidate();
-      utils.activities.getRecentActivity.invalidate();
-      setIsDialogOpen(false);
-    },
-  });
-
-  const handleCreateProject = (values: {
-    name: string;
-    description: string;
-    defaultLanguageId: string;
-  }) => {
-    createProject.mutate(values);
-  };
 
   return (
     <DashboardContainer>
@@ -165,74 +125,7 @@ export default function DashboardPage() {
         fullWidth
       >
         <DialogTitle>Create New Project</DialogTitle>
-        <Formik
-          initialValues={{ name: "", description: "", defaultLanguageId: "" }}
-          validationSchema={ProjectSchema}
-          onSubmit={handleCreateProject}
-        >
-          {({ errors, touched, isSubmitting }) => (
-            <Form>
-              <DialogContent>
-                <Field
-                  as={TextField}
-                  name="name"
-                  label="Project Name"
-                  fullWidth
-                  margin="normal"
-                  error={touched.name && Boolean(errors.name)}
-                  helperText={touched.name && errors.name}
-                />
-                <Field
-                  as={TextField}
-                  name="description"
-                  label="Description (Optional)"
-                  fullWidth
-                  margin="normal"
-                  multiline
-                  rows={4}
-                />
-                <FormControl
-                  fullWidth
-                  margin="normal"
-                  error={
-                    touched.defaultLanguageId &&
-                    Boolean(errors.defaultLanguageId)
-                  }
-                >
-                  <InputLabel id="language-select-label">
-                    Default Language
-                  </InputLabel>
-                  <Field
-                    as={Select}
-                    labelId="language-select-label"
-                    name="defaultLanguageId"
-                    label="Default Language"
-                  >
-                    {languages.data?.map((language) => (
-                      <MenuItem key={language.id} value={language.id}>
-                        {language.name} ({language.code})
-                      </MenuItem>
-                    ))}
-                  </Field>
-                  {touched.defaultLanguageId && errors.defaultLanguageId && (
-                    <FormHelperText>{errors.defaultLanguageId}</FormHelperText>
-                  )}
-                </FormControl>
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="primary"
-                  disabled={isSubmitting || createProject.isPending}
-                >
-                  {createProject.isPending ? "Creating..." : "Create Project"}
-                </Button>
-              </DialogActions>
-            </Form>
-          )}
-        </Formik>
+        <CreateProjectForm onClose={() => setIsDialogOpen(false)} />
       </Dialog>
     </DashboardContainer>
   );

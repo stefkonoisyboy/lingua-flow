@@ -1,13 +1,15 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '../types/database.types';
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database } from "../types/database.types";
+import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
 
-export class ProjectsDAL {
+export class ProjectsDAL implements IProjectsDAL {
   constructor(private supabase: SupabaseClient<Database>) {}
 
   async getProjectsForUser(userId: string) {
     const { data: projectMembers, error: membersError } = await this.supabase
-      .from('project_members')
-      .select(`
+      .from("project_members")
+      .select(
+        `
         project_id,
         projects (
           id,
@@ -16,10 +18,12 @@ export class ProjectsDAL {
           status,
           created_at,
           updated_at,
-          default_language_id
+          default_language_id,
+          created_by
         )
-      `)
-      .eq('user_id', userId);
+      `
+      )
+      .eq("user_id", userId);
 
     if (membersError) {
       throw new Error(`Error fetching projects: ${membersError.message}`);
@@ -29,9 +33,11 @@ export class ProjectsDAL {
   }
 
   async getProjectLanguages(projectIds: string[]) {
-    const { data: projectLanguages, error: languagesError } = await this.supabase
-      .from('project_languages')
-      .select(`
+    const { data: projectLanguages, error: languagesError } =
+      await this.supabase
+        .from("project_languages")
+        .select(
+          `
         project_id,
         language_id,
         languages (
@@ -41,8 +47,9 @@ export class ProjectsDAL {
           flag_url,
           is_rtl
         )
-      `)
-      .in('project_id', projectIds);
+      `
+        )
+        .in("project_id", projectIds);
 
     if (languagesError) {
       throw new Error(`Error fetching languages: ${languagesError.message}`);
@@ -53,9 +60,9 @@ export class ProjectsDAL {
 
   async getProjectMemberProjects(userId: string) {
     const { data: userProjects, error } = await this.supabase
-      .from('project_members')
-      .select('project_id')
-      .eq('user_id', userId);
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", userId);
 
     if (error) {
       throw new Error(`Error fetching user projects: ${error.message}`);
@@ -64,15 +71,20 @@ export class ProjectsDAL {
     return userProjects;
   }
 
-  async createProject(name: string, description: string | undefined, userId: string, defaultLanguageId: string) {
+  async createProject(
+    name: string,
+    description: string | undefined,
+    userId: string,
+    defaultLanguageId: string
+  ) {
     const { data: project, error: projectError } = await this.supabase
-      .from('projects')
+      .from("projects")
       .insert({
         name,
         description,
         created_by: userId,
-        status: 'active' as const,
-        default_language_id: defaultLanguageId
+        status: "active" as const,
+        default_language_id: defaultLanguageId,
       })
       .select()
       .single();
@@ -84,9 +96,13 @@ export class ProjectsDAL {
     return project;
   }
 
-  async addProjectMember(projectId: string, userId: string, role: 'owner' | 'translator' | 'viewer') {
+  async addProjectMember(
+    projectId: string,
+    userId: string,
+    role: "owner" | "translator" | "viewer"
+  ) {
     const { error: memberError } = await this.supabase
-      .from('project_members')
+      .from("project_members")
       .insert({
         project_id: projectId,
         user_id: userId,
@@ -98,17 +114,46 @@ export class ProjectsDAL {
     }
   }
 
-  async addProjectLanguage(projectId: string, languageId: string, isDefault: boolean) {
-    const { error } = await this.supabase
-      .from('project_languages')
-      .insert({
-        project_id: projectId,
-        language_id: languageId,
-        is_default: isDefault
-      });
+  async addProjectLanguage(
+    projectId: string,
+    languageId: string,
+    isDefault: boolean
+  ) {
+    const { error } = await this.supabase.from("project_languages").insert({
+      project_id: projectId,
+      language_id: languageId,
+      is_default: isDefault,
+    });
 
     if (error) {
-      throw new Error(`Error adding project language: ${error.message}`);
+      throw new Error(`Failed to add project language: ${error.message}`);
     }
   }
-} 
+
+  async getProjectLanguage(projectId: string, languageId: string) {
+    const { data, error } = await this.supabase
+      .from("project_languages")
+      .select()
+      .eq("project_id", projectId)
+      .eq("language_id", languageId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 is the error code for no rows returned
+      throw new Error(`Failed to get project language: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async ensureProjectLanguage(projectId: string, languageId: string) {
+    const existingLanguage = await this.getProjectLanguage(
+      projectId,
+      languageId
+    );
+
+    if (!existingLanguage) {
+      await this.addProjectLanguage(projectId, languageId, false);
+    }
+  }
+}

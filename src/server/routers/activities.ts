@@ -1,9 +1,13 @@
-import { protectedProcedure, router } from '../trpc';
-import { ProjectsService } from '../../lib/services/projects.service';
+import { protectedProcedure, router } from "../trpc";
+import { IProjectsService } from "@/lib/di/interfaces/service.interfaces";
+import { DI_TOKENS } from "@/lib/di/registry";
 
 export const activitiesRouter = router({
   getRecentActivity: protectedProcedure.query(async ({ ctx }) => {
-    const projectsService = new ProjectsService(ctx.supabase);
+    const projectsService = ctx.container.resolve<IProjectsService>(
+      DI_TOKENS.PROJECTS_SERVICE
+    );
+
     return projectsService.getRecentActivity(ctx.user.id);
   }),
-}); 
+});

@@ -1,18 +1,19 @@
 {
   "[typescript]": {
-    "editor.defaultFormatter": "denoland.vscode-deno"
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "cSpell.words": [
     "evenodd",
     "fkey",
     "pgcrypto",
+    "PGRST",
     "plpgsql",
+    "Postgrest",
+    "supabase",
     "Topbar",
     "turbopack"
   ],
-  "deno.enablePaths": [
-    "supabase/functions"
-  ],
+  "deno.enablePaths": ["supabase/functions"],
   "deno.lint": true,
   "deno.unstable": [
     "bare-node-builtins",

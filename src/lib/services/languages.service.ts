@@ -1,15 +1,21 @@
-import { SupabaseClient } from '@supabase/supabase-js';
-import { Database } from '../types/database.types';
-import { LanguagesDAL } from '../dal/languages';
+import { ILanguagesDAL } from "../di/interfaces/dal.interfaces";
+import {
+  ILanguagesService,
+  Language,
+} from "../di/interfaces/service.interfaces";
 
-export class LanguagesService {
-  private languagesDal: LanguagesDAL;
+export class LanguagesService implements ILanguagesService {
+  constructor(private languagesDal: ILanguagesDAL) {}
 
-  constructor(supabase: SupabaseClient<Database>) {
-    this.languagesDal = new LanguagesDAL(supabase);
+  async getAllLanguages(): Promise<Language[]> {
+    const languages = await this.languagesDal.getAllLanguages();
+
+    return languages.map((lang) => ({
+      id: lang.id,
+      name: lang.name,
+      code: lang.code,
+      flagUrl: lang.flag_url,
+      isRtl: lang.is_rtl,
+    }));
   }
-
-  async getAllLanguages() {
-    return this.languagesDal.getAllLanguages();
-  }
-} 
+}
