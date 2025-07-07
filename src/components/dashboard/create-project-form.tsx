@@ -1,6 +1,7 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import {
-  Box,
   Button,
   DialogActions,
   DialogContent,
@@ -18,6 +19,12 @@ import { Field, Form, Formik, FormikProps } from "formik";
 import * as Yup from "yup";
 import { trpc } from "@/utils/trpc";
 import GitHubConfig from "./github-config";
+import {
+  GitHubConfigContainer,
+  WaitingText,
+  ErrorText,
+  GitHubSwitchContainer,
+} from "@/styles/projects/create-project-form.styles";
 
 const ProjectSchema = Yup.object().shape({
   name: Yup.string().required("Project name is required"),
@@ -96,9 +103,11 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
         }
       }
 
+      utils.projects.getAll.invalidate();
       utils.projects.getProjects.invalidate();
       utils.projects.getStats.invalidate();
       utils.activities.getRecentActivity.invalidate();
+
       onClose();
     },
   });
@@ -218,7 +227,7 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
               )}
             </FormControl>
 
-            <Box sx={{ mt: 2, mb: 2 }}>
+            <GitHubSwitchContainer>
               <Field
                 as={FormControlLabel}
                 control={<Switch />}
@@ -251,25 +260,19 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
               />
 
               {isConnectingGitHub && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 1 }}
-                >
+                <WaitingText variant="body2" color="text.secondary">
                   Waiting for GitHub connection... Please complete the
                   authorization in the new tab.
-                </Typography>
+                </WaitingText>
               )}
 
               {githubError && (
-                <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                  {githubError}
-                </Typography>
+                <ErrorText variant="body2">{githubError}</ErrorText>
               )}
-            </Box>
+            </GitHubSwitchContainer>
 
             {values.githubEnabled && githubConnection.data?.isConnected && (
-              <Box sx={{ mt: 2 }}>
+              <GitHubConfigContainer>
                 <Typography variant="subtitle1" gutterBottom>
                   GitHub Configuration
                 </Typography>
@@ -281,7 +284,7 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
                   setFieldValue={setFieldValue}
                   isConnected={Boolean(githubConnection.data?.isConnected)}
                 />
-              </Box>
+              </GitHubConfigContainer>
             )}
           </DialogContent>
           <DialogActions>

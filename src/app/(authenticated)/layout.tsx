@@ -1,12 +1,12 @@
 import { ReactNode } from "react";
 import DashboardLayout from "@/components/layout/dashboard-layout";
 
-interface DashboardLayoutWrapperProps {
+interface AuthenticatedLayoutProps {
   children: ReactNode;
 }
 
-export default function DashboardLayoutWrapper({
+export default function AuthenticatedLayout({
   children,
-}: DashboardLayoutWrapperProps) {
+}: AuthenticatedLayoutProps) {
   return <DashboardLayout>{children}</DashboardLayout>;
 }

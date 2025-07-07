@@ -46,6 +46,21 @@ export interface IProjectsDAL {
     languageId: string
   ): Promise<Tables["project_languages"]["Row"] | null>;
   ensureProjectLanguage(projectId: string, languageId: string): Promise<void>;
+  getAll(userId: string): Promise<
+    {
+      id: string;
+      name: string;
+      status: "active" | "archived";
+      languages: Array<{
+        id: string;
+        name: string;
+        code: string;
+      }>;
+      missingTranslations: number;
+      updatedAt: string;
+    }[]
+  >;
+  deleteProject(projectId: string): Promise<void>;
 }
 
 // ActivitiesDAL Interface
@@ -70,6 +85,9 @@ export interface ITranslationsDAL {
       translation_keys: Pick<Tables["translation_keys"]["Row"], "project_id">;
     })[]
   >;
+  getProjectTranslationKeys(
+    projectIds: string[]
+  ): Promise<Tables["translation_keys"]["Row"][]>;
   upsertTranslationKeys(
     keys: { project_id: string; key: string; description?: string }[]
   ): Promise<Tables["translation_keys"]["Row"][]>;

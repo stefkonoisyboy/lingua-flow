@@ -51,4 +51,26 @@ export const projectsRouter = router({
 
       return project;
     }),
+
+  getAll: protectedProcedure.query(async ({ ctx }) => {
+    const projectsService = ctx.container.resolve<IProjectsService>(
+      DI_TOKENS.PROJECTS_SERVICE
+    );
+
+    return projectsService.getAll(ctx.user.id);
+  }),
+
+  deleteProject: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const projectsService = ctx.container.resolve<IProjectsService>(
+        DI_TOKENS.PROJECTS_SERVICE
+      );
+
+      await projectsService.deleteProject(input.projectId);
+    }),
 });

@@ -1,9 +1,13 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
 import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
+import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
 
 export class ProjectsDAL implements IProjectsDAL {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  constructor(
+    private supabase: SupabaseClient<Database>,
+    private translationsDal: ITranslationsDAL
+  ) {}
 
   async getProjectsForUser(userId: string) {
     const { data: projectMembers, error: membersError } = await this.supabase
@@ -155,5 +159,78 @@ export class ProjectsDAL implements IProjectsDAL {
     if (!existingLanguage) {
       await this.addProjectLanguage(projectId, languageId, false);
     }
+  }
+
+  async getAll(userId: string) {
+    // Get all projects where user is a member
+    const { data: projectMembers } = await this.supabase
+      .from("project_members")
+      .select("project_id")
+      .eq("user_id", userId);
+
+    if (!projectMembers?.length) {
+      return [];
+    }
+
+    const projectIds = projectMembers.map((member) => member.project_id);
+
+    // Get projects with their languages
+    const { data: projects } = await this.supabase
+      .from("projects")
+      .select(
+        `
+        id,
+        name,
+        status,
+        updated_at,
+        project_languages!inner (
+          language:languages (
+            id,
+            name,
+            code
+          )
+        )
+      `
+      )
+      .in("id", projectIds)
+      .order("updated_at", { ascending: false });
+
+    if (!projects) {
+      return [];
+    }
+
+    // Get missing translations count for each project
+    const translationKeys =
+      await this.translationsDal.getProjectTranslationKeys(projectIds);
+
+    const { data: translations } = await this.supabase
+      .from("translations")
+      .select("key_id, status")
+      .in("status", ["pending", "in_progress", "reviewed"])
+      .in(
+        "key_id",
+        translationKeys.map((key) => key.id)
+      );
+
+    const missingTranslationsByProject = new Map<string, number>();
+
+    translations?.forEach((translation) => {
+      const count = missingTranslationsByProject.get(translation.key_id) || 0;
+      missingTranslationsByProject.set(translation.key_id, count + 1);
+    });
+
+    return projects.map((project) => ({
+      id: project.id,
+      name: project.name,
+      status: project.status,
+      languages: project.project_languages.map((pl) => pl.language),
+      missingTranslations: missingTranslationsByProject.get(project.id) || 0,
+      updatedAt: project.updated_at,
+    }));
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    // Delete project and all related data will be cascaded due to foreign key constraints
+    await this.supabase.from("projects").delete().eq("id", projectId);
   }
 }
