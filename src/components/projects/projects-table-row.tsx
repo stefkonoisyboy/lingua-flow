@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  TableRow,
   TableCell,
   Chip,
   IconButton,
@@ -20,7 +19,6 @@ import {
   MoreVert as MoreVertIcon,
   Visibility as VisibilityIcon,
   Settings as SettingsIcon,
-  Delete as DeleteIcon,
 } from "@mui/icons-material";
 import { useState } from "react";
 
@@ -28,6 +26,12 @@ import { formatDate } from "@/lib/utils/date";
 import { ProjectStatusChip } from "@/components/projects/project-status-chip";
 import { ProjectLanguageChip } from "@/components/projects/project-language-chip";
 import { trpc } from "@/utils/trpc";
+import {
+  StyledTableRow,
+  LanguageChipsContainer,
+  DeleteMenuIcon,
+  DeleteMenuItem,
+} from "@/styles/projects/projects-table-row.styles";
 
 interface ProjectsTableRowProps {
   project: {
@@ -57,7 +61,6 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
       utils.projects.getProjects.invalidate();
       utils.projects.getStats.invalidate();
       utils.activities.getRecentActivity.invalidate();
-
       handleDeleteDialogClose();
     },
   });
@@ -95,15 +98,14 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
 
   return (
     <>
-      <TableRow hover sx={{ cursor: "pointer" }}>
+      <StyledTableRow hover>
         <TableCell>{project.name}</TableCell>
 
         <TableCell>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <LanguageChipsContainer>
             {project.languages.slice(0, 3).map((language) => (
               <ProjectLanguageChip key={language.id} language={language} />
             ))}
-
             {project.languages.length > 3 && (
               <Chip
                 size="small"
@@ -111,7 +113,7 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
                 variant="outlined"
               />
             )}
-          </div>
+          </LanguageChipsContainer>
         </TableCell>
 
         <TableCell>
@@ -137,7 +139,7 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
             anchorEl={anchorEl}
             open={Boolean(anchorEl)}
             onClose={handleMenuClose}
-            onClick={(e) => e.stopPropagation()} // Prevent row selection when clicking menu items
+            onClick={(e) => e.stopPropagation()}
           >
             <MenuItem onClick={handleViewDetails}>
               <ListItemIcon>
@@ -151,15 +153,15 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
               </ListItemIcon>
               <ListItemText>Settings</ListItemText>
             </MenuItem>
-            <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
+            <DeleteMenuItem onClick={handleDeleteClick}>
               <ListItemIcon>
-                <DeleteIcon fontSize="small" sx={{ color: "error.main" }} />
+                <DeleteMenuIcon fontSize="small" />
               </ListItemIcon>
               <ListItemText>Delete Project</ListItemText>
-            </MenuItem>
+            </DeleteMenuItem>
           </Menu>
         </TableCell>
-      </TableRow>
+      </StyledTableRow>
 
       <Dialog
         open={deleteDialogOpen}

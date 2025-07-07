@@ -23,7 +23,20 @@ alwaysApply: true
     - Always add loading and error states to data fetching components
     - Implement error handling and error logging
     - Use semantic HTML elements where possible
-    - Use MaterialUI for UI, I don't want TailwindCSS
+    - Use MaterialUI for UI, I don't want TailwindCSS. Please take into account that MUI has changed its Grid component API (Now, it is used like this: "<Grid container spacing={2}>
+  <Grid size={{ xs: 6, md: 8 }}>
+    <Item>xs=6 md=8</Item>
+  </Grid>
+  <Grid size={{ xs: 6, md: 4 }}>
+    <Item>xs=6 md=4</Item>
+  </Grid>
+  <Grid size={{ xs: 6, md: 4 }}>
+    <Item>xs=6 md=4</Item>
+  </Grid>
+  <Grid size={{ xs: 6, md: 8 }}>
+    <Item>xs=6 md=8</Item>
+  </Grid>
+</Grid>")
     - Use MUI styled components instead of sx
     - Use Redux Toolkit for global state management
     - Always build responsive UI
