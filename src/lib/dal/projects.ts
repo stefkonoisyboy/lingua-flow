@@ -228,4 +228,9 @@ export class ProjectsDAL implements IProjectsDAL {
       updatedAt: project.updated_at,
     }));
   }
+
+  async deleteProject(projectId: string): Promise<void> {
+    // Delete project and all related data will be cascaded due to foreign key constraints
+    await this.supabase.from("projects").delete().eq("id", projectId);
+  }
 }

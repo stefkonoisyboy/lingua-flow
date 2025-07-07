@@ -39,6 +39,8 @@ alwaysApply: true
     - Make the components reusable and avoid implementing all the business logic in the pages
     - Use constants instead of magic strings/numbers
     - Don't make RLS policies
+    - Always follow router -> service -> DAL architecture when implementing tRPC endpoints
+    - Always use DI (Dependency injection) for services and DALs and resolve the dependencies in the routers by using the DI container. The DI container will be attached to ctx which we can use in the routers
     
     General preferences:
     

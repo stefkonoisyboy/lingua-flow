@@ -60,6 +60,7 @@ export interface IProjectsDAL {
       updatedAt: string;
     }[]
   >;
+  deleteProject(projectId: string): Promise<void>;
 }
 
 // ActivitiesDAL Interface

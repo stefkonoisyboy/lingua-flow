@@ -77,6 +77,7 @@ export interface IProjectsService {
       updatedAt: string;
     }[]
   >;
+  deleteProject(projectId: string): Promise<void>;
 }
 
 // Languages service interface

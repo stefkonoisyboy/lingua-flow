@@ -184,4 +184,8 @@ export class ProjectsService implements IProjectsService {
   async getAll(userId: string) {
     return this.projectsDal.getAll(userId);
   }
+
+  async deleteProject(projectId: string): Promise<void> {
+    await this.projectsDal.deleteProject(projectId);
+  }
 }
