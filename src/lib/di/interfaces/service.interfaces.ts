@@ -63,6 +63,20 @@ export interface IProjectsService {
     githubConfig?: GitHubConfig
   ): Promise<Project>;
   getRecentActivity(userId: string): Promise<RecentActivity[]>;
+  getAll(userId: string): Promise<
+    {
+      id: string;
+      name: string;
+      status: "active" | "archived";
+      languages: Array<{
+        id: string;
+        name: string;
+        code: string;
+      }>;
+      missingTranslations: number;
+      updatedAt: string;
+    }[]
+  >;
 }
 
 // Languages service interface

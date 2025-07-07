@@ -51,4 +51,12 @@ export const projectsRouter = router({
 
       return project;
     }),
+
+  getAll: protectedProcedure.query(async ({ ctx }) => {
+    const projectsService = ctx.container.resolve<IProjectsService>(
+      DI_TOKENS.PROJECTS_SERVICE
+    );
+
+    return projectsService.getAll(ctx.user.id);
+  }),
 });

@@ -180,4 +180,8 @@ export class ProjectsService implements IProjectsService {
       timestamp: activity.created_at,
     }));
   }
+
+  async getAll(userId: string) {
+    return this.projectsDal.getAll(userId);
+  }
 }

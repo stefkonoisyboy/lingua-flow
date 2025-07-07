@@ -70,7 +70,11 @@ export function registerServices(
   // Register DALs
   container.register<IProjectsDAL>(
     DI_TOKENS.PROJECTS_DAL,
-    (c) => new ProjectsDAL(c.resolve(DI_TOKENS.SUPABASE))
+    (c) =>
+      new ProjectsDAL(
+        c.resolve(DI_TOKENS.SUPABASE),
+        c.resolve(DI_TOKENS.TRANSLATIONS_DAL)
+      )
   );
 
   container.register<IActivitiesDAL>(
