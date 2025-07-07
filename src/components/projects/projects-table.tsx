@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -16,7 +15,6 @@ import { trpc } from "@/utils/trpc";
 
 export function ProjectsTable() {
   const { data: projects, isLoading } = trpc.projects.getAll.useQuery();
-  const [selectedProject, setSelectedProject] = useState<string | null>(null);
 
   if (isLoading) {
     return <div>Loading...</div>;
@@ -39,12 +37,7 @@ export function ProjectsTable() {
 
           <TableBody>
             {projects?.map((project) => (
-              <ProjectsTableRow
-                key={project.id}
-                project={project}
-                isSelected={selectedProject === project.id}
-                onSelect={() => setSelectedProject(project.id)}
-              />
+              <ProjectsTableRow key={project.id} project={project} />
             ))}
           </TableBody>
         </Table>

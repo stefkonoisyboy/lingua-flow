@@ -7,10 +7,15 @@ import {
   ProjectsHeaderTitle,
   CreateProjectButton,
 } from "@/styles/projects/projects-header.styles";
+import { Dialog, DialogTitle } from "@mui/material";
+import { useState } from "react";
+import CreateProjectForm from "../dashboard/create-project-form";
 
 export function ProjectsHeader() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   const handleCreateProject = () => {
-    // TODO: Implement create project dialog
+    setIsDialogOpen(true);
   };
 
   return (
@@ -24,6 +29,17 @@ export function ProjectsHeader() {
       >
         Create New Project
       </CreateProjectButton>
+
+      {/* Create Project Dialog */}
+      <Dialog
+        open={isDialogOpen}
+        onClose={() => setIsDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Create New Project</DialogTitle>
+        <CreateProjectForm onClose={() => setIsDialogOpen(false)} />
+      </Dialog>
     </ProjectsHeaderContainer>
   );
 }

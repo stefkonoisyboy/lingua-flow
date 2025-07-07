@@ -96,9 +96,11 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
         }
       }
 
+      utils.projects.getAll.invalidate();
       utils.projects.getProjects.invalidate();
       utils.projects.getStats.invalidate();
       utils.activities.getRecentActivity.invalidate();
+
       onClose();
     },
   });

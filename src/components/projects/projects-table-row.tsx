@@ -7,8 +7,15 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
-import { MoreVert as MoreVertIcon } from "@mui/icons-material";
+import {
+  MoreVert as MoreVertIcon,
+  Visibility as VisibilityIcon,
+  Settings as SettingsIcon,
+  Delete as DeleteIcon,
+} from "@mui/icons-material";
 import { useState } from "react";
 
 import { formatDate } from "@/lib/utils/date";
@@ -28,18 +35,13 @@ interface ProjectsTableRowProps {
     missingTranslations: number;
     updatedAt: string;
   };
-  isSelected: boolean;
-  onSelect: () => void;
 }
 
-export function ProjectsTableRow({
-  project,
-  isSelected,
-  onSelect,
-}: ProjectsTableRowProps) {
+export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    event.stopPropagation(); // Prevent row selection when opening menu
     setAnchorEl(event.currentTarget);
   };
 
@@ -48,7 +50,6 @@ export function ProjectsTableRow({
   };
 
   const handleViewDetails = () => {
-    onSelect();
     handleMenuClose();
   };
 
@@ -63,12 +64,7 @@ export function ProjectsTableRow({
   };
 
   return (
-    <TableRow
-      hover
-      selected={isSelected}
-      sx={{ cursor: "pointer" }}
-      onClick={onSelect}
-    >
+    <TableRow hover sx={{ cursor: "pointer" }}>
       <TableCell>{project.name}</TableCell>
 
       <TableCell>
@@ -110,11 +106,25 @@ export function ProjectsTableRow({
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleMenuClose}
+          onClick={(e) => e.stopPropagation()} // Prevent row selection when clicking menu items
         >
-          <MenuItem onClick={handleViewDetails}>View Details</MenuItem>
-          <MenuItem onClick={handleSettings}>Settings</MenuItem>
+          <MenuItem onClick={handleViewDetails}>
+            <ListItemIcon>
+              <VisibilityIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>View Details</ListItemText>
+          </MenuItem>
+          <MenuItem onClick={handleSettings}>
+            <ListItemIcon>
+              <SettingsIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Settings</ListItemText>
+          </MenuItem>
           <MenuItem onClick={handleDelete} sx={{ color: "error.main" }}>
-            Delete Project
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" sx={{ color: "error.main" }} />
+            </ListItemIcon>
+            <ListItemText>Delete Project</ListItemText>
           </MenuItem>
         </Menu>
       </TableCell>
