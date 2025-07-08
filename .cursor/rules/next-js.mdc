@@ -43,7 +43,7 @@ alwaysApply: true
     - Styled components should be in separate files, in separate folder /styles and separated by domain
     - Use as minimum CSS files as possible, avoid adding CSS classes to components
     - Use MUI icons for icons across the app
-    - Develop the UI with consideration for dark theme also, don't hard-code things only for light mode
+    - Always develop the UI with consideration for dark theme also, don't hard-code things only for light mode. Always store the theme-related settings (e.g. colors, fonts, etc.) in the configuration file (theme.ts), never check whether we are in light or dark mode because it will cause issues if we have more than 2 themes
     - Leave blank lines between blocks of codes
     - Code for each component should be structured like this: Hooks should be at the top, then other variables/state, then handlers, then useEffects
     - Use tRPC for communication between client/server
