@@ -20,7 +20,7 @@ export class ProjectsService implements IProjectsService {
 
   async getProjectStats(userId: string): Promise<ProjectStats> {
     const projectMembers = await this.projectsDal.getProjectsForUser(userId);
-    const projectIds = projectMembers?.map((p) => p.project_id) || [];
+    const projectIds = projectMembers?.map((p) => p.id) || [];
 
     const projectLanguages = await this.projectsDal.getProjectLanguages(
       projectIds
@@ -48,7 +48,7 @@ export class ProjectsService implements IProjectsService {
 
   async getProjects(userId: string): Promise<Project[]> {
     const projectMembers = await this.projectsDal.getProjectsForUser(userId);
-    const projectIds = projectMembers?.map((p) => p.project_id) || [];
+    const projectIds = projectMembers?.map((p) => p.id) || [];
 
     const projectLanguages = await this.projectsDal.getProjectLanguages(
       projectIds
@@ -59,8 +59,7 @@ export class ProjectsService implements IProjectsService {
 
     return (
       (projectMembers
-        ?.map((pm) => {
-          const project = pm.projects;
+        ?.map((project) => {
           if (!project) return null;
 
           const projectLangs =
@@ -107,12 +106,13 @@ export class ProjectsService implements IProjectsService {
     defaultLanguageId: string,
     githubConfig?: GitHubConfig
   ): Promise<Project> {
-    const project = await this.projectsDal.createProject(
+    const project = await this.projectsDal.createProject({
       name,
-      description,
-      userId,
-      defaultLanguageId
-    );
+      description: description ?? null,
+      status: "active",
+      created_by: userId,
+      default_language_id: defaultLanguageId,
+    });
 
     // Add default language to project languages
     await this.projectsDal.addProjectLanguage(
@@ -187,5 +187,13 @@ export class ProjectsService implements IProjectsService {
 
   async deleteProject(projectId: string): Promise<void> {
     await this.projectsDal.deleteProject(projectId);
+  }
+
+  async getProjectById(projectId: string) {
+    return this.projectsDal.getProjectById(projectId);
+  }
+
+  async getProjectLanguages(projectId: string) {
+    return this.projectsDal.getProjectLanguagesById(projectId);
   }
 }

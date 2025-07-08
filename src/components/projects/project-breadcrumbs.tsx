@@ -5,7 +5,7 @@ import NextLink from "next/link";
 
 import { StyledBreadcrumbsContainer } from "@/styles/projects/project-breadcrumbs.styles";
 
-export function ProjectBreadcrumbs() {
+export function ProjectBreadcrumbs({ projectName }: { projectName: string }) {
   return (
     <StyledBreadcrumbsContainer>
       <Breadcrumbs aria-label="breadcrumb">
@@ -17,7 +17,7 @@ export function ProjectBreadcrumbs() {
         >
           Projects
         </Link>
-        <Typography color="primary">E-commerce Platform</Typography>
+        <Typography color="primary">{projectName}</Typography>
       </Breadcrumbs>
     </StyledBreadcrumbsContainer>
   );

@@ -30,11 +30,13 @@ import {
   ILanguagesService,
   IIntegrationsService,
   IGitHubTokensService,
+  ITranslationsService,
 } from "./interfaces/service.interfaces";
 import { PaginationDAL } from "../dal/pagination";
 import { VersionHistoryDAL } from "../dal/version-history";
 import { GitHubTokensService } from "../services/github-tokens.service";
 import { GitHubTokensDAL } from "../dal/github-tokens";
+import { TranslationsService } from "../services/translations.service";
 
 // Token constants for dependency injection
 export const DI_TOKENS = {
@@ -47,11 +49,13 @@ export const DI_TOKENS = {
   VERSION_HISTORY_DAL: "VERSION_HISTORY_DAL",
   PAGINATION_DAL: "PAGINATION_DAL",
   GITHUB_TOKENS_DAL: "GITHUB_TOKENS_DAL",
+
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
   LANGUAGES_SERVICE: "LANGUAGES_SERVICE",
   INTEGRATIONS_SERVICE: "INTEGRATIONS_SERVICE",
   GITHUB_TOKENS_SERVICE: "GITHUB_TOKENS_SERVICE",
+  TRANSLATIONS_SERVICE: "TRANSLATIONS_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -73,7 +77,8 @@ export function registerServices(
     (c) =>
       new ProjectsDAL(
         c.resolve(DI_TOKENS.SUPABASE),
-        c.resolve(DI_TOKENS.TRANSLATIONS_DAL)
+        c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
+        c.resolve(DI_TOKENS.PAGINATION_DAL)
       )
   );
 
@@ -150,5 +155,10 @@ export function registerServices(
   container.register<IGitHubTokensService>(
     DI_TOKENS.GITHUB_TOKENS_SERVICE,
     (c) => new GitHubTokensService(c.resolve(DI_TOKENS.GITHUB_TOKENS_DAL))
+  );
+
+  container.register<ITranslationsService>(
+    DI_TOKENS.TRANSLATIONS_SERVICE,
+    (c) => new TranslationsService(c.resolve(DI_TOKENS.TRANSLATIONS_DAL))
   );
 }

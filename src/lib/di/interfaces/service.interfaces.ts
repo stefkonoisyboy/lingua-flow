@@ -78,6 +78,52 @@ export interface IProjectsService {
     }[]
   >;
   deleteProject(projectId: string): Promise<void>;
+  getProjectById(
+    projectId: string
+  ): Promise<Database["public"]["Tables"]["projects"]["Row"] | null>;
+  getProjectLanguages(projectId: string): Promise<
+    {
+      created_at: string;
+      is_default: boolean;
+      language_id: string;
+      project_id: string;
+      updated_at: string;
+      languages: {
+        code: string;
+        created_at: string;
+        flag_url: string | null;
+        id: string;
+        is_rtl: boolean;
+        name: string;
+        updated_at: string;
+      };
+    }[]
+  >;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface ITranslationsService {
+  getProjectTranslations(
+    projectId: string,
+    languageId: string,
+    page?: number,
+    pageSize?: number
+  ): Promise<
+    PaginatedResponse<Database["public"]["Tables"]["translations"]["Row"]>
+  >;
+
+  getTranslationKeys(
+    projectId: string,
+    page?: number,
+    pageSize?: number
+  ): Promise<
+    PaginatedResponse<Database["public"]["Tables"]["translation_keys"]["Row"]>
+  >;
 }
 
 // Languages service interface

@@ -11,6 +11,26 @@ const githubConfigSchema = z.object({
 });
 
 export const projectsRouter = router({
+  getProjectById: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const projectsService = ctx.container.resolve<IProjectsService>(
+        DI_TOKENS.PROJECTS_SERVICE
+      );
+
+      return projectsService.getProjectById(input.projectId);
+    }),
+
+  getProjectLanguages: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const projectsService = ctx.container.resolve<IProjectsService>(
+        DI_TOKENS.PROJECTS_SERVICE
+      );
+
+      return projectsService.getProjectLanguages(input.projectId);
+    }),
+
   getStats: protectedProcedure.query(async ({ ctx }) => {
     const projectsService = ctx.container.resolve<IProjectsService>(
       DI_TOKENS.PROJECTS_SERVICE
