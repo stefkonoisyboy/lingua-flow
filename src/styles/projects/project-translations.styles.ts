@@ -1,59 +1,81 @@
-import {
-  styled,
-  Box,
-  TableCell,
-  IconButton,
-  TextField,
-  Paper,
-} from "@mui/material";
+import { Box, Paper, TextareaAutosize, styled, Select } from "@mui/material";
 
-export const StyledContainer = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(3),
+export const TranslationsContainer = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(2),
+  marginBottom: theme.spacing(2),
 }));
 
-export const StyledHeader = styled(Box)(({ theme }) => ({
-  marginBottom: theme.spacing(4),
+export const HeaderContainer = styled(Box)(() => ({
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",
+  marginBottom: 24,
 }));
 
-export const StyledTitleContainer = styled(Box)(({ theme }) => ({
-  "& h1": {
-    marginBottom: theme.spacing(1),
-  },
-}));
-
-export const StyledActionsContainer = styled(Box)({
+export const ControlsContainer = styled(Box)(() => ({
   display: "flex",
+  gap: 16,
+  marginBottom: 24,
+}));
+
+export const PaginationContainer = styled(Box)(() => ({
+  marginTop: 16,
+  display: "flex",
+  justifyContent: "center",
+}));
+
+export const PlaceholderContainer = styled(Box)(({ theme }) => ({
+  display: "flex",
+  flexDirection: "column",
   alignItems: "center",
-});
-
-export const StyledTableHeaderCell = styled(TableCell)(({ theme }) => ({
-  fontWeight: 600,
-  backgroundColor: theme.palette.background.default,
+  justifyContent: "center",
+  padding: `${theme.spacing(8)} ${theme.spacing(2)}`,
+  backgroundColor: theme.palette.background.paper,
+  borderRadius: theme.shape.borderRadius,
 }));
 
-export const StyledTranslationCell = styled(TableCell)({
-  minWidth: 200,
-  maxWidth: 400,
-});
-
-export const StyledCommentButton = styled(IconButton)(({ theme }) => ({
+export const PlaceholderIcon = styled(Box)(({ theme }) => ({
+  fontSize: 64,
   color: theme.palette.text.secondary,
-  "&:hover": {
-    color: theme.palette.primary.main,
-  },
+  marginBottom: theme.spacing(2),
 }));
 
-export const StyledKeyTextField = styled(TextField)(({ theme }) => ({
-  "& .MuiOutlinedInput-root": {
-    backgroundColor: theme.palette.background.default,
-  },
+export const PlaceholderText = styled(Box)(() => ({
+  maxWidth: 400,
+  textAlign: "center",
 }));
 
-export const StyledTranslationTextField = styled(TextField)(({ theme }) => ({
-  "& .MuiOutlinedInput-root": {
-    backgroundColor: theme.palette.background.paper,
+export const LoadingContainer = styled(Box)(() => ({
+  display: "flex",
+  justifyContent: "center",
+  padding: 32,
+}));
+
+export const StyledSelect = styled(Select)(() => ({
+  minWidth: 200,
+}));
+
+export const StyledTextarea = styled(TextareaAutosize)(({ theme }) => ({
+  width: "100%",
+  minHeight: "80px",
+  padding: "8px 12px",
+  borderRadius: theme.shape.borderRadius,
+  border: `1px solid ${theme.palette.divider}`,
+  fontFamily: theme.typography.fontFamily,
+  fontSize: theme.typography.body1.fontSize,
+  resize: "vertical",
+  backgroundColor: "transparent",
+  color: theme.palette.text.primary,
+  "&:disabled": {
+    backgroundColor: theme.palette.action.disabledBackground,
+    color: theme.palette.text.disabled,
+  },
+  "&:focus": {
+    outline: "none",
+    borderColor: theme.palette.primary.main,
+    borderWidth: "2px",
+  },
+  "&::placeholder": {
+    color: theme.palette.text.secondary,
   },
 }));

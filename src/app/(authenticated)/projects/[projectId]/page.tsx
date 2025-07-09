@@ -1,12 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Button, Container, Pagination, Typography } from "@mui/material";
+import { Box, Button, Container, Typography } from "@mui/material";
 import { ProjectBreadcrumbs } from "@/components/projects/project-breadcrumbs";
 import { ProjectTabs } from "@/components/projects/project-tabs";
 import { ProjectTranslations } from "@/components/projects/project-translations";
 import { useParams } from "next/navigation";
 import { trpc } from "@/utils/trpc";
+import {
+  PageHeader,
+  HeaderContent,
+  TabsWrapper,
+} from "@/styles/projects/project-details.styles";
 
 const PAGE_SIZE = 10;
 
@@ -60,32 +65,17 @@ export default function ProjectDetailsPage() {
     { enabled: !!defaultLanguage?.language_id && !!selectedLanguageId }
   );
 
-  const handlePageChange = (
-    _event: React.ChangeEvent<unknown>,
-    value: number
-  ) => {
-    setPage(value);
-  };
-
   const totalPages = Math.ceil((translationKeysData?.total || 0) / PAGE_SIZE);
 
   return (
     <Container maxWidth="xl">
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mt: 3,
-        }}
-      >
-        <Box>
+      <PageHeader>
+        <HeaderContent>
           <ProjectBreadcrumbs projectName={project?.name || ""} />
-
           <Typography variant="h5" fontWeight={600}>
             {project?.name}
           </Typography>
-        </Box>
+        </HeaderContent>
 
         <Box>
           <Button
@@ -96,11 +86,11 @@ export default function ProjectDetailsPage() {
             Save Changes
           </Button>
         </Box>
-      </Box>
+      </PageHeader>
 
-      <Box sx={{ mt: 4, mb: 2 }}>
+      <TabsWrapper>
         <ProjectTabs activeTab="translations" />
-      </Box>
+      </TabsWrapper>
 
       <ProjectTranslations
         translationKeys={translationKeysData?.data || []}
@@ -125,18 +115,10 @@ export default function ProjectDetailsPage() {
         selectedLanguageId={selectedLanguageId}
         onLanguageChange={setSelectedLanguageId}
         languages={projectLanguages || []}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
       />
-
-      {totalPages > 1 && (
-        <Box sx={{ mt: 2, display: "flex", justifyContent: "center" }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={handlePageChange}
-            color="primary"
-          />
-        </Box>
-      )}
     </Container>
   );
 }

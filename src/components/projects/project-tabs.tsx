@@ -7,7 +7,7 @@ import {
   Group as GroupIcon,
 } from "@mui/icons-material";
 
-import { StyledTabsContainer } from "@/styles/projects/project-tabs.styles";
+import { TabsContainer } from "@/styles/projects/project-tabs.styles";
 
 interface ProjectTabsProps {
   activeTab: "translations" | "settings" | "collaborators";
@@ -20,7 +20,7 @@ export function ProjectTabs({ activeTab }: ProjectTabsProps) {
   };
 
   return (
-    <StyledTabsContainer>
+    <TabsContainer>
       <Tabs
         value={activeTab}
         onChange={handleTabChange}
@@ -33,23 +33,20 @@ export function ProjectTabs({ activeTab }: ProjectTabsProps) {
           value="translations"
           icon={<TranslateIcon />}
           iconPosition="start"
-          sx={{ minHeight: 48 }}
         />
         <Tab
           label="Settings"
           value="settings"
           icon={<SettingsIcon />}
           iconPosition="start"
-          sx={{ minHeight: 48 }}
         />
         <Tab
           label="Collaborators"
           value="collaborators"
           icon={<GroupIcon />}
           iconPosition="start"
-          sx={{ minHeight: 48 }}
         />
       </Tabs>
-    </StyledTabsContainer>
+    </TabsContainer>
   );
 }

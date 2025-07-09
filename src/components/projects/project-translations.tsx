@@ -14,8 +14,8 @@ import {
   Box,
   Typography,
   Button,
-  Select,
   MenuItem,
+  Pagination,
 } from "@mui/material";
 import {
   Comment as CommentIcon,
@@ -24,6 +24,18 @@ import {
   Language as LanguageIcon,
 } from "@mui/icons-material";
 import { Database } from "@/lib/types/database.types";
+import {
+  TranslationsContainer,
+  HeaderContainer,
+  ControlsContainer,
+  PaginationContainer,
+  PlaceholderContainer,
+  PlaceholderIcon,
+  PlaceholderText,
+  StyledTextarea,
+  LoadingContainer,
+  StyledSelect,
+} from "@/styles/projects/project-translations.styles";
 
 type TranslationKey = Database["public"]["Tables"]["translation_keys"]["Row"];
 type Translation = Database["public"]["Tables"]["translations"]["Row"];
@@ -38,67 +50,46 @@ interface ProjectTranslationsProps {
   selectedLanguageId: string;
   onLanguageChange: (languageId: string) => void;
   languages: { language_id: string; languages: { name: string } }[];
+  page: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 }
 
 function NoLanguageSelectedPlaceholder() {
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        py: 8,
-        px: 2,
-        backgroundColor: "background.paper",
-        borderRadius: 1,
-      }}
-    >
-      <LanguageIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+    <PlaceholderContainer>
+      <PlaceholderIcon>
+        <LanguageIcon fontSize="inherit" />
+      </PlaceholderIcon>
       <Typography variant="h6" color="text.primary" gutterBottom>
         Select a Language
       </Typography>
-      <Typography
-        variant="body1"
-        color="text.secondary"
-        textAlign="center"
-        sx={{ maxWidth: 400 }}
-      >
-        Choose a language from the dropdown menu above to start managing
-        translations.
-      </Typography>
-    </Box>
+      <PlaceholderText>
+        <Typography variant="body1" color="text.secondary">
+          Choose a language from the dropdown menu above to start managing
+          translations.
+        </Typography>
+      </PlaceholderText>
+    </PlaceholderContainer>
   );
 }
 
 function NoTranslationsPlaceholder() {
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        py: 8,
-        px: 2,
-        backgroundColor: "background.paper",
-        borderRadius: 1,
-      }}
-    >
-      <TranslateIcon sx={{ fontSize: 64, color: "text.secondary", mb: 2 }} />
+    <PlaceholderContainer>
+      <PlaceholderIcon>
+        <TranslateIcon fontSize="inherit" />
+      </PlaceholderIcon>
       <Typography variant="h6" color="text.primary" gutterBottom>
         No Translation Keys Yet
       </Typography>
-      <Typography
-        variant="body1"
-        color="text.secondary"
-        textAlign="center"
-        sx={{ maxWidth: 400 }}
-      >
-        Get started by adding your first translation key. Click the &quot;Add
-        Key&quot; button above to begin managing your translations.
-      </Typography>
-    </Box>
+      <PlaceholderText>
+        <Typography variant="body1" color="text.secondary">
+          Get started by adding your first translation key. Click the &quot;Add
+          Key&quot; button above to begin managing your translations.
+        </Typography>
+      </PlaceholderText>
+    </PlaceholderContainer>
   );
 }
 
@@ -112,25 +103,28 @@ export function ProjectTranslations({
   selectedLanguageId,
   onLanguageChange,
   languages,
+  page,
+  totalPages,
+  onPageChange,
 }: ProjectTranslationsProps) {
+  const handlePageChange = (
+    _event: React.ChangeEvent<unknown>,
+    value: number
+  ) => {
+    onPageChange(value);
+  };
+
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" p={4}>
+      <LoadingContainer>
         <CircularProgress />
-      </Box>
+      </LoadingContainer>
     );
   }
 
   return (
-    <Paper sx={{ p: 2 }}>
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          mb: 3,
-        }}
-      >
+    <TranslationsContainer>
+      <HeaderContainer>
         <Box>
           <Typography variant="h5" fontWeight={600}>
             Manage Translations
@@ -140,12 +134,11 @@ export function ProjectTranslations({
           </Typography>
         </Box>
 
-        <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-          <Select
+        <ControlsContainer>
+          <StyledSelect
             value={selectedLanguageId}
-            onChange={(e) => onLanguageChange(e.target.value)}
+            onChange={(e) => onLanguageChange(e.target.value as string)}
             displayEmpty
-            sx={{ minWidth: 200 }}
           >
             <MenuItem value="" disabled>
               Select Language
@@ -155,7 +148,7 @@ export function ProjectTranslations({
                 {lang.languages?.name}
               </MenuItem>
             ))}
-          </Select>
+          </StyledSelect>
           <Button
             disabled={!selectedLanguageId}
             variant="contained"
@@ -164,64 +157,81 @@ export function ProjectTranslations({
           >
             Add Key
           </Button>
-        </Box>
-      </Box>
+        </ControlsContainer>
+      </HeaderContainer>
 
       {!selectedLanguageId ? (
         <NoLanguageSelectedPlaceholder />
       ) : translationKeys.length === 0 ? (
         <NoTranslationsPlaceholder />
       ) : (
-        <TableContainer elevation={0} component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Key Name</TableCell>
-                <TableCell>{defaultLanguageName} (Source)</TableCell>
-                <TableCell>{languageName}</TableCell>
-                <TableCell align="center">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {translationKeys.map((key) => {
-                const translation = translations.find(
-                  (t) => t.key_id === key.id
-                );
-                const defaultTranslation = defaultLanguageTranslations.find(
-                  (t) => t.key_id === key.id
-                );
+        <>
+          <TableContainer elevation={0} component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Key Name</TableCell>
+                  <TableCell>{defaultLanguageName} (Source)</TableCell>
+                  <TableCell>{languageName}</TableCell>
+                  <TableCell align="center">Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {translationKeys.map((key) => {
+                  const translation = translations.find(
+                    (t) => t.key_id === key.id
+                  );
+                  const defaultTranslation = defaultLanguageTranslations.find(
+                    (t) => t.key_id === key.id
+                  );
 
-                return (
-                  <TableRow key={key.id}>
-                    <TableCell>{key.key}</TableCell>
-                    <TableCell>
-                      <TextField
-                        multiline
-                        fullWidth
-                        value={defaultTranslation?.content || ""}
-                        disabled
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        multiline
-                        fullWidth
-                        value={translation?.content || ""}
-                        placeholder="Enter translation"
-                      />
-                    </TableCell>
-                    <TableCell align="center">
-                      <IconButton>
-                        <CommentIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                  return (
+                    <TableRow key={key.id}>
+                      <TableCell>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={key.key}
+                          placeholder="Enter key name"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <StyledTextarea
+                          value={defaultTranslation?.content || ""}
+                          disabled
+                          placeholder="Source text"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <StyledTextarea
+                          value={translation?.content || ""}
+                          placeholder="Enter translation"
+                        />
+                      </TableCell>
+                      <TableCell align="center">
+                        <IconButton>
+                          <CommentIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          {totalPages > 1 && (
+            <PaginationContainer>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={handlePageChange}
+                color="primary"
+              />
+            </PaginationContainer>
+          )}
+        </>
       )}
-    </Paper>
+    </TranslationsContainer>
   );
 }

@@ -1,18 +1,19 @@
-import { styled, Button, Box } from "@mui/material";
+import { Box, styled } from "@mui/material";
 
-export const StyledHeader = styled(Box)({
+export const PageHeader = styled(Box)(() => ({
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  marginBottom: 24,
-});
+  marginTop: 24,
+}));
 
-export const StyledSaveButton = styled(Button)(({ theme }) => ({
-  minWidth: 150,
-  borderRadius: theme.shape.borderRadius,
-  backgroundColor: theme.palette.neutral.main,
-  color: theme.palette.text.primary,
-  "&:hover": {
-    backgroundColor: theme.palette.neutral.hover,
-  },
+export const HeaderContent = styled(Box)(() => ({
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+}));
+
+export const TabsWrapper = styled(Box)(() => ({
+  marginTop: 32,
+  marginBottom: 16,
 }));
