@@ -11,38 +11,18 @@ const DEFAULT_PAGE = 1;
 export class TranslationsService implements ITranslationsService {
   constructor(private readonly translationsDAL: ITranslationsDAL) {}
 
-  async getProjectTranslations(
-    projectId: string,
-    languageId: string,
-    page = DEFAULT_PAGE,
-    pageSize = DEFAULT_PAGE_SIZE
-  ): Promise<
-    PaginatedResponse<Database["public"]["Tables"]["translations"]["Row"]>
-  > {
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-
-    const { data, count } =
-      await this.translationsDAL.getProjectTranslationsById(
-        projectId,
-        languageId,
-        from,
-        to
-      );
-
-    return {
-      data: data || [],
-      total: count || 0,
-      hasMore: (count || 0) > page * pageSize,
-    };
-  }
-
   async getTranslationKeys(
     projectId: string,
     page = DEFAULT_PAGE,
-    pageSize = DEFAULT_PAGE_SIZE
+    pageSize = DEFAULT_PAGE_SIZE,
+    languageId?: string,
+    defaultLanguageId?: string
   ): Promise<
-    PaginatedResponse<Database["public"]["Tables"]["translation_keys"]["Row"]>
+    PaginatedResponse<
+      Database["public"]["Tables"]["translation_keys"]["Row"] & {
+        translations: Database["public"]["Tables"]["translations"]["Row"][];
+      }
+    >
   > {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
@@ -50,7 +30,9 @@ export class TranslationsService implements ITranslationsService {
     const { data, count } = await this.translationsDAL.getTranslationKeys(
       projectId,
       from,
-      to
+      to,
+      languageId,
+      defaultLanguageId
     );
 
     return {

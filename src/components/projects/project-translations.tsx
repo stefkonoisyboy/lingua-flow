@@ -37,16 +37,17 @@ import {
   StyledSelect,
 } from "@/styles/projects/project-translations.styles";
 
-type TranslationKey = Database["public"]["Tables"]["translation_keys"]["Row"];
-type Translation = Database["public"]["Tables"]["translations"]["Row"];
+type TranslationKey =
+  Database["public"]["Tables"]["translation_keys"]["Row"] & {
+    translations: Database["public"]["Tables"]["translations"]["Row"][];
+  };
 
 interface ProjectTranslationsProps {
   translationKeys: TranslationKey[];
-  translations: Translation[];
-  defaultLanguageTranslations: Translation[];
   isLoading: boolean;
   languageName: string;
   defaultLanguageName: string;
+  defaultLanguageId: string;
   selectedLanguageId: string;
   onLanguageChange: (languageId: string) => void;
   languages: { language_id: string; languages: { name: string } }[];
@@ -95,11 +96,10 @@ function NoTranslationsPlaceholder() {
 
 export function ProjectTranslations({
   translationKeys,
-  translations,
-  defaultLanguageTranslations,
   isLoading,
   languageName,
   defaultLanguageName,
+  defaultLanguageId,
   selectedLanguageId,
   onLanguageChange,
   languages,
@@ -178,11 +178,12 @@ export function ProjectTranslations({
               </TableHead>
               <TableBody>
                 {translationKeys.map((key) => {
-                  const translation = translations.find(
-                    (t) => t.key_id === key.id
+                  const translation = key.translations.find(
+                    (t) => t.language_id === selectedLanguageId
                   );
-                  const defaultTranslation = defaultLanguageTranslations.find(
-                    (t) => t.key_id === key.id
+
+                  const defaultTranslation = key.translations.find(
+                    (t) => t.language_id === defaultLanguageId
                   );
 
                   return (
