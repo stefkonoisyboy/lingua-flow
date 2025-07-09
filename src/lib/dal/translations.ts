@@ -110,35 +110,85 @@ export class TranslationsDAL implements ITranslationsDAL {
     );
   }
 
-  async getProjectTranslationsById(
+  async getTranslationKeys(
     projectId: string,
-    languageId: string,
     from: number,
-    to: number
+    to: number,
+    languageId?: string,
+    defaultLanguageId?: string
   ) {
+    if (!languageId) {
+      return { data: [], count: 0 };
+    }
+
     const { data, error, count } = await this.supabase
-      .from("translations")
-      .select("*, translation_keys!inner(project_id)", { count: "exact" })
-      .eq("translation_keys.project_id", projectId)
-      .eq("language_id", languageId)
+      .from("translation_keys")
+      .select(
+        `
+        *,
+        translations!translations_key_id_fkey(
+          id,
+          key_id,
+          content,
+          language_id,
+          status,
+          translator_id,
+          reviewer_id,
+          created_at,
+          updated_at
+        )
+      `,
+        { count: "exact" }
+      )
+      .eq("project_id", projectId)
+      .eq("translations.language_id", languageId)
+      .order("key")
       .range(from, to);
 
     if (error) {
       throw error;
     }
 
-    return { data: data || [], count: count || 0 };
-  }
+    // Get translations for default language in a separate query
+    if (defaultLanguageId) {
+      const { data: defaultData, error: defaultError } = await this.supabase
+        .from("translation_keys")
+        .select(
+          `
+          id,
+          translations!translations_key_id_fkey(
+            id,
+            key_id,
+            content,
+            language_id,
+            status,
+            translator_id,
+            reviewer_id,
+            created_at,
+            updated_at
+          )
+        `
+        )
+        .eq("project_id", projectId)
+        .eq("translations.language_id", defaultLanguageId)
+        .in(
+          "id",
+          (data || []).map((k) => k.id)
+        );
 
-  async getTranslationKeys(projectId: string, from: number, to: number) {
-    const { data, error, count } = await this.supabase
-      .from("translation_keys")
-      .select("*", { count: "exact" })
-      .eq("project_id", projectId)
-      .range(from, to);
+      if (defaultError) {
+        throw defaultError;
+      }
 
-    if (error) {
-      throw error;
+      // Merge the translations
+      if (data && defaultData) {
+        data.forEach((key) => {
+          const defaultTranslations =
+            defaultData.find((d) => d.id === key.id)?.translations || [];
+
+          key.translations = [...key.translations, ...defaultTranslations];
+        });
+      }
     }
 
     return { data: data || [], count: count || 0 };

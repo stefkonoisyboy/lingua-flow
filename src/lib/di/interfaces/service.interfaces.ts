@@ -108,21 +108,18 @@ export interface PaginatedResponse<T> {
 }
 
 export interface ITranslationsService {
-  getProjectTranslations(
-    projectId: string,
-    languageId: string,
-    page?: number,
-    pageSize?: number
-  ): Promise<
-    PaginatedResponse<Database["public"]["Tables"]["translations"]["Row"]>
-  >;
-
   getTranslationKeys(
     projectId: string,
     page?: number,
-    pageSize?: number
+    pageSize?: number,
+    languageId?: string,
+    defaultLanguageId?: string
   ): Promise<
-    PaginatedResponse<Database["public"]["Tables"]["translation_keys"]["Row"]>
+    PaginatedResponse<
+      Database["public"]["Tables"]["translation_keys"]["Row"] & {
+        translations: Database["public"]["Tables"]["translations"]["Row"][];
+      }
+    >
   >;
 }
 

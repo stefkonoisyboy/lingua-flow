@@ -37,33 +37,11 @@ export default function ProjectDetailsPage() {
         projectId,
         page,
         pageSize: PAGE_SIZE,
-      },
-      { enabled: !!selectedLanguageId }
-    );
-
-  const { data: translationsData, isLoading: isTranslationsLoading } =
-    trpc.translations.getProjectTranslations.useQuery(
-      {
-        projectId,
         languageId: selectedLanguageId,
-        page,
-        pageSize: PAGE_SIZE,
+        defaultLanguageId: defaultLanguage?.language_id,
       },
-      { enabled: !!selectedLanguageId }
+      { enabled: !!selectedLanguageId && !!defaultLanguage?.language_id }
     );
-
-  const {
-    data: defaultTranslationsData,
-    isLoading: isDefaultTranslationsLoading,
-  } = trpc.translations.getProjectTranslations.useQuery(
-    {
-      projectId,
-      languageId: defaultLanguage?.language_id || "",
-      page,
-      pageSize: PAGE_SIZE,
-    },
-    { enabled: !!defaultLanguage?.language_id && !!selectedLanguageId }
-  );
 
   const totalPages = Math.ceil((translationKeysData?.total || 0) / PAGE_SIZE);
 
@@ -94,19 +72,16 @@ export default function ProjectDetailsPage() {
 
       <ProjectTranslations
         translationKeys={translationKeysData?.data || []}
-        translations={translationsData?.data || []}
-        defaultLanguageTranslations={defaultTranslationsData?.data || []}
         isLoading={
           isProjectLoading ||
           isProjectLanguagesLoading ||
-          isTranslationKeysLoading ||
-          isTranslationsLoading ||
-          isDefaultTranslationsLoading
+          isTranslationKeysLoading
         }
         defaultLanguageName={
           projectLanguages?.find((lang) => lang.is_default)?.languages?.name ||
           ""
         }
+        defaultLanguageId={defaultLanguage?.language_id || ""}
         languageName={
           projectLanguages?.find(
             (lang) => lang.language_id === selectedLanguageId

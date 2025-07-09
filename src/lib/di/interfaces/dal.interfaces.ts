@@ -1,12 +1,13 @@
+import { SupabaseClient } from "@supabase/supabase-js";
 import { IntegrationConfig } from "../../dal/integrations";
 import { Database } from "../../types/database.types";
-import { SupabaseClient } from "@supabase/supabase-js";
 
-type Translation = Database["public"]["Tables"]["translations"]["Row"] & {
-  translation_keys: Pick<
-    Database["public"]["Tables"]["translation_keys"]["Row"],
-    "project_id"
-  >;
+export type TranslationInsert = {
+  key_id: string;
+  language_id: string;
+  content: string;
+  translator_id: string;
+  status: "approved";
 };
 
 // Custom types for joined queries
@@ -110,25 +111,48 @@ export interface PaginatedResult<T> {
 
 // TranslationsDAL Interface
 export interface ITranslationsDAL {
-  getProjectTranslations(projectIds: string[]): Promise<Translation[]>;
-  getProjectTranslationsById(
+  getTranslationKeys(
     projectId: string,
-    languageId: string,
     from: number,
-    to: number
-  ): Promise<
-    PaginatedResult<Database["public"]["Tables"]["translations"]["Row"]>
-  >;
-  getProjectTranslationKeys(
-    projectIds: string[]
-  ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"][]>;
+    to: number,
+    languageId?: string,
+    defaultLanguageId?: string
+  ): Promise<{
+    data: (Database["public"]["Tables"]["translation_keys"]["Row"] & {
+      translations: Database["public"]["Tables"]["translations"]["Row"][];
+    })[];
+    count: number;
+  }>;
+
   getTranslationKeyByKey(
     projectId: string,
     key: string
   ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"] | null>;
+
   getLanguageByCode(
     code: string
   ): Promise<Database["public"]["Tables"]["languages"]["Row"]>;
+
+  getProjectTranslationKeys(
+    projectIds: string[]
+  ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"][]>;
+
+  getProjectTranslations(projectIds: string[]): Promise<
+    (Database["public"]["Tables"]["translations"]["Row"] & {
+      translation_keys: Pick<
+        Database["public"]["Tables"]["translation_keys"]["Row"],
+        "project_id"
+      >;
+    })[]
+  >;
+
+  createTranslationKey(
+    translationKey: Omit<
+      Database["public"]["Tables"]["translation_keys"]["Row"],
+      "id" | "created_at" | "updated_at"
+    >
+  ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"]>;
+
   upsertTranslationKeys(
     keys: {
       project_id: string;
@@ -136,30 +160,12 @@ export interface ITranslationsDAL {
       description?: string;
     }[]
   ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"][]>;
+
   upsertTranslations(
-    translations: {
-      key_id: string;
-      language_id: string;
-      content: string;
-      translator_id: string;
-      status: "approved";
-    }[],
+    translations: TranslationInsert[],
     userId: string,
     source: string
   ): Promise<Database["public"]["Tables"]["translations"]["Row"][]>;
-  createTranslationKey(
-    translationKey: Omit<
-      Database["public"]["Tables"]["translation_keys"]["Row"],
-      "id" | "created_at" | "updated_at"
-    >
-  ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"]>;
-  getTranslationKeys(
-    projectId: string,
-    from: number,
-    to: number
-  ): Promise<
-    PaginatedResult<Database["public"]["Tables"]["translation_keys"]["Row"]>
-  >;
 }
 
 // IntegrationsDAL Interface
