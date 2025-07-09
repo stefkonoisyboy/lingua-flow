@@ -3,13 +3,10 @@ import { Database } from "../types/database.types";
 import {
   ITranslationsDAL,
   IPaginationDAL,
+  TranslationKey,
+  Translation,
 } from "../di/interfaces/dal.interfaces";
 import { DEFAULT_PAGE_SIZE } from "./pagination";
-
-type TranslationKey = Database["public"]["Tables"]["translation_keys"]["Row"];
-type Translation = Database["public"]["Tables"]["translations"]["Row"] & {
-  translation_keys: Pick<TranslationKey, "project_id">;
-};
 
 export type TranslationInsert = {
   key_id: string;
@@ -248,5 +245,97 @@ export class TranslationsDAL implements ITranslationsDAL {
     });
 
     return data;
+  }
+
+  async getLatestVersionNumber(translationId: string): Promise<number> {
+    const { data, error } = await this.supabase
+      .from("version_history")
+      .select("version_number")
+      .eq("translation_id", translationId)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw new Error(`Failed to get latest version number: ${error.message}`);
+    }
+
+    return data?.version_number || 0;
+  }
+
+  async createTranslationKeyWithTranslations(
+    projectId: string,
+    key: string,
+    translations: {
+      languageId: string;
+      content: string;
+      userId: string;
+    }[],
+    description?: string
+  ): Promise<{
+    translationKey: TranslationKey;
+    translations: Translation[];
+  }> {
+    // Create the translation key
+    const { data: translationKey, error: keyError } = await this.supabase
+      .from("translation_keys")
+      .insert({
+        project_id: projectId,
+        key,
+        description,
+      })
+      .select()
+      .single();
+
+    if (keyError) {
+      throw new Error(`Failed to create translation key: ${keyError.message}`);
+    }
+
+    // Create the translations
+    const { data: createdTranslations, error: translationsError } =
+      await this.supabase.from("translations").insert(
+        translations.map((t) => ({
+          key_id: translationKey.id,
+          language_id: t.languageId,
+          content: t.content,
+          translator_id: t.userId,
+          status: "approved" as const,
+        }))
+      ).select(`
+        *,
+        translation_keys (
+          project_id
+        )
+      `);
+
+    if (translationsError) {
+      throw new Error(
+        `Failed to create translations: ${translationsError.message}`
+      );
+    }
+
+    // Create version history entries for each translation
+    const versionEntries = createdTranslations.map((translation) => ({
+      translation_id: translation.id,
+      content: translation.content,
+      changed_by: translation.translator_id || "", // Handle null case
+      version_name: "Initial translation",
+      version_number: 1,
+    }));
+
+    const { error: versionError } = await this.supabase
+      .from("version_history")
+      .insert(versionEntries);
+
+    if (versionError) {
+      throw new Error(
+        `Failed to create version history: ${versionError.message}`
+      );
+    }
+
+    return {
+      translationKey,
+      translations: createdTranslations as Translation[],
+    };
   }
 }

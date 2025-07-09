@@ -109,6 +109,13 @@ export interface PaginatedResult<T> {
   count: number;
 }
 
+export type TranslationKey =
+  Database["public"]["Tables"]["translation_keys"]["Row"];
+export type Translation =
+  Database["public"]["Tables"]["translations"]["Row"] & {
+    translation_keys: Pick<TranslationKey, "project_id">;
+  };
+
 // TranslationsDAL Interface
 export interface ITranslationsDAL {
   getTranslationKeys(
@@ -166,6 +173,22 @@ export interface ITranslationsDAL {
     userId: string,
     source: string
   ): Promise<Database["public"]["Tables"]["translations"]["Row"][]>;
+
+  getLatestVersionNumber(translationId: string): Promise<number>;
+
+  createTranslationKeyWithTranslations(
+    projectId: string,
+    key: string,
+    translations: {
+      languageId: string;
+      content: string;
+      userId: string;
+    }[],
+    description?: string
+  ): Promise<{
+    translationKey: TranslationKey;
+    translations: Translation[];
+  }>;
 }
 
 // IntegrationsDAL Interface
