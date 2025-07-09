@@ -27,4 +27,48 @@ export const translationsRouter = router({
         input.defaultLanguageId
       );
     }),
+
+  createTranslationKeyWithTranslations: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        key: z.string(),
+        translations: z.array(
+          z.object({
+            languageId: z.string(),
+            content: z.string(),
+          })
+        ),
+        description: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const translationsService = ctx.container.resolve<ITranslationsService>(
+        DI_TOKENS.TRANSLATIONS_SERVICE
+      );
+
+      return translationsService.createTranslationKeyWithTranslations(
+        input.projectId,
+        input.key,
+        input.translations.map((t) => ({
+          ...t,
+          userId: ctx.user.id,
+        })),
+        input.description
+      );
+    }),
+
+  getLatestVersionNumber: protectedProcedure
+    .input(
+      z.object({
+        translationId: z.string(),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const translationsService = ctx.container.resolve<ITranslationsService>(
+        DI_TOKENS.TRANSLATIONS_SERVICE
+      );
+
+      return translationsService.getLatestVersionNumber(input.translationId);
+    }),
 });

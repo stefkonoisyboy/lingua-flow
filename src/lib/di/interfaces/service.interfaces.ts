@@ -5,6 +5,7 @@ import {
   Branch,
   TranslationFile,
 } from "../../services/github.service";
+import { Translation, TranslationKey } from "./dal.interfaces";
 
 // Project service interfaces
 export interface ProjectStats {
@@ -116,11 +117,27 @@ export interface ITranslationsService {
     defaultLanguageId?: string
   ): Promise<
     PaginatedResponse<
-      Database["public"]["Tables"]["translation_keys"]["Row"] & {
+      TranslationKey & {
         translations: Database["public"]["Tables"]["translations"]["Row"][];
       }
     >
   >;
+
+  createTranslationKeyWithTranslations(
+    projectId: string,
+    key: string,
+    translations: {
+      languageId: string;
+      content: string;
+      userId: string;
+    }[],
+    description?: string
+  ): Promise<{
+    translationKey: TranslationKey;
+    translations: Translation[];
+  }>;
+
+  getLatestVersionNumber(translationId: string): Promise<number>;
 }
 
 // Languages service interface
