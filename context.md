@@ -65,6 +65,22 @@ Key Features:
   - Unique version tracking (translation_id, version_number)
   - Enhanced error handling for translation imports
   - Type-safe batch operations
+- Translation Interface
+  - Language selection dropdown for target language
+  - Table-based translation management with:
+    - Key name field (editable)
+    - Source text display (read-only)
+    - Translation content (editable with auto-resizing textarea)
+    - Action buttons for comments
+  - Placeholder states for:
+    - No language selected
+    - No translation keys available
+  - Server-side pagination for efficient loading
+  - Loading states and error handling
+  - Styled components for consistent UI:
+    - Separate style files for translations, tabs, and project details
+    - No inline styles (sx props) for better maintainability
+    - MUI theme integration for light/dark mode support
 - Create/edit translation keys
 - Batch translation updates
 - Translation progress tracking
