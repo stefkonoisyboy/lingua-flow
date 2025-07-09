@@ -16,14 +16,27 @@ import {
   Button,
   MenuItem,
   Pagination,
+  Alert,
 } from "@mui/material";
 import {
   Comment as CommentIcon,
   Add as AddIcon,
   Translate as TranslateIcon,
   Language as LanguageIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon,
 } from "@mui/icons-material";
 import { Database } from "@/lib/types/database.types";
+import { trpc } from "@/utils/trpc";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  startAddingKey,
+  cancelAddingKey,
+  setError,
+  clearUnsavedChanges,
+  selectIsAddingKey,
+  selectError,
+} from "@/store/slices/translations.slice";
 import {
   TranslationsContainer,
   HeaderContainer,
@@ -36,6 +49,19 @@ import {
   LoadingContainer,
   StyledSelect,
 } from "@/styles/projects/project-translations.styles";
+import { useFormik } from "formik";
+import { toFormikValidationSchema } from "zod-formik-adapter";
+import { z } from "zod";
+
+// Validation schema matching tRPC input
+const newTranslationSchema = z.object({
+  projectId: z.string(),
+  key: z.string().min(1, "Key name is required"),
+  description: z.string().optional(),
+  translations: z.record(z.string().min(1, "Translation content is required")),
+});
+
+type NewTranslationForm = z.infer<typeof newTranslationSchema>;
 
 type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
@@ -54,6 +80,7 @@ interface ProjectTranslationsProps {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  projectId: string;
 }
 
 function NoLanguageSelectedPlaceholder() {
@@ -106,11 +133,90 @@ export function ProjectTranslations({
   page,
   totalPages,
   onPageChange,
+  projectId,
 }: ProjectTranslationsProps) {
+  const dispatch = useAppDispatch();
+  const utils = trpc.useUtils();
+
+  // Redux selectors
+  const isAddingKey = useAppSelector(selectIsAddingKey);
+  const error = useAppSelector(selectError);
+
+  // tRPC mutation
+  const createKeyMutation =
+    trpc.translations.createTranslationKeyWithTranslations.useMutation({
+      onSuccess: () => {
+        utils.translations.getTranslationKeys.invalidate({ projectId });
+        dispatch(clearUnsavedChanges());
+        dispatch(cancelAddingKey());
+        formik.resetForm();
+      },
+      onError: (error) => {
+        dispatch(setError(error.message));
+      },
+    });
+
+  const formik = useFormik<NewTranslationForm>({
+    initialValues: {
+      projectId,
+      key: "",
+      description: "",
+      translations: {},
+    },
+    validationSchema: toFormikValidationSchema(newTranslationSchema),
+    validateOnChange: true,
+    validateOnBlur: true,
+    enableReinitialize: true,
+    onSubmit: async (values) => {
+      dispatch(setError(null));
+
+      try {
+        const translationsArray = Object.entries(values.translations).map(
+          ([languageId, content]) => ({
+            languageId,
+            content,
+          })
+        );
+
+        await createKeyMutation.mutateAsync({
+          projectId,
+          key: values.key,
+          description: values.description,
+          translations: translationsArray,
+        });
+      } catch (error) {
+        console.error("Failed to save translation key:", error);
+      }
+    },
+  });
+
+  const handleStartAddingKey = () => {
+    dispatch(startAddingKey());
+  };
+
+  const handleCancelAddingKey = () => {
+    dispatch(cancelAddingKey());
+    formik.resetForm();
+  };
+
+  const handleUpdateTranslation = (languageId: string, content: string) => {
+    formik.setFieldValue(`translations.${languageId}`, content);
+  };
+
   const handlePageChange = (
     _event: React.ChangeEvent<unknown>,
     value: number
   ) => {
+    if (formik.dirty) {
+      if (
+        !window.confirm(
+          "You have unsaved changes. Are you sure you want to change pages?"
+        )
+      ) {
+        return;
+      }
+      formik.resetForm();
+    }
     onPageChange(value);
   };
 
@@ -121,6 +227,12 @@ export function ProjectTranslations({
       </LoadingContainer>
     );
   }
+
+  const hasRequiredTranslations =
+    selectedLanguageId &&
+    defaultLanguageId &&
+    formik.values.translations[selectedLanguageId]?.trim() &&
+    formik.values.translations[defaultLanguageId]?.trim();
 
   return (
     <TranslationsContainer>
@@ -149,20 +261,54 @@ export function ProjectTranslations({
               </MenuItem>
             ))}
           </StyledSelect>
-          <Button
-            disabled={!selectedLanguageId}
-            variant="contained"
-            startIcon={<AddIcon />}
-            // TODO: Implement add key functionality
-          >
-            Add Key
-          </Button>
+
+          {isAddingKey ? (
+            <>
+              <Button
+                variant="contained"
+                color="primary"
+                startIcon={<SaveIcon />}
+                onClick={() => formik.handleSubmit()}
+                disabled={
+                  formik.isSubmitting ||
+                  !formik.isValid ||
+                  !hasRequiredTranslations
+                }
+              >
+                Save Changes
+              </Button>
+              <Button
+                variant="outlined"
+                color="secondary"
+                startIcon={<CancelIcon />}
+                onClick={handleCancelAddingKey}
+                disabled={formik.isSubmitting}
+              >
+                Cancel
+              </Button>
+            </>
+          ) : (
+            <Button
+              disabled={!selectedLanguageId}
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleStartAddingKey}
+            >
+              Add Key
+            </Button>
+          )}
         </ControlsContainer>
       </HeaderContainer>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
+
       {!selectedLanguageId ? (
         <NoLanguageSelectedPlaceholder />
-      ) : translationKeys.length === 0 ? (
+      ) : translationKeys.length === 0 && !isAddingKey ? (
         <NoTranslationsPlaceholder />
       ) : (
         <>
@@ -177,6 +323,101 @@ export function ProjectTranslations({
                 </TableRow>
               </TableHead>
               <TableBody>
+                {isAddingKey && (
+                  <TableRow>
+                    <TableCell>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        name="key"
+                        value={formik.values.key}
+                        onChange={formik.handleChange}
+                        onBlur={formik.handleBlur}
+                        placeholder="Enter key name"
+                        error={formik.touched.key && Boolean(formik.errors.key)}
+                        helperText={formik.touched.key && formik.errors.key}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <StyledTextarea
+                        value={
+                          formik.values.translations[defaultLanguageId] || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateTranslation(
+                            defaultLanguageId,
+                            e.target.value
+                          )
+                        }
+                        onBlur={() => {
+                          formik.setFieldTouched(
+                            `translations.${defaultLanguageId}`,
+                            true
+                          );
+                        }}
+                        placeholder="Enter source text"
+                        error={
+                          formik.touched.translations?.[defaultLanguageId] &&
+                          Boolean(
+                            formik.errors.translations?.[defaultLanguageId]
+                          )
+                        }
+                      />
+                      {formik.touched.translations?.[defaultLanguageId] &&
+                        formik.errors.translations?.[defaultLanguageId] && (
+                          <Typography
+                            color="error"
+                            variant="caption"
+                            sx={{ mt: 0.5 }}
+                          >
+                            {formik.errors.translations[defaultLanguageId]}
+                          </Typography>
+                        )}
+                    </TableCell>
+                    <TableCell>
+                      <StyledTextarea
+                        value={
+                          formik.values.translations[selectedLanguageId] || ""
+                        }
+                        onChange={(e) =>
+                          handleUpdateTranslation(
+                            selectedLanguageId,
+                            e.target.value
+                          )
+                        }
+                        onBlur={() => {
+                          formik.setFieldTouched(
+                            `translations.${selectedLanguageId}`,
+                            true
+                          );
+                        }}
+                        placeholder="Enter translation"
+                        error={
+                          formik.touched.translations?.[selectedLanguageId] &&
+                          Boolean(
+                            formik.errors.translations?.[selectedLanguageId]
+                          )
+                        }
+                      />
+                      {formik.touched.translations?.[selectedLanguageId] &&
+                        formik.errors.translations?.[selectedLanguageId] && (
+                          <Typography
+                            color="error"
+                            variant="caption"
+                            sx={{ mt: 0.5 }}
+                          >
+                            {formik.errors.translations[selectedLanguageId]}
+                          </Typography>
+                        )}
+                    </TableCell>
+                    <TableCell align="center">
+                      <IconButton disabled>
+                        <CommentIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                )}
+
                 {translationKeys.map((key) => {
                   const translation = key.translations.find(
                     (t) => t.language_id === selectedLanguageId
@@ -194,6 +435,7 @@ export function ProjectTranslations({
                           size="small"
                           value={key.key}
                           placeholder="Enter key name"
+                          disabled
                         />
                       </TableCell>
                       <TableCell>
@@ -207,6 +449,7 @@ export function ProjectTranslations({
                         <StyledTextarea
                           value={translation?.content || ""}
                           placeholder="Enter translation"
+                          disabled
                         />
                       </TableCell>
                       <TableCell align="center">

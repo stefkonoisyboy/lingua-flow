@@ -9,7 +9,6 @@ interface NewTranslationKey {
 interface TranslationsState {
   newKey: NewTranslationKey | null;
   isAddingKey: boolean;
-  isSaving: boolean;
   error: string | null;
   hasUnsavedChanges: boolean;
 }
@@ -17,7 +16,6 @@ interface TranslationsState {
 const initialState: TranslationsState = {
   newKey: null,
   isAddingKey: false,
-  isSaving: false,
   error: null,
   hasUnsavedChanges: false,
 };
@@ -57,9 +55,6 @@ export const translationsSlice = createSlice({
         state.hasUnsavedChanges = true;
       }
     },
-    setSaving: (state, action: PayloadAction<boolean>) => {
-      state.isSaving = action.payload;
-    },
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload;
     },
@@ -74,7 +69,6 @@ export const {
   cancelAddingKey,
   updateNewKeyField,
   updateNewTranslation,
-  setSaving,
   setError,
   clearUnsavedChanges,
 } = translationsSlice.actions;
@@ -85,9 +79,6 @@ export const selectIsAddingKey = (state: { translations: TranslationsState }) =>
 
 export const selectNewKey = (state: { translations: TranslationsState }) =>
   state.translations.newKey;
-
-export const selectIsSaving = (state: { translations: TranslationsState }) =>
-  state.translations.isSaving;
 
 export const selectError = (state: { translations: TranslationsState }) =>
   state.translations.error;
