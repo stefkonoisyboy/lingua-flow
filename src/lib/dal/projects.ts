@@ -1,12 +1,18 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
-import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
+import {
+  IPaginationDAL,
+  IProjectsDAL,
+  ProjectWithLanguages,
+} from "../di/interfaces/dal.interfaces";
 import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
+import { DEFAULT_PAGE_SIZE } from "./pagination";
 
 export class ProjectsDAL implements IProjectsDAL {
   constructor(
     private supabase: SupabaseClient<Database>,
-    private translationsDal: ITranslationsDAL
+    private translationsDal: ITranslationsDAL,
+    private paginationDal: IPaginationDAL
   ) {}
 
   async getProjectsForUser(userId: string) {
@@ -14,7 +20,6 @@ export class ProjectsDAL implements IProjectsDAL {
       .from("project_members")
       .select(
         `
-        project_id,
         projects (
           id,
           name,
@@ -33,7 +38,20 @@ export class ProjectsDAL implements IProjectsDAL {
       throw new Error(`Error fetching projects: ${membersError.message}`);
     }
 
-    return projectMembers;
+    return (
+      projectMembers?.map(({ projects }) => ({
+        id: projects.id,
+        name: projects.name,
+        description: projects.description,
+        status: projects.status,
+        created_at: projects.created_at,
+        updated_at: projects.updated_at,
+        default_language_id: projects.default_language_id,
+        created_by: projects.created_by,
+        languages: [], // Will be populated by the service layer
+        missingTranslations: 0, // Will be calculated by the service layer
+      })) || []
+    );
   }
 
   async getProjectLanguages(projectIds: string[]) {
@@ -42,16 +60,21 @@ export class ProjectsDAL implements IProjectsDAL {
         .from("project_languages")
         .select(
           `
-        project_id,
-        language_id,
-        languages (
-          id,
-          name,
-          code,
-          flag_url,
-          is_rtl
-        )
-      `
+          project_id,
+          language_id,
+          created_at,
+          updated_at,
+          is_default,
+          languages (
+            id,
+            name,
+            code,
+            flag_url,
+            is_rtl,
+            created_at,
+            updated_at
+          )
+        `
         )
         .in("project_id", projectIds);
 
@@ -59,7 +82,7 @@ export class ProjectsDAL implements IProjectsDAL {
       throw new Error(`Error fetching languages: ${languagesError.message}`);
     }
 
-    return projectLanguages;
+    return (projectLanguages || []) as ProjectWithLanguages[];
   }
 
   async getProjectMemberProjects(userId: string) {
@@ -76,20 +99,14 @@ export class ProjectsDAL implements IProjectsDAL {
   }
 
   async createProject(
-    name: string,
-    description: string | undefined,
-    userId: string,
-    defaultLanguageId: string
+    project: Omit<
+      Database["public"]["Tables"]["projects"]["Row"],
+      "id" | "created_at" | "updated_at"
+    >
   ) {
-    const { data: project, error: projectError } = await this.supabase
+    const { data: newProject, error: projectError } = await this.supabase
       .from("projects")
-      .insert({
-        name,
-        description,
-        created_by: userId,
-        status: "active" as const,
-        default_language_id: defaultLanguageId,
-      })
+      .insert(project)
       .select()
       .single();
 
@@ -97,7 +114,7 @@ export class ProjectsDAL implements IProjectsDAL {
       throw new Error(`Error creating project: ${projectError.message}`);
     }
 
-    return project;
+    return newProject;
   }
 
   async addProjectMember(
@@ -203,18 +220,36 @@ export class ProjectsDAL implements IProjectsDAL {
     const translationKeys =
       await this.translationsDal.getProjectTranslationKeys(projectIds);
 
-    const { data: translations } = await this.supabase
-      .from("translations")
-      .select("key_id, status")
-      .in("status", ["pending", "in_progress", "reviewed"])
-      .in(
-        "key_id",
-        translationKeys.map((key) => key.id)
-      );
+    // Split translation keys into chunks to avoid URL length limits
+    const keyIds = translationKeys.map((key) => key.id);
+    const chunkSize = 100; // Adjust this value based on your needs
+    const keyIdChunks = [];
+
+    for (let i = 0; i < keyIds.length; i += chunkSize) {
+      keyIdChunks.push(keyIds.slice(i, i + chunkSize));
+    }
+
+    // Fetch translations for each chunk and combine results
+    const allTranslations = [];
+
+    for (const chunk of keyIdChunks) {
+      const query = this.supabase
+        .from("translations")
+        .select("key_id, status")
+        .in("status", ["pending", "in_progress", "reviewed"])
+        .in("key_id", chunk);
+
+      const chunkTranslations = await this.paginationDal.fetchAllPages<{
+        key_id: string;
+        status: "pending" | "in_progress" | "reviewed" | "approved";
+      }>(query, DEFAULT_PAGE_SIZE);
+
+      allTranslations.push(...chunkTranslations);
+    }
 
     const missingTranslationsByProject = new Map<string, number>();
 
-    translations?.forEach((translation) => {
+    allTranslations.forEach((translation) => {
       const count = missingTranslationsByProject.get(translation.key_id) || 0;
       missingTranslationsByProject.set(translation.key_id, count + 1);
     });
@@ -232,5 +267,32 @@ export class ProjectsDAL implements IProjectsDAL {
   async deleteProject(projectId: string): Promise<void> {
     // Delete project and all related data will be cascaded due to foreign key constraints
     await this.supabase.from("projects").delete().eq("id", projectId);
+  }
+
+  async getProjectById(projectId: string) {
+    const { data, error } = await this.supabase
+      .from("projects")
+      .select("*")
+      .eq("id", projectId)
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
+  }
+
+  async getProjectLanguagesById(projectId: string) {
+    const { data, error } = await this.supabase
+      .from("project_languages")
+      .select("*, languages(*)")
+      .eq("project_id", projectId);
+
+    if (error) {
+      throw error;
+    }
+
+    return data;
   }
 }

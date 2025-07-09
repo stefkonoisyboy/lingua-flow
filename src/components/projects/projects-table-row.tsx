@@ -21,6 +21,7 @@ import {
   Settings as SettingsIcon,
 } from "@mui/icons-material";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { formatDate } from "@/lib/utils/date";
 import { ProjectStatusChip } from "@/components/projects/project-status-chip";
@@ -51,6 +52,7 @@ interface ProjectsTableRowProps {
 export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const router = useRouter();
 
   const utils = trpc.useUtils();
 
@@ -76,6 +78,7 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
 
   const handleViewDetails = () => {
     handleMenuClose();
+    router.push(`/projects/${project.id}`);
   };
 
   const handleSettings = () => {

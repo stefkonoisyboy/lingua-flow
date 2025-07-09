@@ -6,10 +6,18 @@ declare module "@mui/material/styles" {
     customBackground: {
       gradient: string;
     };
+    neutral: {
+      main: string;
+      hover: string;
+    };
   }
   interface PaletteOptions {
     customBackground: {
       gradient: string;
+    };
+    neutral: {
+      main: string;
+      hover: string;
     };
   }
 }
@@ -63,6 +71,10 @@ export const lightTheme = createTheme({
       primary: "#0F172A",
       secondary: "#475569",
     },
+    neutral: {
+      main: "#E2E8F0",
+      hover: "#CBD5E1",
+    },
     customBackground: {
       gradient: "linear-gradient(180deg, #F8FBFF 0%, #E8F4FF 100%)",
     },
@@ -85,6 +97,10 @@ export const darkTheme = createTheme({
     text: {
       primary: "#F8FAFC",
       secondary: "#CBD5E1",
+    },
+    neutral: {
+      main: "#334155",
+      hover: "#475569",
     },
     customBackground: {
       gradient: "linear-gradient(180deg, #0F172A 0%, #1E293B 100%)",
