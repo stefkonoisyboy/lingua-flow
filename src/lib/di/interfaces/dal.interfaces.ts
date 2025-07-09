@@ -29,6 +29,7 @@ export type ProjectWithDetails =
 export interface IProjectsDAL {
   getProjectsForUser(userId: string): Promise<ProjectWithDetails[]>;
   getProjectLanguages(projectIds: string[]): Promise<ProjectWithLanguages[]>;
+  ensureProjectLanguage(projectId: string, languageId: string): Promise<void>;
   getProjectLanguagesById(projectId: string): Promise<
     {
       created_at: string;
