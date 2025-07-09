@@ -11,6 +11,14 @@ type Translation = Database["public"]["Tables"]["translations"]["Row"] & {
   translation_keys: Pick<TranslationKey, "project_id">;
 };
 
+export type TranslationInsert = {
+  key_id: string;
+  language_id: string;
+  content: string;
+  translator_id: string;
+  status: "approved";
+};
+
 interface TranslationKeyInsert {
   project_id: string;
   key: string;
