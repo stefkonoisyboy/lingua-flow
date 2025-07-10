@@ -263,6 +263,84 @@ export class TranslationsDAL implements ITranslationsDAL {
     return data?.version_number || 0;
   }
 
+  async updateTranslationKey(
+    keyId: string,
+    newKey: string
+  ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"]> {
+    const { data, error } = await this.supabase
+      .from("translation_keys")
+      .update({
+        key: newKey,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", keyId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update translation key: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async updateTranslation(
+    translationId: string,
+    content: string,
+    userId: string
+  ): Promise<Database["public"]["Tables"]["translations"]["Row"]> {
+    // Get the current version number
+    const currentVersion = await this.getLatestVersionNumber(translationId);
+
+    // Get the current translation to store in version history
+    const { data: currentTranslation, error: currentError } =
+      await this.supabase
+        .from("translations")
+        .select()
+        .eq("id", translationId)
+        .single();
+
+    if (currentError) {
+      throw new Error(
+        `Failed to get current translation: ${currentError.message}`
+      );
+    }
+
+    // Create version history entry for the current version
+    const { error: versionError } = await this.supabase
+      .from("version_history")
+      .insert({
+        translation_id: translationId,
+        content: currentTranslation.content,
+        changed_by: userId,
+        version_name: "Manual update",
+        version_number: currentVersion + 1,
+      });
+
+    if (versionError) {
+      throw new Error(
+        `Failed to create version history: ${versionError.message}`
+      );
+    }
+
+    // Update the translation with new content
+    const { data, error } = await this.supabase
+      .from("translations")
+      .update({
+        content,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", translationId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to update translation: ${error.message}`);
+    }
+
+    return data;
+  }
+
   async createTranslationKeyWithTranslations(
     projectId: string,
     key: string,
