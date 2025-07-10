@@ -1,4 +1,12 @@
-import { Box, Paper, TextareaAutosize, styled, Select } from "@mui/material";
+import {
+  Box,
+  Paper,
+  TextareaAutosize,
+  styled,
+  Select,
+  Alert,
+  Typography,
+} from "@mui/material";
 
 export const TranslationsContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -53,6 +61,14 @@ export const LoadingContainer = styled(Box)(() => ({
 
 export const StyledSelect = styled(Select)(() => ({
   minWidth: 200,
+}));
+
+export const StyledAlert = styled(Alert)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
+}));
+
+export const ErrorText = styled(Typography)(({ theme }) => ({
+  marginTop: theme.spacing(0.5),
 }));
 
 interface StyledTextareaProps {
