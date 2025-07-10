@@ -11,11 +11,14 @@ import {
   TextField,
   IconButton,
 } from "@mui/material";
-import { Comment as CommentIcon } from "@mui/icons-material";
+import { Comment as CommentIcon, Edit as EditIcon } from "@mui/icons-material";
 import { StyledTextarea } from "@/styles/projects/project-translations.styles";
+import { ActionButtons } from "@/styles/projects/translations-table.styles";
 import { Database } from "@/lib/types/database.types";
 import { TranslationForm } from "./translation-form";
 import { FormikProps } from "formik";
+import { useState } from "react";
+import { TranslationEditForm } from "./translation-edit-form";
 
 type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
@@ -48,6 +51,16 @@ export function TranslationsTable({
   formik,
   onUpdateTranslation,
 }: TranslationsTableProps) {
+  const [editingKey, setEditingKey] = useState<string | null>(null);
+
+  const handleEditClick = (key: TranslationKey) => {
+    setEditingKey(key.id);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingKey(null);
+  };
+
   return (
     <TableContainer elevation={0} component={Paper}>
       <Table>
@@ -77,6 +90,20 @@ export function TranslationsTable({
               (t) => t.language_id === defaultLanguageId
             );
 
+            const isEditing = editingKey === key.id;
+
+            if (isEditing) {
+              return (
+                <TranslationEditForm
+                  key={key.id}
+                  translationKey={key}
+                  translation={translation}
+                  defaultTranslation={defaultTranslation}
+                  onCancel={handleCancelEdit}
+                />
+              );
+            }
+
             return (
               <TableRow key={key.id}>
                 <TableCell>
@@ -103,9 +130,14 @@ export function TranslationsTable({
                   />
                 </TableCell>
                 <TableCell align="center">
-                  <IconButton>
-                    <CommentIcon />
-                  </IconButton>
+                  <ActionButtons>
+                    <IconButton onClick={() => handleEditClick(key)}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton>
+                      <CommentIcon />
+                    </IconButton>
+                  </ActionButtons>
                 </TableCell>
               </TableRow>
             );
