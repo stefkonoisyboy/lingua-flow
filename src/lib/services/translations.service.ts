@@ -92,4 +92,18 @@ export class TranslationsService implements ITranslationsService {
       userId
     );
   }
+
+  async createTranslation(
+    keyId: string,
+    languageId: string,
+    content: string,
+    userId: string
+  ) {
+    return this.translationsDAL.createTranslation(
+      keyId,
+      languageId,
+      content,
+      userId
+    );
+  }
 }

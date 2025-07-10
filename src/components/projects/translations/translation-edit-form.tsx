@@ -18,6 +18,7 @@ interface TranslationEditFormProps {
   defaultTranslation:
     | Database["public"]["Tables"]["translations"]["Row"]
     | undefined;
+  selectedLanguageId: string;
   onCancel: () => void;
 }
 
@@ -30,6 +31,7 @@ export function TranslationEditForm({
   translationKey,
   translation,
   defaultTranslation,
+  selectedLanguageId,
   onCancel,
 }: TranslationEditFormProps) {
   const utils = trpc.useUtils();
@@ -44,6 +46,13 @@ export function TranslationEditForm({
 
   const updateTranslationMutation =
     trpc.translations.updateTranslation.useMutation({
+      onSuccess: () => {
+        utils.translations.getTranslationKeys.invalidate({ projectId });
+      },
+    });
+
+  const createTranslationMutation =
+    trpc.translations.createTranslation.useMutation({
       onSuccess: () => {
         utils.translations.getTranslationKeys.invalidate({ projectId });
       },
@@ -65,13 +74,20 @@ export function TranslationEditForm({
           });
         }
 
-        // Update translation if changed and exists
-        if (
-          translation?.id &&
-          values.translationContent !== translation.content
-        ) {
-          await updateTranslationMutation.mutateAsync({
-            translationId: translation.id,
+        // Update or create translation
+        if (translation?.id) {
+          // Update existing translation if content changed
+          if (values.translationContent !== translation.content) {
+            await updateTranslationMutation.mutateAsync({
+              translationId: translation.id,
+              content: values.translationContent,
+            });
+          }
+        } else {
+          // Create new translation
+          await createTranslationMutation.mutateAsync({
+            keyId: translationKey.id,
+            languageId: selectedLanguageId,
             content: values.translationContent,
           });
         }

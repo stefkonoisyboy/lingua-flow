@@ -200,6 +200,13 @@ export interface ITranslationsDAL {
     content: string,
     userId: string
   ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
+
+  createTranslation(
+    keyId: string,
+    languageId: string,
+    content: string,
+    userId: string
+  ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
 }
 
 // IntegrationsDAL Interface

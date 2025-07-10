@@ -108,4 +108,25 @@ export const translationsRouter = router({
         ctx.user.id
       );
     }),
+
+  createTranslation: protectedProcedure
+    .input(
+      z.object({
+        keyId: z.string(),
+        languageId: z.string(),
+        content: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const translationsService = ctx.container.resolve<ITranslationsService>(
+        DI_TOKENS.TRANSLATIONS_SERVICE
+      );
+
+      return translationsService.createTranslation(
+        input.keyId,
+        input.languageId,
+        input.content,
+        ctx.user.id
+      );
+    }),
 });

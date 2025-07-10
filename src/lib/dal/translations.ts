@@ -341,6 +341,51 @@ export class TranslationsDAL implements ITranslationsDAL {
     return data;
   }
 
+  async createTranslation(
+    keyId: string,
+    languageId: string,
+    content: string,
+    userId: string
+  ): Promise<Database["public"]["Tables"]["translations"]["Row"]> {
+    // Create the new translation
+    const { data, error } = await this.supabase
+      .from("translations")
+      .insert({
+        key_id: keyId,
+        language_id: languageId,
+        content,
+        translator_id: userId,
+        status: "approved",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Failed to create translation: ${error.message}`);
+    }
+
+    // Create initial version history entry
+    const { error: versionError } = await this.supabase
+      .from("version_history")
+      .insert({
+        translation_id: data.id,
+        content,
+        changed_by: userId,
+        version_name: "Initial translation",
+        version_number: 1,
+      });
+
+    if (versionError) {
+      throw new Error(
+        `Failed to create version history: ${versionError.message}`
+      );
+    }
+
+    return data;
+  }
+
   async createTranslationKeyWithTranslations(
     projectId: string,
     key: string,

@@ -99,6 +99,7 @@ export function TranslationsTable({
                   translationKey={key}
                   translation={translation}
                   defaultTranslation={defaultTranslation}
+                  selectedLanguageId={selectedLanguageId}
                   onCancel={handleCancelEdit}
                 />
               );
