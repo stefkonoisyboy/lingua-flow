@@ -66,6 +66,26 @@ Key Features:
   - Enhanced error handling for translation imports
   - Type-safe batch operations
 - Translation Interface
+  - Component Structure:
+    - ProjectTranslations: Main orchestrator component
+      - Manages state and data flow
+      - Handles form state with Formik and Zod validation
+      - Coordinates child components
+    - TranslationsHeader: Controls and actions
+      - Language selection dropdown
+      - Add/Save/Cancel buttons
+      - Title and description
+    - TranslationForm: New key addition
+      - Form fields with validation
+      - Error display
+      - Formik integration
+    - TranslationsTable: Data display
+      - Existing translations view
+      - Integration with form component
+      - Action buttons
+    - TranslationsPlaceholders: Empty states
+      - No language selected view
+      - No translations available view
   - Language selection dropdown for target language
   - Table-based translation management with:
     - Key name field (editable)
@@ -81,6 +101,10 @@ Key Features:
     - Separate style files for translations, tabs, and project details
     - No inline styles (sx props) for better maintainability
     - MUI theme integration for light/dark mode support
+  - Form validation with Formik and Zod
+    - Client-side validation matching server schema
+    - Proper error states and messages
+    - Type-safe form handling
 - Create/edit translation keys
 - Batch translation updates
 - Translation progress tracking

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Box, Button, Container, Typography } from "@mui/material";
+import { Container, Typography } from "@mui/material";
 import { ProjectBreadcrumbs } from "@/components/projects/project-breadcrumbs";
 import { ProjectTabs } from "@/components/projects/project-tabs";
 import { ProjectTranslations } from "@/components/projects/project-translations";
@@ -54,16 +54,6 @@ export default function ProjectDetailsPage() {
             {project?.name}
           </Typography>
         </HeaderContent>
-
-        <Box>
-          <Button
-            variant="outlined"
-            color="inherit"
-            // TODO: Implement save changes functionality
-          >
-            Save Changes
-          </Button>
-        </Box>
       </PageHeader>
 
       <TabsWrapper>
@@ -93,6 +83,7 @@ export default function ProjectDetailsPage() {
         page={page}
         totalPages={totalPages}
         onPageChange={setPage}
+        projectId={projectId}
       />
     </Container>
   );

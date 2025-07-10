@@ -1,4 +1,12 @@
-import { Box, Paper, TextareaAutosize, styled, Select } from "@mui/material";
+import {
+  Box,
+  Paper,
+  TextareaAutosize,
+  styled,
+  Select,
+  Alert,
+  Typography,
+} from "@mui/material";
 
 export const TranslationsContainer = styled(Paper)(({ theme }) => ({
   padding: theme.spacing(2),
@@ -55,27 +63,39 @@ export const StyledSelect = styled(Select)(() => ({
   minWidth: 200,
 }));
 
-export const StyledTextarea = styled(TextareaAutosize)(({ theme }) => ({
-  width: "100%",
-  minHeight: "80px",
-  padding: "8px 12px",
-  borderRadius: theme.shape.borderRadius,
-  border: `1px solid ${theme.palette.divider}`,
-  fontFamily: theme.typography.fontFamily,
-  fontSize: theme.typography.body1.fontSize,
-  resize: "vertical",
-  backgroundColor: "transparent",
-  color: theme.palette.text.primary,
-  "&:disabled": {
-    backgroundColor: theme.palette.action.disabledBackground,
-    color: theme.palette.text.disabled,
-  },
-  "&:focus": {
-    outline: "none",
-    borderColor: theme.palette.primary.main,
-    borderWidth: "2px",
-  },
-  "&::placeholder": {
-    color: theme.palette.text.secondary,
-  },
+export const StyledAlert = styled(Alert)(({ theme }) => ({
+  marginBottom: theme.spacing(2),
 }));
+
+export const ErrorText = styled(Typography)(({ theme }) => ({
+  marginTop: theme.spacing(0.5),
+}));
+
+interface StyledTextareaProps {
+  error?: boolean;
+}
+
+export const StyledTextarea = styled(TextareaAutosize)<StyledTextareaProps>(
+  ({ theme, error }) => ({
+    width: "100%",
+    minHeight: "80px",
+    padding: theme.spacing(1),
+    border: `1px solid ${
+      error ? theme.palette.error.main : theme.palette.divider
+    }`,
+    borderRadius: theme.shape.borderRadius,
+    fontFamily: theme.typography.fontFamily,
+    fontSize: theme.typography.body2.fontSize,
+    resize: "vertical",
+    "&:focus": {
+      outline: "none",
+      borderColor: error
+        ? theme.palette.error.main
+        : theme.palette.primary.main,
+    },
+    "&:disabled": {
+      background: theme.palette.action.disabledBackground,
+      cursor: "not-allowed",
+    },
+  })
+);
