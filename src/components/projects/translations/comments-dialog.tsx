@@ -26,6 +26,7 @@ import {
 } from "@/styles/projects/comments.styles";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import { useParams } from "next/navigation";
 
 interface CommentsDialogProps {
   open: boolean;
@@ -50,6 +51,7 @@ export const CommentsDialog: FC<CommentsDialogProps> = ({
   keyName,
   languageName,
 }) => {
+  const { projectId } = useParams<{ projectId: string }>();
   const utils = trpc.useUtils();
 
   const { data: comments, isLoading } = trpc.comments.getComments.useQuery(
@@ -60,6 +62,9 @@ export const CommentsDialog: FC<CommentsDialogProps> = ({
   const addCommentMutation = trpc.comments.addComment.useMutation({
     onSuccess: () => {
       utils.comments.getComments.invalidate({ translationId });
+      utils.translations.getTranslationKeys.invalidate({
+        projectId,
+      });
       formik.resetForm();
     },
   });
