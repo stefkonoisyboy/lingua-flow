@@ -118,7 +118,11 @@ export interface ITranslationsService {
   ): Promise<
     PaginatedResponse<
       TranslationKey & {
-        translations: Database["public"]["Tables"]["translations"]["Row"][];
+        translations: (Database["public"]["Tables"]["translations"]["Row"] & {
+          comments: {
+            count: number;
+          }[];
+        })[];
       }
     >
   >;

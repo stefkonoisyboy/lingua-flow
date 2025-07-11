@@ -11,6 +11,7 @@ import {
   TextField,
   IconButton,
   Tooltip,
+  Badge,
 } from "@mui/material";
 import {
   Comment as CommentIcon,
@@ -35,7 +36,11 @@ import { CommentsDialog } from "./comments-dialog";
 
 type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
-    translations: Database["public"]["Tables"]["translations"]["Row"][];
+    translations: (Database["public"]["Tables"]["translations"]["Row"] & {
+      comments: {
+        count: number;
+      }[];
+    })[];
   };
 
 interface TranslationsTableProps {
@@ -175,7 +180,13 @@ export function TranslationsTable({
                             handleCommentsClick(translation.id, key.key)
                           }
                         >
-                          <CommentIcon />
+                          <Badge
+                            badgeContent={translation.comments?.[0]?.count || 0}
+                            color="primary"
+                            invisible={!translation.comments?.[0]?.count}
+                          >
+                            <CommentIcon />
+                          </Badge>
                         </IconButton>
                       )}
                       {translation && (

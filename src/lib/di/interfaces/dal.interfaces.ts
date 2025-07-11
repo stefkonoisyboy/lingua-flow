@@ -126,7 +126,11 @@ export interface ITranslationsDAL {
     defaultLanguageId?: string
   ): Promise<{
     data: (Database["public"]["Tables"]["translation_keys"]["Row"] & {
-      translations: Database["public"]["Tables"]["translations"]["Row"][];
+      translations: (Database["public"]["Tables"]["translations"]["Row"] & {
+        comments: {
+          count: number;
+        }[];
+      })[];
     })[];
     count: number;
   }>;
