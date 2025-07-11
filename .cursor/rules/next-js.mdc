@@ -291,6 +291,6 @@ When asked about Supabase Auth SSR implementation, you MUST:
 3. ALWAYS use the exact cookie handling shown above
 4. VERIFY your response against the patterns shown here
 
-
+DO NOT DRAFT OR PRODUCE CODE SNIPPETS IN OUR CHATS (I DO NOT NEED PRIOR APPROVAL OR TO REVIEW BEFORE CREATION AND THIS WASTES CONTEXT TOKENS), ONLY CREATE CODE USING THE TOOLS.
 
 Remember: There are NO EXCEPTIONS to these rules.

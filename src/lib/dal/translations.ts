@@ -130,7 +130,8 @@ export class TranslationsDAL implements ITranslationsDAL {
           translator_id,
           reviewer_id,
           created_at,
-          updated_at
+          updated_at,
+          comments(count)
         )
       `,
         { count: "exact" }
@@ -160,7 +161,8 @@ export class TranslationsDAL implements ITranslationsDAL {
             translator_id,
             reviewer_id,
             created_at,
-            updated_at
+            updated_at,
+            comments(count)
           )
         `
         )

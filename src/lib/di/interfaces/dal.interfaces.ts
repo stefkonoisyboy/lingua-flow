@@ -126,7 +126,11 @@ export interface ITranslationsDAL {
     defaultLanguageId?: string
   ): Promise<{
     data: (Database["public"]["Tables"]["translation_keys"]["Row"] & {
-      translations: Database["public"]["Tables"]["translations"]["Row"][];
+      translations: (Database["public"]["Tables"]["translations"]["Row"] & {
+        comments: {
+          count: number;
+        }[];
+      })[];
     })[];
     count: number;
   }>;
@@ -281,4 +285,34 @@ export interface IVersionHistoryDAL {
 export interface IGitHubTokensDAL {
   getAccessToken(userId: string): Promise<string | null>;
   saveAccessToken(userId: string, accessToken: string): Promise<void>;
+}
+
+export interface ICommentsDAL {
+  getComments(translationId: string): Promise<
+    (Database["public"]["Tables"]["comments"]["Row"] & {
+      user: {
+        email: string | null;
+        full_name: string | null;
+        avatar_url: string | null;
+      };
+    })[]
+  >;
+
+  addComment(
+    translationId: string,
+    userId: string,
+    content: string
+  ): Promise<
+    Database["public"]["Tables"]["comments"]["Row"] & {
+      user: {
+        email: string | null;
+        full_name: string | null;
+        avatar_url: string | null;
+      };
+    }
+  >;
+
+  deleteComment(commentId: string): Promise<void>;
+
+  getTranslationProjectId(translationId: string): Promise<string | null>;
 }

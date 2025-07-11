@@ -1,7 +1,6 @@
 "use client";
 
 import { CircularProgress } from "@mui/material";
-import { Database } from "@/lib/types/database.types";
 import { trpc } from "@/utils/trpc";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
@@ -28,11 +27,7 @@ import {
   NoLanguageSelectedPlaceholder,
   NoTranslationsPlaceholder,
 } from "./translations/translations-placeholders";
-
-type TranslationKey =
-  Database["public"]["Tables"]["translation_keys"]["Row"] & {
-    translations: Database["public"]["Tables"]["translations"]["Row"][];
-  };
+import { TranslationKey } from "./translations/translations-table";
 
 interface ProjectTranslationsProps {
   translationKeys: TranslationKey[];
