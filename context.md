@@ -195,11 +195,41 @@ Key Features:
 - Translation memory suggestions
 - Translation status management (pending, in_progress, reviewed, approved)
 
+- Comment and Feedback System
+  - Backend Implementation:
+    - DAL Layer (CommentsDAL):
+      - `getComments`: Fetches comments for a translation with user info.
+      - `addComment`: Creates a new comment.
+      - `deleteComment`: Deletes a comment.
+      - `getTranslationProjectId`: Retrieves project ID for activity logging.
+    - Service Layer (CommentsService):
+      - Business logic for comment operations.
+      - Logs activity when a new comment is added.
+    - tRPC Endpoints:
+      - `getComments`: Protected query to fetch comments.
+      - `addComment`: Protected mutation to add a new comment.
+      - `deleteComment`: Protected mutation to delete a comment.
+      - Input validation using Zod.
+  - Frontend Implementation:
+    - CommentsDialog component:
+      - Modal dialog for viewing and adding comments.
+      - Real-time comment loading with tRPC.
+      - Form handling with Formik and Yup for validation.
+      - Loading, empty, and error states.
+      - Styled with theme-aware components.
+    - Integration with TranslationsTable:
+      - Comment icon opens the dialog for the selected translation.
+      - State management for dialog visibility.
+
 ### 5. Collaboration Flow
 
 - Invite team members
 - Role-based access control
 - Comment and feedback system
+  - Real-time discussion thread for each translation string.
+  - Users can add, view, and delete their own comments.
+  - Comments are displayed in a modal dialog with user avatars, names, and timestamps.
+  - Seamless integration with the translations table.
 - Translation review process
 - Activity tracking
 - Real-time updates
@@ -250,6 +280,7 @@ The application uses a custom DI system for better maintainability and testabili
      - IPaginationDAL
      - IVersionHistoryDAL
      - IGitHubTokensDAL
+     - ICommentsDAL
    - Service Interfaces
      - IProjectsService
      - ILanguagesService
@@ -259,6 +290,7 @@ The application uses a custom DI system for better maintainability and testabili
        - createTranslation: Creates translation with initial version
      - IIntegrationsService
      - IGitHubTokensService
+     - ICommentsService
 
 3. Implementation Pattern
    - Services depend on DAL interfaces
@@ -280,6 +312,7 @@ The application uses a custom DI system for better maintainability and testabili
    - TranslationsService: depends on TranslationsDAL, VersionHistoryDAL
    - GitHubTokensService: depends on GitHubTokensDAL
    - LanguagesService: depends on LanguagesDAL
+   - CommentsService: depends on ICommentsDAL, IActivitiesDAL
 
 6. DAL Dependencies
    - TranslationsDAL: depends on PaginationDAL, VersionHistoryDAL
