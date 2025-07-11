@@ -214,3 +214,27 @@ export interface IGitHubTokensService {
   getAccessToken(userId: string): Promise<string | null>;
   saveAccessToken(userId: string, accessToken: string): Promise<void>;
 }
+
+export interface VersionHistoryEntry {
+  id: string;
+  translationId: string;
+  versionNumber: number;
+  content: string;
+  changedBy: string;
+  versionName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IVersionHistoryService {
+  getVersionHistory(translationId: string): Promise<VersionHistoryEntry[]>;
+  getVersionHistoryForTranslations(
+    translationIds: string[]
+  ): Promise<VersionHistoryEntry[]>;
+  createVersion(
+    translationId: string,
+    content: string,
+    changedBy: string,
+    versionName: string
+  ): Promise<VersionHistoryEntry>;
+}

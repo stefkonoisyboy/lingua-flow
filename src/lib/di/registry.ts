@@ -8,11 +8,17 @@ import { ActivitiesDAL } from "../dal/activities";
 import { TranslationsDAL } from "../dal/translations";
 import { IntegrationsDAL } from "../dal/integrations";
 import { LanguagesDAL } from "../dal/languages";
+import { PaginationDAL } from "../dal/pagination";
+import { GitHubTokensDAL } from "../dal/github-tokens";
+import { VersionHistoryDAL } from "../dal/version-history";
 
 // Service imports
 import { ProjectsService } from "../services/projects.service";
+import { TranslationsService } from "../services/translations.service";
 import { LanguagesService } from "../services/languages.service";
 import { IntegrationsService } from "../services/integrations.service";
+import { GitHubTokensService } from "../services/github-tokens.service";
+import { VersionHistoryService } from "../services/version-history.service";
 
 // Interface imports
 import {
@@ -22,21 +28,17 @@ import {
   IIntegrationsDAL,
   ILanguagesDAL,
   IPaginationDAL,
-  IVersionHistoryDAL,
   IGitHubTokensDAL,
+  IVersionHistoryDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
+  ITranslationsService,
   ILanguagesService,
   IIntegrationsService,
   IGitHubTokensService,
-  ITranslationsService,
+  IVersionHistoryService,
 } from "./interfaces/service.interfaces";
-import { PaginationDAL } from "../dal/pagination";
-import { VersionHistoryDAL } from "../dal/version-history";
-import { GitHubTokensService } from "../services/github-tokens.service";
-import { GitHubTokensDAL } from "../dal/github-tokens";
-import { TranslationsService } from "../services/translations.service";
 
 // Token constants for dependency injection
 export const DI_TOKENS = {
@@ -56,6 +58,7 @@ export const DI_TOKENS = {
   INTEGRATIONS_SERVICE: "INTEGRATIONS_SERVICE",
   GITHUB_TOKENS_SERVICE: "GITHUB_TOKENS_SERVICE",
   TRANSLATIONS_SERVICE: "TRANSLATIONS_SERVICE",
+  VERSION_HISTORY_SERVICE: "VERSION_HISTORY_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -160,5 +163,10 @@ export function registerServices(
   container.register<ITranslationsService>(
     DI_TOKENS.TRANSLATIONS_SERVICE,
     (c) => new TranslationsService(c.resolve(DI_TOKENS.TRANSLATIONS_DAL))
+  );
+
+  container.register<IVersionHistoryService>(
+    DI_TOKENS.VERSION_HISTORY_SERVICE,
+    (c) => new VersionHistoryService(c.resolve(DI_TOKENS.VERSION_HISTORY_DAL))
   );
 }
