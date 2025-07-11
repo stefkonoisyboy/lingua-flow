@@ -34,7 +34,7 @@ import {
 import { VersionHistoryDialog } from "./version-history-dialog";
 import { CommentsDialog } from "./comments-dialog";
 
-type TranslationKey =
+export type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
     translations: (Database["public"]["Tables"]["translations"]["Row"] & {
       comments: {
