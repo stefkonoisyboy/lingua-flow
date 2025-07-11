@@ -51,13 +51,20 @@ export function TranslationEditForm({
     trpc.translations.updateTranslation.useMutation({
       onSuccess: () => {
         utils.translations.getTranslationKeys.invalidate({ projectId });
+        utils.versionHistory.getVersionHistory.invalidate({
+          translationId: translation?.id,
+        });
       },
     });
 
   const createTranslationMutation =
     trpc.translations.createTranslation.useMutation({
-      onSuccess: () => {
+      onSuccess: (data) => {
         utils.translations.getTranslationKeys.invalidate({ projectId });
+
+        utils.versionHistory.getVersionHistory.invalidate({
+          translationId: data.id,
+        });
       },
     });
 

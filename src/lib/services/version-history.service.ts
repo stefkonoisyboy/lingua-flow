@@ -1,47 +1,20 @@
 import { IVersionHistoryDAL } from "../di/interfaces/dal.interfaces";
-import {
-  IVersionHistoryService,
-  VersionHistoryEntry,
-} from "../di/interfaces/service.interfaces";
-import { Database } from "../types/database.types";
-
-type VersionHistoryRow = Database["public"]["Tables"]["version_history"]["Row"];
+import { IVersionHistoryService } from "../di/interfaces/service.interfaces";
 
 export class VersionHistoryService implements IVersionHistoryService {
   constructor(private versionHistoryDal: IVersionHistoryDAL) {}
 
-  private mapToVersionHistoryEntry(
-    dbEntry: VersionHistoryRow
-  ): VersionHistoryEntry {
-    return {
-      id: dbEntry.id,
-      translationId: dbEntry.translation_id,
-      versionNumber: dbEntry.version_number,
-      content: dbEntry.content,
-      changedBy: dbEntry.changed_by,
-      versionName: dbEntry.version_name,
-      createdAt: dbEntry.created_at,
-      updatedAt: dbEntry.updated_at,
-    };
+  async getVersionHistory(translationId: string) {
+    const history = this.versionHistoryDal.getVersionHistory(translationId);
+
+    return history;
   }
 
-  async getVersionHistory(
-    translationId: string
-  ): Promise<VersionHistoryEntry[]> {
-    const history = await this.versionHistoryDal.getVersionHistory(
-      translationId
-    );
-    return history.map(this.mapToVersionHistoryEntry);
-  }
-
-  async getVersionHistoryForTranslations(
-    translationIds: string[]
-  ): Promise<VersionHistoryEntry[]> {
+  async getVersionHistoryForTranslations(translationIds: string[]) {
     const history =
-      await this.versionHistoryDal.getVersionHistoryForTranslations(
-        translationIds
-      );
-    return history.map(this.mapToVersionHistoryEntry);
+      this.versionHistoryDal.getVersionHistoryForTranslations(translationIds);
+
+    return history;
   }
 
   async createVersion(
@@ -49,13 +22,14 @@ export class VersionHistoryService implements IVersionHistoryService {
     content: string,
     changedBy: string,
     versionName: string
-  ): Promise<VersionHistoryEntry> {
-    const version = await this.versionHistoryDal.createVersion(
+  ) {
+    const version = this.versionHistoryDal.createVersion(
       translationId,
       content,
       changedBy,
       versionName
     );
-    return this.mapToVersionHistoryEntry(version);
+
+    return version;
   }
 }

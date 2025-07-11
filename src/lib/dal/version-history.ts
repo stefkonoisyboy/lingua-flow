@@ -6,7 +6,11 @@ import {
 } from "../di/interfaces/dal.interfaces";
 import { DEFAULT_PAGE_SIZE } from "./pagination";
 
-type VersionHistory = Database["public"]["Tables"]["version_history"]["Row"];
+type VersionHistory = Database["public"]["Tables"]["version_history"]["Row"] & {
+  user: {
+    email: string | null;
+  };
+};
 
 export class VersionHistoryDAL implements IVersionHistoryDAL {
   constructor(
@@ -44,7 +48,14 @@ export class VersionHistoryDAL implements IVersionHistoryDAL {
         version_name: versionName,
         version_number: nextVersionNumber,
       })
-      .select()
+      .select(
+        `
+        *,
+        user:profiles!version_history_changed_by_fkey (
+          email
+        )
+      `
+      )
       .single();
 
     if (error) {
@@ -57,7 +68,14 @@ export class VersionHistoryDAL implements IVersionHistoryDAL {
   async getVersionHistory(translationId: string): Promise<VersionHistory[]> {
     const query = this.supabase
       .from("version_history")
-      .select()
+      .select(
+        `
+        *,
+        user:profiles!version_history_changed_by_fkey (
+          email
+        )
+      `
+      )
       .eq("translation_id", translationId)
       .order("version_number", { ascending: false });
 
@@ -72,7 +90,14 @@ export class VersionHistoryDAL implements IVersionHistoryDAL {
   ): Promise<VersionHistory[]> {
     const query = this.supabase
       .from("version_history")
-      .select()
+      .select(
+        `
+        *,
+        user:profiles!version_history_changed_by_fkey (
+          email
+        )
+      `
+      )
       .in("translation_id", translationIds)
       .order("version_number", { ascending: false });
 

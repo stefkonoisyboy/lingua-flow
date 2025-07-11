@@ -29,6 +29,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         onToggleTheme={toggleColorMode}
         isDarkMode={theme === "dark"}
       />
+
       <MainContent>
         <Topbar onMenuClick={handleDrawerToggle} />
         {children}

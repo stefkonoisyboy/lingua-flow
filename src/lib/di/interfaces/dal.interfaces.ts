@@ -255,15 +255,27 @@ export interface IVersionHistoryDAL {
     content: string,
     changedBy: string,
     versionName: string
-  ): Promise<Database["public"]["Tables"]["version_history"]["Row"]>;
-
-  getVersionHistory(
-    translationId: string
-  ): Promise<Database["public"]["Tables"]["version_history"]["Row"][]>;
-
-  getVersionHistoryForTranslations(
-    translationIds: string[]
-  ): Promise<Database["public"]["Tables"]["version_history"]["Row"][]>;
+  ): Promise<
+    Database["public"]["Tables"]["version_history"]["Row"] & {
+      user: {
+        email: string | null;
+      };
+    }
+  >;
+  getVersionHistory(translationId: string): Promise<
+    (Database["public"]["Tables"]["version_history"]["Row"] & {
+      user: {
+        email: string | null;
+      };
+    })[]
+  >;
+  getVersionHistoryForTranslations(translationIds: string[]): Promise<
+    (Database["public"]["Tables"]["version_history"]["Row"] & {
+      user: {
+        email: string | null;
+      };
+    })[]
+  >;
 }
 
 export interface IGitHubTokensDAL {

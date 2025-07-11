@@ -15,6 +15,7 @@ export const versionHistoryRouter = router({
         ctx.container.resolve<IVersionHistoryService>(
           DI_TOKENS.VERSION_HISTORY_SERVICE
         );
+
       return versionHistoryService.getVersionHistory(input.translationId);
     }),
 
@@ -29,6 +30,7 @@ export const versionHistoryRouter = router({
         ctx.container.resolve<IVersionHistoryService>(
           DI_TOKENS.VERSION_HISTORY_SERVICE
         );
+
       return versionHistoryService.getVersionHistoryForTranslations(
         input.translationIds
       );

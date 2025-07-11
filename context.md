@@ -157,11 +157,41 @@ Key Features:
 - Translation progress tracking
 - Export translations
 - Version history and rollback
-  - Automatic version numbering
-  - Source tracking for each version
-  - Full audit trail of changes
-  - Ability to view and restore previous versions
-  - Unique constraint on translation_id and version_number
+  - Backend Implementation:
+    - DAL Layer (VersionHistoryDAL):
+      - Efficient pagination with PaginationDAL integration
+      - Join with profiles table for user information
+      - Automatic version number incrementation
+      - Type-safe version history tracking
+      - Proper error handling and constraints
+    - Service Layer (VersionHistoryService):
+      - Type-safe version history operations
+      - Consistent interface with DAL
+      - Email lookup through profiles table
+    - Data Model:
+      - version_history table with user relationship
+      - Foreign key to profiles for user information
+      - Composite unique constraints
+      - Automatic timestamp management
+  - Frontend Implementation:
+    - VersionHistoryDialog component:
+      - Modal dialog for version history display
+      - Real-time version history loading
+      - Styled components for consistent UI:
+        - StyledDialog: Base dialog styling
+        - HistoryHeader: Header with title and close button
+        - HistoryContent: Scrollable content area
+        - VersionEntry: Individual version entry
+        - VersionMeta: Version metadata display
+        - VersionContent: Version content with proper formatting
+      - Loading and empty states
+      - User-friendly date formatting
+      - Clear version numbering
+      - Email display for change tracking
+    - Integration with TranslationsTable
+    - tRPC query integration
+    - Proper error handling
+    - Responsive design
 - Translation memory suggestions
 - Translation status management (pending, in_progress, reviewed, approved)
 
