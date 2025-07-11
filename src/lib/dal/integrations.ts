@@ -125,6 +125,6 @@ export class IntegrationsDAL implements IIntegrationsDAL {
       filePattern?: string;
     }
   ) {
-    return this.createIntegration(projectId, "github", config);
+    return await this.createIntegration(projectId, "github", config);
   }
 }

@@ -4,10 +4,8 @@ import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
 import { IIntegrationsService } from "../di/interfaces/service.interfaces";
 import {
   IProjectsService,
-  ProjectStats,
   Project,
   GitHubConfig,
-  RecentActivity,
 } from "../di/interfaces/service.interfaces";
 
 export class ProjectsService implements IProjectsService {
@@ -18,7 +16,7 @@ export class ProjectsService implements IProjectsService {
     private integrationsService: IIntegrationsService
   ) {}
 
-  async getProjectStats(userId: string): Promise<ProjectStats> {
+  async getProjectStats(userId: string) {
     const projectMembers = await this.projectsDal.getProjectsForUser(userId);
     const projectIds = projectMembers?.map((p) => p.id) || [];
 
@@ -46,7 +44,7 @@ export class ProjectsService implements IProjectsService {
     };
   }
 
-  async getProjects(userId: string): Promise<Project[]> {
+  async getProjects(userId: string) {
     const projectMembers = await this.projectsDal.getProjectsForUser(userId);
     const projectIds = projectMembers?.map((p) => p.id) || [];
 
@@ -105,7 +103,7 @@ export class ProjectsService implements IProjectsService {
     userId: string,
     defaultLanguageId: string,
     githubConfig?: GitHubConfig
-  ): Promise<Project> {
+  ) {
     const project = await this.projectsDal.createProject({
       name,
       description: description ?? null,
@@ -161,10 +159,11 @@ export class ProjectsService implements IProjectsService {
     };
   }
 
-  async getRecentActivity(userId: string): Promise<RecentActivity[]> {
+  async getRecentActivity(userId: string) {
     const userProjects = await this.projectsDal.getProjectMemberProjects(
       userId
     );
+
     const projectIds = userProjects?.map((p) => p.project_id) || [];
 
     const activities = await this.activitiesDal.getRecentActivities(projectIds);
@@ -182,18 +181,18 @@ export class ProjectsService implements IProjectsService {
   }
 
   async getAll(userId: string) {
-    return this.projectsDal.getAll(userId);
+    return await this.projectsDal.getAll(userId);
   }
 
-  async deleteProject(projectId: string): Promise<void> {
+  async deleteProject(projectId: string) {
     await this.projectsDal.deleteProject(projectId);
   }
 
   async getProjectById(projectId: string) {
-    return this.projectsDal.getProjectById(projectId);
+    return await this.projectsDal.getProjectById(projectId);
   }
 
   async getProjectLanguages(projectId: string) {
-    return this.projectsDal.getProjectLanguagesById(projectId);
+    return await this.projectsDal.getProjectLanguagesById(projectId);
   }
 }

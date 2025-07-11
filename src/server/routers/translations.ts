@@ -19,7 +19,7 @@ export const translationsRouter = router({
         DI_TOKENS.TRANSLATIONS_SERVICE
       );
 
-      return translationsService.getTranslationKeys(
+      return await translationsService.getTranslationKeys(
         input.projectId,
         input.page,
         input.pageSize,
@@ -47,7 +47,7 @@ export const translationsRouter = router({
         DI_TOKENS.TRANSLATIONS_SERVICE
       );
 
-      return translationsService.createTranslationKeyWithTranslations(
+      return await translationsService.createTranslationKeyWithTranslations(
         input.projectId,
         input.key,
         input.translations.map((t) => ({
@@ -69,7 +69,9 @@ export const translationsRouter = router({
         DI_TOKENS.TRANSLATIONS_SERVICE
       );
 
-      return translationsService.getLatestVersionNumber(input.translationId);
+      return await translationsService.getLatestVersionNumber(
+        input.translationId
+      );
     }),
 
   updateTranslationKey: protectedProcedure
@@ -84,7 +86,7 @@ export const translationsRouter = router({
         DI_TOKENS.TRANSLATIONS_SERVICE
       );
 
-      return translationsService.updateTranslationKey(
+      return await translationsService.updateTranslationKey(
         input.keyId,
         input.newKey
       );
@@ -102,7 +104,7 @@ export const translationsRouter = router({
         DI_TOKENS.TRANSLATIONS_SERVICE
       );
 
-      return translationsService.updateTranslation(
+      return await translationsService.updateTranslation(
         input.translationId,
         input.content,
         ctx.user.id
@@ -122,7 +124,7 @@ export const translationsRouter = router({
         DI_TOKENS.TRANSLATIONS_SERVICE
       );
 
-      return translationsService.createTranslation(
+      return await translationsService.createTranslation(
         input.keyId,
         input.languageId,
         input.content,

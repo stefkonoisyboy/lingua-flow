@@ -5,14 +5,18 @@ export class VersionHistoryService implements IVersionHistoryService {
   constructor(private versionHistoryDal: IVersionHistoryDAL) {}
 
   async getVersionHistory(translationId: string) {
-    const history = this.versionHistoryDal.getVersionHistory(translationId);
+    const history = await this.versionHistoryDal.getVersionHistory(
+      translationId
+    );
 
     return history;
   }
 
   async getVersionHistoryForTranslations(translationIds: string[]) {
     const history =
-      this.versionHistoryDal.getVersionHistoryForTranslations(translationIds);
+      await this.versionHistoryDal.getVersionHistoryForTranslations(
+        translationIds
+      );
 
     return history;
   }
@@ -23,7 +27,7 @@ export class VersionHistoryService implements IVersionHistoryService {
     changedBy: string,
     versionName: string
   ) {
-    const version = this.versionHistoryDal.createVersion(
+    const version = await this.versionHistoryDal.createVersion(
       translationId,
       content,
       changedBy,

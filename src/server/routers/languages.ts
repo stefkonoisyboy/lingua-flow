@@ -8,6 +8,6 @@ export const languagesRouter = router({
       DI_TOKENS.LANGUAGES_SERVICE
     );
 
-    return languagesService.getAllLanguages();
+    return await languagesService.getAllLanguages();
   }),
 });

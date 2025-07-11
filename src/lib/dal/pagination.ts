@@ -10,7 +10,7 @@ export class PaginationDAL implements IPaginationDAL {
   async fetchAllPages<T>(
     query: ReturnType<typeof this.supabase.from>,
     pageSize: number = DEFAULT_PAGE_SIZE
-  ): Promise<T[]> {
+  ) {
     let allData: T[] = [];
     let lastPage = false;
     let page = 0;

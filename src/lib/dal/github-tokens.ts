@@ -5,7 +5,7 @@ import { Database } from "../types/database.types";
 export class GitHubTokensDAL implements IGitHubTokensDAL {
   constructor(private supabase: SupabaseClient<Database>) {}
 
-  async getAccessToken(userId: string): Promise<string | null> {
+  async getAccessToken(userId: string) {
     const { data, error } = await this.supabase
       .from("github_tokens")
       .select("access_token")
@@ -19,7 +19,7 @@ export class GitHubTokensDAL implements IGitHubTokensDAL {
     return data?.access_token || null;
   }
 
-  async saveAccessToken(userId: string, accessToken: string): Promise<void> {
+  async saveAccessToken(userId: string, accessToken: string) {
     const { error } = await this.supabase
       .from("github_tokens")
       .upsert({ user_id: userId, access_token: accessToken });

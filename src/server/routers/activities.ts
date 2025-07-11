@@ -8,6 +8,6 @@ export const activitiesRouter = router({
       DI_TOKENS.PROJECTS_SERVICE
     );
 
-    return projectsService.getRecentActivity(ctx.user.id);
+    return await projectsService.getRecentActivity(ctx.user.id);
   }),
 });

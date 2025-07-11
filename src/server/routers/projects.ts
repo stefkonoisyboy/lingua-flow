@@ -18,7 +18,7 @@ export const projectsRouter = router({
         DI_TOKENS.PROJECTS_SERVICE
       );
 
-      return projectsService.getProjectById(input.projectId);
+      return await projectsService.getProjectById(input.projectId);
     }),
 
   getProjectLanguages: protectedProcedure
@@ -28,7 +28,7 @@ export const projectsRouter = router({
         DI_TOKENS.PROJECTS_SERVICE
       );
 
-      return projectsService.getProjectLanguages(input.projectId);
+      return await projectsService.getProjectLanguages(input.projectId);
     }),
 
   getStats: protectedProcedure.query(async ({ ctx }) => {
@@ -36,7 +36,7 @@ export const projectsRouter = router({
       DI_TOKENS.PROJECTS_SERVICE
     );
 
-    return projectsService.getProjectStats(ctx.user.id);
+    return await projectsService.getProjectStats(ctx.user.id);
   }),
 
   getProjects: protectedProcedure.query(async ({ ctx }) => {
@@ -44,7 +44,7 @@ export const projectsRouter = router({
       DI_TOKENS.PROJECTS_SERVICE
     );
 
-    return projectsService.getProjects(ctx.user.id);
+    return await projectsService.getProjects(ctx.user.id);
   }),
 
   createProject: protectedProcedure
@@ -77,7 +77,7 @@ export const projectsRouter = router({
       DI_TOKENS.PROJECTS_SERVICE
     );
 
-    return projectsService.getAll(ctx.user.id);
+    return await projectsService.getAll(ctx.user.id);
   }),
 
   deleteProject: protectedProcedure

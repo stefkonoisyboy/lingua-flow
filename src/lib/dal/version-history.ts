@@ -65,7 +65,7 @@ export class VersionHistoryDAL implements IVersionHistoryDAL {
     return data;
   }
 
-  async getVersionHistory(translationId: string): Promise<VersionHistory[]> {
+  async getVersionHistory(translationId: string) {
     const query = this.supabase
       .from("version_history")
       .select(
@@ -79,15 +79,13 @@ export class VersionHistoryDAL implements IVersionHistoryDAL {
       .eq("translation_id", translationId)
       .order("version_number", { ascending: false });
 
-    return this.paginationDal.fetchAllPages<VersionHistory>(
+    return await this.paginationDal.fetchAllPages<VersionHistory>(
       query,
       DEFAULT_PAGE_SIZE
     );
   }
 
-  async getVersionHistoryForTranslations(
-    translationIds: string[]
-  ): Promise<VersionHistory[]> {
+  async getVersionHistoryForTranslations(translationIds: string[]) {
     const query = this.supabase
       .from("version_history")
       .select(
@@ -101,7 +99,7 @@ export class VersionHistoryDAL implements IVersionHistoryDAL {
       .in("translation_id", translationIds)
       .order("version_number", { ascending: false });
 
-    return this.paginationDal.fetchAllPages<VersionHistory>(
+    return await this.paginationDal.fetchAllPages<VersionHistory>(
       query,
       DEFAULT_PAGE_SIZE
     );

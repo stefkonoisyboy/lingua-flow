@@ -16,7 +16,7 @@ export const versionHistoryRouter = router({
           DI_TOKENS.VERSION_HISTORY_SERVICE
         );
 
-      return versionHistoryService.getVersionHistory(input.translationId);
+      return await versionHistoryService.getVersionHistory(input.translationId);
     }),
 
   getVersionHistoryForTranslations: protectedProcedure
@@ -31,7 +31,7 @@ export const versionHistoryRouter = router({
           DI_TOKENS.VERSION_HISTORY_SERVICE
         );
 
-      return versionHistoryService.getVersionHistoryForTranslations(
+      return await versionHistoryService.getVersionHistoryForTranslations(
         input.translationIds
       );
     }),

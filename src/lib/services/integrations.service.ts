@@ -1,9 +1,4 @@
-import {
-  GitHubService,
-  Repository,
-  Branch,
-  TranslationFile,
-} from "./github.service";
+import { GitHubService, TranslationFile } from "./github.service";
 import { IIntegrationsDAL } from "../di/interfaces/dal.interfaces";
 import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
 import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
@@ -41,21 +36,17 @@ export class IntegrationsService implements IIntegrationsService {
   }
 
   async getProjectIntegration(projectId: string) {
-    return this.integrationsDal.getProjectIntegration(projectId);
+    return await this.integrationsDal.getProjectIntegration(projectId);
   }
 
-  async listRepositories(accessToken: string): Promise<Repository[]> {
+  async listRepositories(accessToken: string) {
     const githubService = new GitHubService(accessToken);
-    return githubService.listRepositories();
+    return await githubService.listRepositories();
   }
 
-  async listBranches(
-    accessToken: string,
-    owner: string,
-    repo: string
-  ): Promise<Branch[]> {
+  async listBranches(accessToken: string, owner: string, repo: string) {
     const githubService = new GitHubService(accessToken);
-    return githubService.listBranches(`${owner}/${repo}`);
+    return await githubService.listBranches(`${owner}/${repo}`);
   }
 
   async importTranslations(
@@ -64,7 +55,7 @@ export class IntegrationsService implements IIntegrationsService {
     repo: string,
     branch: string,
     files: TranslationFile[]
-  ): Promise<{ [key: string]: string }> {
+  ) {
     const githubService = new GitHubService(accessToken);
     const translations: { [key: string]: string } = {};
 
@@ -86,7 +77,10 @@ export class IntegrationsService implements IIntegrationsService {
     integrationId: string,
     config: Partial<IntegrationConfig>
   ) {
-    return this.integrationsDal.updateIntegrationConfig(integrationId, config);
+    return await this.integrationsDal.updateIntegrationConfig(
+      integrationId,
+      config
+    );
   }
 
   async updateIntegrationStatus(
@@ -94,7 +88,7 @@ export class IntegrationsService implements IIntegrationsService {
     isConnected: boolean,
     lastSyncedAt?: string
   ) {
-    return this.integrationsDal.updateIntegrationStatus(
+    return await this.integrationsDal.updateIntegrationStatus(
       integrationId,
       isConnected,
       lastSyncedAt
@@ -109,7 +103,7 @@ export class IntegrationsService implements IIntegrationsService {
     content: string,
     filePath: string,
     fileType: string
-  ): ParsedTranslation[] {
+  ) {
     const translations: ParsedTranslation[] = [];
 
     try {
