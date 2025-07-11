@@ -11,6 +11,7 @@ import { LanguagesDAL } from "../dal/languages";
 import { PaginationDAL } from "../dal/pagination";
 import { GitHubTokensDAL } from "../dal/github-tokens";
 import { VersionHistoryDAL } from "../dal/version-history";
+import { CommentsDAL } from "../dal/comments";
 
 // Service imports
 import { ProjectsService } from "../services/projects.service";
@@ -19,6 +20,7 @@ import { LanguagesService } from "../services/languages.service";
 import { IntegrationsService } from "../services/integrations.service";
 import { GitHubTokensService } from "../services/github-tokens.service";
 import { VersionHistoryService } from "../services/version-history.service";
+import { CommentsService } from "../services/comments.service";
 
 // Interface imports
 import {
@@ -30,6 +32,7 @@ import {
   IPaginationDAL,
   IGitHubTokensDAL,
   IVersionHistoryDAL,
+  ICommentsDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
@@ -38,6 +41,7 @@ import {
   IIntegrationsService,
   IGitHubTokensService,
   IVersionHistoryService,
+  ICommentsService,
 } from "./interfaces/service.interfaces";
 
 // Token constants for dependency injection
@@ -51,6 +55,7 @@ export const DI_TOKENS = {
   VERSION_HISTORY_DAL: "VERSION_HISTORY_DAL",
   PAGINATION_DAL: "PAGINATION_DAL",
   GITHUB_TOKENS_DAL: "GITHUB_TOKENS_DAL",
+  COMMENTS_DAL: "COMMENTS_DAL",
 
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
@@ -59,6 +64,7 @@ export const DI_TOKENS = {
   GITHUB_TOKENS_SERVICE: "GITHUB_TOKENS_SERVICE",
   TRANSLATIONS_SERVICE: "TRANSLATIONS_SERVICE",
   VERSION_HISTORY_SERVICE: "VERSION_HISTORY_SERVICE",
+  COMMENTS_SERVICE: "COMMENTS_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -128,6 +134,11 @@ export function registerServices(
     (c) => new GitHubTokensDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
+  container.register<ICommentsDAL>(
+    DI_TOKENS.COMMENTS_DAL,
+    (c) => new CommentsDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
   // Register services
   container.register<ILanguagesService>(
     DI_TOKENS.LANGUAGES_SERVICE,
@@ -168,5 +179,14 @@ export function registerServices(
   container.register<IVersionHistoryService>(
     DI_TOKENS.VERSION_HISTORY_SERVICE,
     (c) => new VersionHistoryService(c.resolve(DI_TOKENS.VERSION_HISTORY_DAL))
+  );
+
+  container.register<ICommentsService>(
+    DI_TOKENS.COMMENTS_SERVICE,
+    (c) =>
+      new CommentsService(
+        c.resolve(DI_TOKENS.COMMENTS_DAL),
+        c.resolve(DI_TOKENS.ACTIVITIES_DAL)
+      )
   );
 }

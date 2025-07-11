@@ -1,14 +1,5 @@
 import { IActivitiesDAL, ICommentsDAL } from "../di/interfaces/dal.interfaces";
 import { ICommentsService } from "../di/interfaces/service.interfaces";
-import { Database } from "../types/database.types";
-
-type CommentWithUser = Database["public"]["Tables"]["comments"]["Row"] & {
-  user: {
-    email: string | null;
-    full_name: string | null;
-    avatar_url: string | null;
-  };
-};
 
 export class CommentsService implements ICommentsService {
   constructor(
@@ -16,15 +7,11 @@ export class CommentsService implements ICommentsService {
     private activitiesDAL: IActivitiesDAL
   ) {}
 
-  async getComments(translationId: string): Promise<CommentWithUser[]> {
-    return this.commentsDAL.getComments(translationId);
+  async getComments(translationId: string) {
+    return await this.commentsDAL.getComments(translationId);
   }
 
-  async addComment(
-    translationId: string,
-    userId: string,
-    content: string
-  ): Promise<CommentWithUser> {
+  async addComment(translationId: string, userId: string, content: string) {
     const comment = await this.commentsDAL.addComment(
       translationId,
       userId,
@@ -48,7 +35,7 @@ export class CommentsService implements ICommentsService {
     return comment;
   }
 
-  async deleteComment(commentId: string): Promise<void> {
+  async deleteComment(commentId: string) {
     await this.commentsDAL.deleteComment(commentId);
   }
 }
