@@ -25,6 +25,7 @@ import {
   StyledDialogTitle,
   StyledCloseButton,
   StyledVersionChip,
+  KeyName,
 } from "@/styles/projects/version-history.styles";
 
 interface VersionHistoryDialogProps {
@@ -32,6 +33,7 @@ interface VersionHistoryDialogProps {
   onClose: () => void;
   translationId: string;
   keyName: string;
+  languageName: string;
 }
 
 export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
@@ -39,6 +41,7 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
   onClose,
   translationId,
   keyName,
+  languageName,
 }) => {
   const { data: versions, isLoading } =
     trpc.versionHistory.getVersionHistory.useQuery(
@@ -51,10 +54,12 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
       <HistoryHeader>
         <Box>
           <StyledDialogTitle>
-            <DialogTitle>Version History</DialogTitle>
+            <DialogTitle>
+              Version History: <KeyName>{keyName}</KeyName>
+            </DialogTitle>
           </StyledDialogTitle>
           <Typography variant="subtitle1" color="textSecondary">
-            {keyName}
+            Review the change history for this translation in {languageName}.
           </Typography>
         </Box>
         <StyledCloseButton onClick={onClose} size="small">

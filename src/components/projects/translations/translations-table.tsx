@@ -190,6 +190,7 @@ export function TranslationsTable({
           onClose={() => setHistoryDialogOpen(false)}
           translationId={selectedTranslationId}
           keyName={selectedKeyName}
+          languageName={languageName}
         />
       )}
     </>
