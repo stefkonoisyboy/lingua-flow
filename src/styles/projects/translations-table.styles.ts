@@ -6,3 +6,9 @@ export const ActionButtons = styled(Box)(({ theme }) => ({
   gap: theme.spacing(1),
   justifyContent: "center",
 }));
+
+export const ErrorMessage = styled(Box)(({ theme }) => ({
+  color: theme.palette.error.main,
+  fontSize: "0.75rem",
+  marginTop: theme.spacing(0.5),
+}));

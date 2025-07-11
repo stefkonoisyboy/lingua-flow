@@ -83,6 +83,8 @@ Key Features:
       - Existing translations view
       - Integration with form component
       - Action buttons
+      - Error messages using styled components
+      - Form validation feedback with consistent theme styling
     - TranslationsPlaceholders: Empty states
       - No language selected view
       - No translations available view
@@ -92,6 +94,7 @@ Key Features:
     - Source text display (read-only)
     - Translation content (editable with auto-resizing textarea)
     - Action buttons for comments
+    - Error messages using theme-consistent styling
   - Placeholder states for:
     - No language selected
     - No translation keys available
@@ -101,11 +104,55 @@ Key Features:
     - Separate style files for translations, tabs, and project details
     - No inline styles (sx props) for better maintainability
     - MUI theme integration for light/dark mode support
+    - Error messages using theme colors and spacing
+    - Consistent typography and spacing through theme values
   - Form validation with Formik and Zod
     - Client-side validation matching server schema
     - Proper error states and messages
     - Type-safe form handling
+    - Theme-consistent error display
 - Create/edit translation keys
+  - Backend Implementation:
+    - DAL Layer (TranslationsDAL):
+      - updateTranslationKey: Updates key name with version tracking
+      - updateTranslation: Updates translation content with version history
+      - createTranslation: Creates new translation with initial version
+      - Automatic updated_at timestamp management
+      - Proper error handling and constraints
+      - Batch operations support with transaction handling
+      - Composite unique constraints (project_id, key)
+      - Efficient bulk upsert operations
+    - Service Layer (TranslationsService):
+      - Business logic for translation operations
+      - Version history management
+      - Data validation and sanitization
+      - Transaction handling for atomic operations
+      - Batch processing capabilities
+      - Deduplication handling
+      - Source tracking management
+    - tRPC Endpoints:
+      - updateTranslationKey: Updates key names
+      - updateTranslation: Updates existing translations
+      - createTranslation: Creates new translations
+      - Automatic cache invalidation
+      - Type-safe mutation responses
+      - Input validation using Zod schemas
+      - Error handling with proper error codes
+      - Batch operation support
+    - Version History Tracking:
+      - Automatic version number incrementation
+      - Stores previous content for rollback
+      - Tracks user making the change
+      - Maintains complete audit trail
+      - Unique constraint on translation_id and version_number
+      - Batch version history creation
+      - Source tracking (repository, file path, branch)
+  - Frontend Implementation:
+    - Form handling with Formik
+    - Validation using Yup schema
+    - Optimistic updates with tRPC
+    - Error handling and display
+    - Loading states during mutations
 - Batch translation updates
 - Translation progress tracking
 - Export translations
@@ -164,6 +211,11 @@ The application uses a custom DI system for better maintainability and testabili
      - IProjectsDAL
      - IActivitiesDAL
      - ITranslationsDAL
+       - getTranslationKeys: Fetches translation keys with translations
+       - updateTranslationKey: Updates key name
+       - updateTranslation: Updates translation content
+       - createTranslation: Creates new translation
+       - createVersionHistory: Tracks version history
      - IIntegrationsDAL
      - IPaginationDAL
      - IVersionHistoryDAL
@@ -171,6 +223,10 @@ The application uses a custom DI system for better maintainability and testabili
    - Service Interfaces
      - IProjectsService
      - ILanguagesService
+     - ITranslationsService
+       - updateTranslationKey: Updates key with validation
+       - updateTranslation: Updates translation with version tracking
+       - createTranslation: Creates translation with initial version
      - IIntegrationsService
      - IGitHubTokensService
 
@@ -191,11 +247,12 @@ The application uses a custom DI system for better maintainability and testabili
 5. Service Dependencies
    - ProjectsService: depends on ProjectsDAL, ActivitiesDAL, TranslationsDAL, IntegrationsService
    - IntegrationsService: depends on IntegrationsDAL, TranslationsDAL, ProjectsDAL
+   - TranslationsService: depends on TranslationsDAL, VersionHistoryDAL
    - GitHubTokensService: depends on GitHubTokensDAL
    - LanguagesService: depends on LanguagesDAL
 
 6. DAL Dependencies
-   - TranslationsDAL: depends on PaginationDAL
+   - TranslationsDAL: depends on PaginationDAL, VersionHistoryDAL
    - VersionHistoryDAL: depends on PaginationDAL
    - Other DALs: depend only on Supabase client
 

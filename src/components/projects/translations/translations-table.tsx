@@ -19,6 +19,12 @@ import { TranslationForm } from "./translation-form";
 import { FormikProps } from "formik";
 import { useState } from "react";
 import { TranslationEditForm } from "./translation-edit-form";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  cancelEditing,
+  selectIsAddingKey,
+  startEditing,
+} from "@/store/slices/translations.slice";
 
 type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
@@ -31,7 +37,6 @@ interface TranslationsTableProps {
   languageName: string;
   defaultLanguageId: string;
   selectedLanguageId: string;
-  isAddingKey: boolean;
   formik: FormikProps<{
     projectId: string;
     key: string;
@@ -47,18 +52,21 @@ export function TranslationsTable({
   languageName,
   defaultLanguageId,
   selectedLanguageId,
-  isAddingKey,
   formik,
   onUpdateTranslation,
 }: TranslationsTableProps) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+  const isAddingKey = useAppSelector(selectIsAddingKey);
 
   const handleEditClick = (key: TranslationKey) => {
     setEditingKey(key.id);
+    dispatch(startEditing());
   };
 
   const handleCancelEdit = () => {
     setEditingKey(null);
+    dispatch(cancelEditing());
   };
 
   return (

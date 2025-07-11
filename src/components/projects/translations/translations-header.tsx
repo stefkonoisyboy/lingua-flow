@@ -11,12 +11,16 @@ import {
   ControlsContainer,
   StyledSelect,
 } from "@/styles/projects/project-translations.styles";
+import { useAppSelector } from "@/store/hooks";
+import {
+  selectIsAddingKey,
+  selectIsEditing,
+} from "@/store/slices/translations.slice";
 
 interface TranslationsHeaderProps {
   selectedLanguageId: string;
   onLanguageChange: (languageId: string) => void;
   languages: { language_id: string; languages: { name: string } }[];
-  isAddingKey: boolean;
   onStartAddingKey: () => void;
   onCancelAddingKey: () => void;
   onSave: () => void;
@@ -28,13 +32,15 @@ export function TranslationsHeader({
   selectedLanguageId,
   onLanguageChange,
   languages,
-  isAddingKey,
   onStartAddingKey,
   onCancelAddingKey,
   onSave,
   isSaveDisabled,
   isSubmitting,
 }: TranslationsHeaderProps) {
+  const isAddingKey = useAppSelector(selectIsAddingKey);
+  const isEditing = useAppSelector(selectIsEditing);
+
   return (
     <HeaderContainer>
       <Box>
@@ -51,6 +57,7 @@ export function TranslationsHeader({
           value={selectedLanguageId}
           onChange={(e) => onLanguageChange(e.target.value as string)}
           displayEmpty
+          disabled={isEditing}
         >
           <MenuItem value="" disabled>
             Select Language
@@ -61,6 +68,7 @@ export function TranslationsHeader({
             </MenuItem>
           ))}
         </StyledSelect>
+
         {isAddingKey ? (
           <>
             <Button
@@ -84,7 +92,7 @@ export function TranslationsHeader({
           </>
         ) : (
           <Button
-            disabled={!selectedLanguageId}
+            disabled={!selectedLanguageId || isEditing}
             variant="contained"
             startIcon={<AddIcon />}
             onClick={onStartAddingKey}

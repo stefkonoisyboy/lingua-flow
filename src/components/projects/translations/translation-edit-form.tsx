@@ -1,7 +1,10 @@
 import { TableRow, TableCell, IconButton, TextField } from "@mui/material";
 import { Save as SaveIcon, Cancel as CancelIcon } from "@mui/icons-material";
 import { StyledTextarea } from "@/styles/projects/project-translations.styles";
-import { ActionButtons } from "@/styles/projects/translations-table.styles";
+import {
+  ActionButtons,
+  ErrorMessage,
+} from "@/styles/projects/translations-table.styles";
 import { Database } from "@/lib/types/database.types";
 import { useFormik } from "formik";
 import { trpc } from "@/utils/trpc";
@@ -139,11 +142,7 @@ export function TranslationEditForm({
         />
         {formik.touched.translationContent &&
           formik.errors.translationContent && (
-            <div
-              style={{ color: "red", fontSize: "0.75rem", marginTop: "3px" }}
-            >
-              {formik.errors.translationContent}
-            </div>
+            <ErrorMessage>{formik.errors.translationContent}</ErrorMessage>
           )}
       </TableCell>
       <TableCell align="center">
