@@ -31,6 +31,7 @@ import {
   startEditing,
 } from "@/store/slices/translations.slice";
 import { VersionHistoryDialog } from "./version-history-dialog";
+import { CommentsDialog } from "./comments-dialog";
 
 type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
@@ -63,6 +64,7 @@ export function TranslationsTable({
 }: TranslationsTableProps) {
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+  const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
   const [selectedTranslationId, setSelectedTranslationId] = useState<
     string | null
   >(null);
@@ -84,6 +86,12 @@ export function TranslationsTable({
     setSelectedTranslationId(translationId);
     setSelectedKeyName(key);
     setHistoryDialogOpen(true);
+  };
+
+  const handleCommentsClick = (translationId: string, key: string) => {
+    setSelectedTranslationId(translationId);
+    setSelectedKeyName(key);
+    setCommentsDialogOpen(true);
   };
 
   return (
@@ -161,9 +169,15 @@ export function TranslationsTable({
                       <IconButton onClick={() => handleEditClick(key)}>
                         <EditIcon />
                       </IconButton>
-                      <IconButton>
-                        <CommentIcon />
-                      </IconButton>
+                      {translation && (
+                        <IconButton
+                          onClick={() =>
+                            handleCommentsClick(translation.id, key.key)
+                          }
+                        >
+                          <CommentIcon />
+                        </IconButton>
+                      )}
                       {translation && (
                         <Tooltip title="View version history">
                           <IconButton
@@ -185,13 +199,22 @@ export function TranslationsTable({
       </TableContainer>
 
       {selectedTranslationId && selectedKeyName && (
-        <VersionHistoryDialog
-          open={historyDialogOpen}
-          onClose={() => setHistoryDialogOpen(false)}
-          translationId={selectedTranslationId}
-          keyName={selectedKeyName}
-          languageName={languageName}
-        />
+        <>
+          <VersionHistoryDialog
+            open={historyDialogOpen}
+            onClose={() => setHistoryDialogOpen(false)}
+            translationId={selectedTranslationId}
+            keyName={selectedKeyName}
+            languageName={languageName}
+          />
+          <CommentsDialog
+            open={commentsDialogOpen}
+            onClose={() => setCommentsDialogOpen(false)}
+            translationId={selectedTranslationId}
+            keyName={selectedKeyName}
+            languageName={languageName}
+          />
+        </>
       )}
     </>
   );
