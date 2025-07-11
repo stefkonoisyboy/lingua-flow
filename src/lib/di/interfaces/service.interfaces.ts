@@ -138,6 +138,21 @@ export interface ITranslationsService {
   }>;
 
   getLatestVersionNumber(translationId: string): Promise<number>;
+
+  updateTranslationKey(keyId: string, newKey: string): Promise<TranslationKey>;
+
+  updateTranslation(
+    translationId: string,
+    content: string,
+    userId: string
+  ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
+
+  createTranslation(
+    keyId: string,
+    languageId: string,
+    content: string,
+    userId: string
+  ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
 }
 
 // Languages service interface

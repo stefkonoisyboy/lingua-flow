@@ -189,6 +189,24 @@ export interface ITranslationsDAL {
     translationKey: TranslationKey;
     translations: Translation[];
   }>;
+
+  updateTranslationKey(
+    keyId: string,
+    newKey: string
+  ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"]>;
+
+  updateTranslation(
+    translationId: string,
+    content: string,
+    userId: string
+  ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
+
+  createTranslation(
+    keyId: string,
+    languageId: string,
+    content: string,
+    userId: string
+  ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
 }
 
 // IntegrationsDAL Interface

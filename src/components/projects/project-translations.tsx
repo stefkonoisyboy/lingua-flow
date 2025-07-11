@@ -178,7 +178,6 @@ export function ProjectTranslations({
         selectedLanguageId={selectedLanguageId}
         onLanguageChange={onLanguageChange}
         languages={languages}
-        isAddingKey={isAddingKey}
         onStartAddingKey={handleStartAddingKey}
         onCancelAddingKey={handleCancelAddingKey}
         onSave={formik.handleSubmit}
@@ -200,7 +199,6 @@ export function ProjectTranslations({
             languageName={languageName}
             defaultLanguageId={defaultLanguageId}
             selectedLanguageId={selectedLanguageId}
-            isAddingKey={isAddingKey}
             formik={formik}
             onUpdateTranslation={handleUpdateTranslation}
           />

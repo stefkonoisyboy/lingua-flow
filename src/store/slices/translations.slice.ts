@@ -9,6 +9,7 @@ interface NewTranslationKey {
 interface TranslationsState {
   newKey: NewTranslationKey | null;
   isAddingKey: boolean;
+  isEditing: boolean;
   error: string | null;
   hasUnsavedChanges: boolean;
 }
@@ -16,6 +17,7 @@ interface TranslationsState {
 const initialState: TranslationsState = {
   newKey: null,
   isAddingKey: false,
+  isEditing: false,
   error: null,
   hasUnsavedChanges: false,
 };
@@ -26,6 +28,7 @@ export const translationsSlice = createSlice({
   reducers: {
     startAddingKey: (state) => {
       state.isAddingKey = true;
+
       state.newKey = {
         key: "",
         translations: {},
@@ -61,6 +64,12 @@ export const translationsSlice = createSlice({
     clearUnsavedChanges: (state) => {
       state.hasUnsavedChanges = false;
     },
+    startEditing: (state) => {
+      state.isEditing = true;
+    },
+    cancelEditing: (state) => {
+      state.isEditing = false;
+    },
   },
 });
 
@@ -71,11 +80,16 @@ export const {
   updateNewTranslation,
   setError,
   clearUnsavedChanges,
+  startEditing,
+  cancelEditing,
 } = translationsSlice.actions;
 
 // Selectors
 export const selectIsAddingKey = (state: { translations: TranslationsState }) =>
   state.translations.isAddingKey;
+
+export const selectIsEditing = (state: { translations: TranslationsState }) =>
+  state.translations.isEditing;
 
 export const selectNewKey = (state: { translations: TranslationsState }) =>
   state.translations.newKey;

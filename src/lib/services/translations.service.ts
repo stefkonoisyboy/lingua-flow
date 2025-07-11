@@ -76,4 +76,34 @@ export class TranslationsService implements ITranslationsService {
   async getLatestVersionNumber(translationId: string): Promise<number> {
     return this.translationsDAL.getLatestVersionNumber(translationId);
   }
+
+  async updateTranslationKey(keyId: string, newKey: string) {
+    return this.translationsDAL.updateTranslationKey(keyId, newKey);
+  }
+
+  async updateTranslation(
+    translationId: string,
+    content: string,
+    userId: string
+  ) {
+    return this.translationsDAL.updateTranslation(
+      translationId,
+      content,
+      userId
+    );
+  }
+
+  async createTranslation(
+    keyId: string,
+    languageId: string,
+    content: string,
+    userId: string
+  ) {
+    return this.translationsDAL.createTranslation(
+      keyId,
+      languageId,
+      content,
+      userId
+    );
+  }
 }
