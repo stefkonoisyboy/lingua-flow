@@ -1,13 +1,10 @@
 import { ILanguagesDAL } from "../di/interfaces/dal.interfaces";
-import {
-  ILanguagesService,
-  Language,
-} from "../di/interfaces/service.interfaces";
+import { ILanguagesService } from "../di/interfaces/service.interfaces";
 
 export class LanguagesService implements ILanguagesService {
   constructor(private languagesDal: ILanguagesDAL) {}
 
-  async getAllLanguages(): Promise<Language[]> {
+  async getAllLanguages() {
     const languages = await this.languagesDal.getAllLanguages();
 
     return languages.map((lang) => ({

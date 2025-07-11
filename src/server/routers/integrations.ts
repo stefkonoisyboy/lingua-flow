@@ -22,6 +22,7 @@ export const integrationsRouter = router({
 
   getGitHubAuthUrl: protectedProcedure.query(() => {
     const state = Math.random().toString(36).substring(7);
+
     return {
       url: `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&scope=repo&state=${state}`,
       state,
@@ -43,7 +44,7 @@ export const integrationsRouter = router({
       throw new Error("GitHub not connected");
     }
 
-    return integrationsService.listRepositories(accessToken);
+    return await integrationsService.listRepositories(accessToken);
   }),
 
   listBranches: protectedProcedure
@@ -64,7 +65,7 @@ export const integrationsRouter = router({
       }
 
       const [owner, repo] = input.repository.split("/");
-      return integrationsService.listBranches(accessToken, owner, repo);
+      return await integrationsService.listBranches(accessToken, owner, repo);
     }),
 
   findTranslationFiles: protectedProcedure
@@ -96,7 +97,7 @@ export const integrationsRouter = router({
           }`
         : input.filePattern;
 
-      return githubService.findTranslationFiles(
+      return await githubService.findTranslationFiles(
         input.repository,
         input.branch,
         fullPattern
@@ -133,7 +134,7 @@ export const integrationsRouter = router({
         throw new Error("GitHub not connected");
       }
 
-      await integrationsService.importProjectTranslations(
+      return await integrationsService.importProjectTranslations(
         input.projectId,
         accessToken,
         input.repository,

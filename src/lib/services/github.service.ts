@@ -44,6 +44,7 @@ export class GitHubService {
 
   async listBranches(repository: string): Promise<Branch[]> {
     const [owner, repo] = repository.split("/");
+
     const { data } = await this.octokit.repos.listBranches({
       owner,
       repo,

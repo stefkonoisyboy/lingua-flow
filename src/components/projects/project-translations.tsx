@@ -83,10 +83,18 @@ export function ProjectTranslations({
   // tRPC mutation
   const createKeyMutation =
     trpc.translations.createTranslationKeyWithTranslations.useMutation({
-      onSuccess: () => {
+      onSuccess: (data) => {
         utils.translations.getTranslationKeys.invalidate({ projectId });
+
+        data.translations.forEach((translation) => {
+          utils.versionHistory.getVersionHistory.invalidate({
+            translationId: translation.id,
+          });
+        });
+
         dispatch(clearUnsavedChanges());
         dispatch(cancelAddingKey());
+
         formik.resetForm();
       },
       onError: (error) => {

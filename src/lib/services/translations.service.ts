@@ -1,9 +1,5 @@
 import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
-import {
-  ITranslationsService,
-  PaginatedResponse,
-} from "../di/interfaces/service.interfaces";
-import { Database } from "../types/database.types";
+import { ITranslationsService } from "../di/interfaces/service.interfaces";
 
 const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_PAGE = 1;
@@ -17,13 +13,7 @@ export class TranslationsService implements ITranslationsService {
     pageSize = DEFAULT_PAGE_SIZE,
     languageId?: string,
     defaultLanguageId?: string
-  ): Promise<
-    PaginatedResponse<
-      Database["public"]["Tables"]["translation_keys"]["Row"] & {
-        translations: Database["public"]["Tables"]["translations"]["Row"][];
-      }
-    >
-  > {
+  ) {
     const from = (page - 1) * pageSize;
     const to = from + pageSize - 1;
 
@@ -65,7 +55,7 @@ export class TranslationsService implements ITranslationsService {
     }
 
     // Create the key and translations
-    return this.translationsDAL.createTranslationKeyWithTranslations(
+    return await this.translationsDAL.createTranslationKeyWithTranslations(
       projectId,
       key,
       translations,
@@ -73,12 +63,12 @@ export class TranslationsService implements ITranslationsService {
     );
   }
 
-  async getLatestVersionNumber(translationId: string): Promise<number> {
-    return this.translationsDAL.getLatestVersionNumber(translationId);
+  async getLatestVersionNumber(translationId: string) {
+    return await this.translationsDAL.getLatestVersionNumber(translationId);
   }
 
   async updateTranslationKey(keyId: string, newKey: string) {
-    return this.translationsDAL.updateTranslationKey(keyId, newKey);
+    return await this.translationsDAL.updateTranslationKey(keyId, newKey);
   }
 
   async updateTranslation(
@@ -86,7 +76,7 @@ export class TranslationsService implements ITranslationsService {
     content: string,
     userId: string
   ) {
-    return this.translationsDAL.updateTranslation(
+    return await this.translationsDAL.updateTranslation(
       translationId,
       content,
       userId
@@ -99,7 +89,7 @@ export class TranslationsService implements ITranslationsService {
     content: string,
     userId: string
   ) {
-    return this.translationsDAL.createTranslation(
+    return await this.translationsDAL.createTranslation(
       keyId,
       languageId,
       content,

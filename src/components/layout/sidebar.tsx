@@ -71,7 +71,9 @@ const Sidebar = ({
           <NavItem key={item.href}>
             <StyledLink href={item.href}>
               <NavLink
-                active={pathname === item.href}
+                active={
+                  pathname === item.href || pathname.startsWith(item.href)
+                }
                 onClick={isMobile ? onMobileClose : undefined}
               >
                 <NavIcon>{item.icon}</NavIcon>

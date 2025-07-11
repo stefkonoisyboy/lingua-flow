@@ -74,21 +74,19 @@ export class TranslationsDAL implements ITranslationsDAL {
     return data;
   }
 
-  async getProjectTranslationKeys(
-    projectIds: string[]
-  ): Promise<TranslationKey[]> {
+  async getProjectTranslationKeys(projectIds: string[]) {
     const query = this.supabase
       .from("translation_keys")
       .select()
       .in("project_id", projectIds);
 
-    return this.paginationDal.fetchAllPages<TranslationKey>(
+    return await this.paginationDal.fetchAllPages<TranslationKey>(
       query,
       DEFAULT_PAGE_SIZE
     );
   }
 
-  async getProjectTranslations(projectIds: string[]): Promise<Translation[]> {
+  async getProjectTranslations(projectIds: string[]) {
     const query = this.supabase
       .from("translations")
       .select(
@@ -101,7 +99,7 @@ export class TranslationsDAL implements ITranslationsDAL {
       )
       .in("translation_keys.project_id", projectIds);
 
-    return this.paginationDal.fetchAllPages<Translation>(
+    return await this.paginationDal.fetchAllPages<Translation>(
       query,
       DEFAULT_PAGE_SIZE
     );
@@ -247,7 +245,7 @@ export class TranslationsDAL implements ITranslationsDAL {
     return data;
   }
 
-  async getLatestVersionNumber(translationId: string): Promise<number> {
+  async getLatestVersionNumber(translationId: string) {
     const { data, error } = await this.supabase
       .from("version_history")
       .select("version_number")
@@ -263,10 +261,7 @@ export class TranslationsDAL implements ITranslationsDAL {
     return data?.version_number || 0;
   }
 
-  async updateTranslationKey(
-    keyId: string,
-    newKey: string
-  ): Promise<Database["public"]["Tables"]["translation_keys"]["Row"]> {
+  async updateTranslationKey(keyId: string, newKey: string) {
     const { data, error } = await this.supabase
       .from("translation_keys")
       .update({
@@ -288,7 +283,7 @@ export class TranslationsDAL implements ITranslationsDAL {
     translationId: string,
     content: string,
     userId: string
-  ): Promise<Database["public"]["Tables"]["translations"]["Row"]> {
+  ) {
     // Get the current version number
     const currentVersion = await this.getLatestVersionNumber(translationId);
 
@@ -346,7 +341,7 @@ export class TranslationsDAL implements ITranslationsDAL {
     languageId: string,
     content: string,
     userId: string
-  ): Promise<Database["public"]["Tables"]["translations"]["Row"]> {
+  ) {
     // Create the new translation
     const { data, error } = await this.supabase
       .from("translations")
@@ -395,10 +390,7 @@ export class TranslationsDAL implements ITranslationsDAL {
       userId: string;
     }[],
     description?: string
-  ): Promise<{
-    translationKey: TranslationKey;
-    translations: Translation[];
-  }> {
+  ) {
     // Create the translation key
     const { data: translationKey, error: keyError } = await this.supabase
       .from("translation_keys")

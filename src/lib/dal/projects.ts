@@ -264,7 +264,7 @@ export class ProjectsDAL implements IProjectsDAL {
     }));
   }
 
-  async deleteProject(projectId: string): Promise<void> {
+  async deleteProject(projectId: string) {
     // Delete project and all related data will be cascaded due to foreign key constraints
     await this.supabase.from("projects").delete().eq("id", projectId);
   }
