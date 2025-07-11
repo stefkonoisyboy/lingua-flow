@@ -309,4 +309,6 @@ export interface ICommentsDAL {
   >;
 
   deleteComment(commentId: string): Promise<void>;
+
+  getTranslationProjectId(translationId: string): Promise<string | null>;
 }

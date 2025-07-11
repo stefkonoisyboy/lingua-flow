@@ -13,7 +13,7 @@ type CommentWithUser = Database["public"]["Tables"]["comments"]["Row"] & {
 export class CommentsDAL implements ICommentsDAL {
   constructor(private supabase: SupabaseClient<Database>) {}
 
-  async getComments(translationId: string): Promise<CommentWithUser[]> {
+  async getComments(translationId: string) {
     const { data, error } = await this.supabase
       .from("comments")
       .select(
@@ -36,11 +36,7 @@ export class CommentsDAL implements ICommentsDAL {
     return data as CommentWithUser[];
   }
 
-  async addComment(
-    translationId: string,
-    userId: string,
-    content: string
-  ): Promise<CommentWithUser> {
+  async addComment(translationId: string, userId: string, content: string) {
     const { data, error } = await this.supabase
       .from("comments")
       .insert({
@@ -67,7 +63,7 @@ export class CommentsDAL implements ICommentsDAL {
     return data as CommentWithUser;
   }
 
-  async deleteComment(commentId: string): Promise<void> {
+  async deleteComment(commentId: string) {
     const { error } = await this.supabase
       .from("comments")
       .delete()
@@ -76,5 +72,21 @@ export class CommentsDAL implements ICommentsDAL {
     if (error) {
       throw new Error(`Error deleting comment: ${error.message}`);
     }
+  }
+
+  async getTranslationProjectId(translationId: string) {
+    const { data, error } = await this.supabase
+      .from("translations")
+      .select("translation_keys!inner(project_id)")
+      .eq("id", translationId)
+      .single();
+
+    if (error) {
+      throw new Error(
+        `Error fetching translation project ID: ${error.message}`
+      );
+    }
+
+    return data?.translation_keys?.project_id || null;
   }
 }

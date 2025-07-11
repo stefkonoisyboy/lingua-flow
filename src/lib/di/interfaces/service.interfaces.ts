@@ -243,3 +243,31 @@ export interface IVersionHistoryService {
     }
   >;
 }
+
+export interface ICommentsService {
+  getComments(translationId: string): Promise<
+    (Database["public"]["Tables"]["comments"]["Row"] & {
+      user: {
+        email: string | null;
+        full_name: string | null;
+        avatar_url: string | null;
+      };
+    })[]
+  >;
+
+  addComment(
+    translationId: string,
+    userId: string,
+    content: string
+  ): Promise<
+    Database["public"]["Tables"]["comments"]["Row"] & {
+      user: {
+        email: string | null;
+        full_name: string | null;
+        avatar_url: string | null;
+      };
+    }
+  >;
+
+  deleteComment(commentId: string): Promise<void>;
+}
