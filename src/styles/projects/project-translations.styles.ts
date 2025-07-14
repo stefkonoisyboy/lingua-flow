@@ -13,7 +13,7 @@ export const TranslationsContainer = styled(Paper)(({ theme }) => ({
   marginBottom: theme.spacing(2),
 }));
 
-export const HeaderContainer = styled(Box)(() => ({
+export const HeaderContainer = styled("div")(({}) => ({
   display: "flex",
   justifyContent: "space-between",
   alignItems: "flex-start",

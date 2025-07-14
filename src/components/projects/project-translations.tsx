@@ -35,8 +35,6 @@ interface ProjectTranslationsProps {
   languageName: string;
   defaultLanguageName: string;
   defaultLanguageId: string;
-  selectedLanguageId: string;
-  onLanguageChange: (languageId: string) => void;
   languages: { language_id: string; languages: { name: string } }[];
   page: number;
   totalPages: number;
@@ -60,8 +58,6 @@ export function ProjectTranslations({
   languageName,
   defaultLanguageName,
   defaultLanguageId,
-  selectedLanguageId,
-  onLanguageChange,
   languages,
   page,
   totalPages,
@@ -170,16 +166,11 @@ export function ProjectTranslations({
   }
 
   const hasRequiredTranslations =
-    selectedLanguageId &&
-    defaultLanguageId &&
-    formik.values.translations[selectedLanguageId]?.trim() &&
     formik.values.translations[defaultLanguageId]?.trim();
 
   return (
     <TranslationsContainer>
       <TranslationsHeader
-        selectedLanguageId={selectedLanguageId}
-        onLanguageChange={onLanguageChange}
         languages={languages}
         onStartAddingKey={handleStartAddingKey}
         onCancelAddingKey={handleCancelAddingKey}
@@ -190,7 +181,7 @@ export function ProjectTranslations({
 
       {error && <StyledAlert severity="error">{error}</StyledAlert>}
 
-      {!selectedLanguageId ? (
+      {!defaultLanguageId ? (
         <NoLanguageSelectedPlaceholder />
       ) : translationKeys.length === 0 && !isAddingKey ? (
         <NoTranslationsPlaceholder />
@@ -201,7 +192,6 @@ export function ProjectTranslations({
             defaultLanguageName={defaultLanguageName}
             languageName={languageName}
             defaultLanguageId={defaultLanguageId}
-            selectedLanguageId={selectedLanguageId}
             formik={formik}
             onUpdateTranslation={handleUpdateTranslation}
           />

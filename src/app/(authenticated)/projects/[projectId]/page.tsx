@@ -8,8 +8,12 @@ import { ProjectTranslations } from "@/components/projects/project-translations"
 import { ProjectSettings } from "@/components/projects/project-settings";
 import { useParams } from "next/navigation";
 import { trpc } from "@/utils/trpc";
-import { useAppSelector } from "@/store/hooks";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { selectActiveTab } from "@/store/slices/project-tabs.slice";
+import {
+  selectSelectedLanguageId,
+  setSelectedLanguageId,
+} from "@/store/slices/selected-language.slice";
 import {
   PageHeader,
   HeaderContent,
@@ -21,11 +25,12 @@ const PAGE_SIZE = 10;
 export default function ProjectDetailsPage() {
   const params = useParams();
   const projectId = params.projectId as string;
-  const [selectedLanguageId, setSelectedLanguageId] = useState<string>("");
   const [page, setPage] = useState(1);
+  const dispatch = useAppDispatch();
 
   // Get active tab from Redux
   const activeTab = useAppSelector(selectActiveTab);
+  const selectedLanguageId = useAppSelector(selectSelectedLanguageId);
 
   const { data: project, isLoading: isProjectLoading } =
     trpc.projects.getProjectById.useQuery({
@@ -59,9 +64,9 @@ export default function ProjectDetailsPage() {
   // Set selected language to default language when project languages load
   useEffect(() => {
     if (defaultLanguage && !selectedLanguageId) {
-      setSelectedLanguageId(defaultLanguage.language_id);
+      dispatch(setSelectedLanguageId(defaultLanguage.language_id));
     }
-  }, [defaultLanguage, selectedLanguageId]);
+  }, [defaultLanguage, selectedLanguageId, dispatch]);
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -93,8 +98,6 @@ export default function ProjectDetailsPage() {
                 (lang) => lang.language_id === selectedLanguageId
               )?.languages?.name || ""
             }
-            selectedLanguageId={selectedLanguageId}
-            onLanguageChange={setSelectedLanguageId}
             languages={projectLanguages || []}
             page={page}
             totalPages={totalPages}

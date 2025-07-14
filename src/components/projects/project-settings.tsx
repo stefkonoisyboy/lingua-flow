@@ -39,6 +39,8 @@ import {
   LanguageInfo,
   FlagImage,
 } from "@/styles/projects/project-settings.styles";
+import { useAppDispatch } from "@/store/hooks";
+import { resetSelectedLanguageId } from "@/store/slices/selected-language.slice";
 
 interface ProjectSettingsProps {
   projectId: string;
@@ -74,6 +76,7 @@ export function ProjectSettings({
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
+  const dispatch = useAppDispatch();
   const utils = trpc.useUtils();
 
   const { data: availableLanguages } = trpc.languages.getLanguages.useQuery();
@@ -104,6 +107,7 @@ export function ProjectSettings({
       onSuccess: () => {
         setSuccessMessage("Language removed successfully");
         utils.projects.getProjectLanguages.invalidate({ projectId });
+        dispatch(resetSelectedLanguageId());
       },
       onError: (error) => {
         setErrorMessage(`Error removing language: ${error.message}`);
