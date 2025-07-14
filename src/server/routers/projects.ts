@@ -93,4 +93,81 @@ export const projectsRouter = router({
 
       await projectsService.deleteProject(input.projectId);
     }),
+
+  updateProject: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        name: z.string().min(1, "Project name is required"),
+        description: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const projectsService = ctx.container.resolve<IProjectsService>(
+        DI_TOKENS.PROJECTS_SERVICE
+      );
+
+      return await projectsService.updateProject(
+        input.projectId,
+        input.name,
+        input.description
+      );
+    }),
+
+  addProjectLanguage: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        languageId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const projectsService = ctx.container.resolve<IProjectsService>(
+        DI_TOKENS.PROJECTS_SERVICE
+      );
+
+      await projectsService.addProjectLanguage(
+        input.projectId,
+        input.languageId,
+        ctx.user.id
+      );
+    }),
+
+  removeProjectLanguage: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        languageId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const projectsService = ctx.container.resolve<IProjectsService>(
+        DI_TOKENS.PROJECTS_SERVICE
+      );
+
+      await projectsService.removeProjectLanguage(
+        input.projectId,
+        input.languageId,
+        ctx.user.id
+      );
+    }),
+
+  setDefaultLanguage: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        languageId: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const projectsService = ctx.container.resolve<IProjectsService>(
+        DI_TOKENS.PROJECTS_SERVICE
+      );
+
+      await projectsService.setDefaultLanguage(
+        input.projectId,
+        input.languageId,
+        ctx.user.id
+      );
+    }),
 });
