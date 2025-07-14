@@ -84,6 +84,15 @@ export interface IProjectsDAL {
       updatedAt: string;
     }[]
   >;
+  updateProject(
+    projectId: string,
+    name: string,
+    description?: string | null
+  ): Promise<Database["public"]["Tables"]["projects"]["Row"]>;
+
+  removeProjectLanguage(projectId: string, languageId: string): Promise<void>;
+
+  setDefaultLanguage(projectId: string, languageId: string): Promise<void>;
 }
 
 // ActivitiesDAL Interface
@@ -211,6 +220,11 @@ export interface ITranslationsDAL {
     content: string,
     userId: string
   ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
+
+  deleteTranslationsForLanguage(
+    projectId: string,
+    languageId: string
+  ): Promise<void>;
 }
 
 // IntegrationsDAL Interface

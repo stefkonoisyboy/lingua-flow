@@ -455,4 +455,36 @@ export class TranslationsDAL implements ITranslationsDAL {
       translations: createdTranslations as Translation[],
     };
   }
+
+  async deleteTranslationsForLanguage(
+    projectId: string,
+    languageId: string
+  ): Promise<void> {
+    // First, get all translation keys for this project
+    const { data: keys, error: keysError } = await this.supabase
+      .from("translation_keys")
+      .select("id")
+      .eq("project_id", projectId);
+
+    if (keysError) {
+      throw new Error(`Error fetching translation keys: ${keysError.message}`);
+    }
+
+    if (!keys || keys.length === 0) {
+      return;
+    }
+
+    const keyIds = keys.map((key) => key.id);
+
+    // Delete all translations for these keys and the specified language
+    const { error: deleteError } = await this.supabase
+      .from("translations")
+      .delete()
+      .in("key_id", keyIds)
+      .eq("language_id", languageId);
+
+    if (deleteError) {
+      throw new Error(`Error deleting translations: ${deleteError.message}`);
+    }
+  }
 }
