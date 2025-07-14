@@ -21,10 +21,13 @@ import { Grid, Dialog, DialogTitle, Box } from "@mui/material";
 import { trpc } from "@/utils/trpc";
 import { formatDistance } from "date-fns";
 import { useRouter } from "next/navigation";
+import { useAppDispatch } from "@/store/hooks";
+import { setActiveTab } from "@/store/slices/project-tabs.slice";
 
 export default function DashboardPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const router = useRouter();
+  const dispatch = useAppDispatch();
 
   const stats = trpc.projects.getStats.useQuery();
   const projects = trpc.projects.getProjects.useQuery();
@@ -108,7 +111,10 @@ export default function DashboardPage() {
                       new Date(),
                       { addSuffix: true }
                     )}
-                    onView={() => router.push(`/projects/${project.id}`)}
+                    onView={() => {
+                      router.push(`/projects/${project.id}`);
+                      dispatch(setActiveTab("translations"));
+                    }}
                   />
                 </Grid>
               ))

@@ -109,6 +109,7 @@ export const projectsRouter = router({
 
       return await projectsService.updateProject(
         input.projectId,
+        ctx.user.id,
         input.name,
         input.description
       );

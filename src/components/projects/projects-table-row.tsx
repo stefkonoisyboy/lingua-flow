@@ -33,6 +33,8 @@ import {
   DeleteMenuIcon,
   DeleteMenuItem,
 } from "@/styles/projects/projects-table-row.styles";
+import { useAppDispatch } from "@/store/hooks";
+import { setActiveTab } from "@/store/slices/project-tabs.slice";
 
 interface ProjectsTableRowProps {
   project: {
@@ -53,7 +55,7 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const router = useRouter();
-
+  const dispatch = useAppDispatch();
   const utils = trpc.useUtils();
 
   const deleteProject = trpc.projects.deleteProject.useMutation({
@@ -78,12 +80,16 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
 
   const handleViewDetails = () => {
     handleMenuClose();
+
     router.push(`/projects/${project.id}`);
+    dispatch(setActiveTab("translations"));
   };
 
   const handleSettings = () => {
-    // TODO: Implement settings
     handleMenuClose();
+
+    router.push(`/projects/${project.id}`);
+    dispatch(setActiveTab("settings"));
   };
 
   const handleDeleteClick = () => {

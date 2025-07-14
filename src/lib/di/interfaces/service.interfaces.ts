@@ -102,6 +102,7 @@ export interface IProjectsService {
   >;
   updateProject(
     projectId: string,
+    userId: string,
     name: string,
     description?: string | null
   ): Promise<Database["public"]["Tables"]["projects"]["Row"]>;

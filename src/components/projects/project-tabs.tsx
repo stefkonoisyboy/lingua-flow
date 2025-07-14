@@ -6,17 +6,23 @@ import {
   Settings as SettingsIcon,
   Group as GroupIcon,
 } from "@mui/icons-material";
-
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  selectActiveTab,
+  setActiveTab,
+  ProjectTab,
+} from "@/store/slices/project-tabs.slice";
 import { TabsContainer } from "@/styles/projects/project-tabs.styles";
 
-interface ProjectTabsProps {
-  activeTab: "translations" | "settings" | "collaborators";
-}
+export function ProjectTabs() {
+  const dispatch = useAppDispatch();
+  const activeTab = useAppSelector(selectActiveTab);
 
-export function ProjectTabs({ activeTab }: ProjectTabsProps) {
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
-    // Will implement navigation later when we add other tabs
-    console.log(newValue);
+  const handleTabChange = (
+    _event: React.SyntheticEvent,
+    newValue: ProjectTab
+  ) => {
+    dispatch(setActiveTab(newValue));
   };
 
   return (
@@ -24,9 +30,8 @@ export function ProjectTabs({ activeTab }: ProjectTabsProps) {
       <Tabs
         value={activeTab}
         onChange={handleTabChange}
-        TabIndicatorProps={{
-          style: { display: "none" },
-        }}
+        indicatorColor="primary"
+        sx={{ "& .MuiTabs-indicator": { display: "none" } }}
       >
         <Tab
           label="Translations"

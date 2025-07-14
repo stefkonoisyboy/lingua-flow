@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Container, Typography } from "@mui/material";
 import { ProjectBreadcrumbs } from "@/components/projects/project-breadcrumbs";
 import { ProjectTabs } from "@/components/projects/project-tabs";
 import { ProjectTranslations } from "@/components/projects/project-translations";
+import { ProjectSettings } from "@/components/projects/project-settings";
 import { useParams } from "next/navigation";
 import { trpc } from "@/utils/trpc";
+import { useAppSelector } from "@/store/hooks";
+import { selectActiveTab } from "@/store/slices/project-tabs.slice";
 import {
   PageHeader,
   HeaderContent,
@@ -20,6 +23,9 @@ export default function ProjectDetailsPage() {
   const projectId = params.projectId as string;
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>("");
   const [page, setPage] = useState(1);
+
+  // Get active tab from Redux
+  const activeTab = useAppSelector(selectActiveTab);
 
   const { data: project, isLoading: isProjectLoading } =
     trpc.projects.getProjectById.useQuery({
@@ -40,10 +46,73 @@ export default function ProjectDetailsPage() {
         languageId: selectedLanguageId,
         defaultLanguageId: defaultLanguage?.language_id,
       },
-      { enabled: !!selectedLanguageId && !!defaultLanguage?.language_id }
+      {
+        enabled:
+          !!selectedLanguageId &&
+          !!defaultLanguage?.language_id &&
+          activeTab === "translations",
+      }
     );
 
   const totalPages = Math.ceil((translationKeysData?.total || 0) / PAGE_SIZE);
+
+  // Set selected language to default language when project languages load
+  useEffect(() => {
+    if (defaultLanguage && !selectedLanguageId) {
+      setSelectedLanguageId(defaultLanguage.language_id);
+    }
+  }, [defaultLanguage, selectedLanguageId]);
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "settings":
+        return (
+          <ProjectSettings
+            projectId={projectId}
+            initialName={project?.name || ""}
+            initialDescription={project?.description || ""}
+            languages={projectLanguages || []}
+          />
+        );
+      case "translations":
+        return (
+          <ProjectTranslations
+            translationKeys={translationKeysData?.data || []}
+            isLoading={
+              isProjectLoading ||
+              isProjectLanguagesLoading ||
+              isTranslationKeysLoading
+            }
+            defaultLanguageName={
+              projectLanguages?.find((lang) => lang.is_default)?.languages
+                ?.name || ""
+            }
+            defaultLanguageId={defaultLanguage?.language_id || ""}
+            languageName={
+              projectLanguages?.find(
+                (lang) => lang.language_id === selectedLanguageId
+              )?.languages?.name || ""
+            }
+            selectedLanguageId={selectedLanguageId}
+            onLanguageChange={setSelectedLanguageId}
+            languages={projectLanguages || []}
+            page={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            projectId={projectId}
+          />
+        );
+      case "collaborators":
+        // Will be implemented later
+        return (
+          <Typography variant="h6" sx={{ mt: 4, textAlign: "center" }}>
+            Collaborators feature coming soon
+          </Typography>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <Container maxWidth="xl">
@@ -57,34 +126,10 @@ export default function ProjectDetailsPage() {
       </PageHeader>
 
       <TabsWrapper>
-        <ProjectTabs activeTab="translations" />
+        <ProjectTabs />
       </TabsWrapper>
 
-      <ProjectTranslations
-        translationKeys={translationKeysData?.data || []}
-        isLoading={
-          isProjectLoading ||
-          isProjectLanguagesLoading ||
-          isTranslationKeysLoading
-        }
-        defaultLanguageName={
-          projectLanguages?.find((lang) => lang.is_default)?.languages?.name ||
-          ""
-        }
-        defaultLanguageId={defaultLanguage?.language_id || ""}
-        languageName={
-          projectLanguages?.find(
-            (lang) => lang.language_id === selectedLanguageId
-          )?.languages?.name || ""
-        }
-        selectedLanguageId={selectedLanguageId}
-        onLanguageChange={setSelectedLanguageId}
-        languages={projectLanguages || []}
-        page={page}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        projectId={projectId}
-      />
+      {renderTabContent()}
     </Container>
   );
 }

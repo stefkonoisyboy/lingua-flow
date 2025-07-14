@@ -35,7 +35,7 @@ export class ActivitiesDAL implements IActivitiesDAL {
       )
       .in("project_id", projectIds)
       .order("created_at", { ascending: false })
-      .limit(10);
+      .limit(5);
 
     if (error) {
       throw new Error(`Error fetching activities: ${error.message}`);

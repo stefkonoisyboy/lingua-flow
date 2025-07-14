@@ -457,31 +457,36 @@ export class TranslationsDAL implements ITranslationsDAL {
   }
 
   async deleteTranslationsForLanguage(projectId: string, languageId: string) {
-    // First, get all translation keys for this project
-    const { data: keys, error: keysError } = await this.supabase
+    // First, get all translation keys for this project using pagination
+    const query = this.supabase
       .from("translation_keys")
       .select("id")
       .eq("project_id", projectId);
 
-    if (keysError) {
-      throw new Error(`Error fetching translation keys: ${keysError.message}`);
-    }
+    const keys = await this.paginationDal.fetchAllPages<{ id: string }>(
+      query,
+      DEFAULT_PAGE_SIZE
+    );
 
     if (!keys || keys.length === 0) {
       return;
     }
 
-    const keyIds = keys.map((key) => key.id);
+    // Process deletions in batches of 100
+    const BATCH_SIZE = 100;
 
-    // Delete all translations for these keys and the specified language
-    const { error: deleteError } = await this.supabase
-      .from("translations")
-      .delete()
-      .in("key_id", keyIds)
-      .eq("language_id", languageId);
+    for (let i = 0; i < keys.length; i += BATCH_SIZE) {
+      const batchKeyIds = keys.slice(i, i + BATCH_SIZE).map((key) => key.id);
 
-    if (deleteError) {
-      throw new Error(`Error deleting translations: ${deleteError.message}`);
+      const { error: deleteError } = await this.supabase
+        .from("translations")
+        .delete()
+        .in("key_id", batchKeyIds)
+        .eq("language_id", languageId);
+
+      if (deleteError) {
+        throw new Error(`Error deleting translations: ${deleteError.message}`);
+      }
     }
   }
 }

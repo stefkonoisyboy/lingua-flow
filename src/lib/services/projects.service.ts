@@ -200,6 +200,7 @@ export class ProjectsService implements IProjectsService {
 
   async updateProject(
     projectId: string,
+    userId: string,
     name: string,
     description?: string | null
   ) {
@@ -210,7 +211,7 @@ export class ProjectsService implements IProjectsService {
     );
 
     // Log activity
-    await this.activitiesDal.logActivity(projectId, "", "member_added", {
+    await this.activitiesDal.logActivity(projectId, userId, "member_added", {
       action: "updated_project",
       projectName: name,
     });
