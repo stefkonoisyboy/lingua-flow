@@ -300,7 +300,7 @@ export class ProjectsDAL implements IProjectsDAL {
     projectId: string,
     name: string,
     description?: string | null
-  ): Promise<Database["public"]["Tables"]["projects"]["Row"]> {
+  ) {
     const { data, error } = await this.supabase
       .from("projects")
       .update({
@@ -319,10 +319,7 @@ export class ProjectsDAL implements IProjectsDAL {
     return data;
   }
 
-  async removeProjectLanguage(
-    projectId: string,
-    languageId: string
-  ): Promise<void> {
+  async removeProjectLanguage(projectId: string, languageId: string) {
     const { error } = await this.supabase
       .from("project_languages")
       .delete()
@@ -334,10 +331,7 @@ export class ProjectsDAL implements IProjectsDAL {
     }
   }
 
-  async setDefaultLanguage(
-    projectId: string,
-    languageId: string
-  ): Promise<void> {
+  async setDefaultLanguage(projectId: string, languageId: string) {
     // Start a transaction using Supabase's batch operations
     const { error: updateProjectError } = await this.supabase
       .from("projects")

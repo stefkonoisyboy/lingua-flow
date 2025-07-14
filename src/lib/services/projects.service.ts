@@ -7,13 +7,15 @@ import {
   Project,
   GitHubConfig,
 } from "../di/interfaces/service.interfaces";
+import { ILanguagesDAL } from "../di/interfaces/dal.interfaces";
 
 export class ProjectsService implements IProjectsService {
   constructor(
     private projectsDal: IProjectsDAL,
     private activitiesDal: IActivitiesDAL,
     private translationsDal: ITranslationsDAL,
-    private integrationsService: IIntegrationsService
+    private integrationsService: IIntegrationsService,
+    private languagesDal: ILanguagesDAL
   ) {}
 
   async getProjectStats(userId: string) {
@@ -194,5 +196,122 @@ export class ProjectsService implements IProjectsService {
 
   async getProjectLanguages(projectId: string) {
     return await this.projectsDal.getProjectLanguagesById(projectId);
+  }
+
+  async updateProject(
+    projectId: string,
+    name: string,
+    description?: string | null
+  ) {
+    const updatedProject = await this.projectsDal.updateProject(
+      projectId,
+      name,
+      description
+    );
+
+    // Log activity
+    await this.activitiesDal.logActivity(projectId, "", "member_added", {
+      action: "updated_project",
+      projectName: name,
+    });
+
+    return updatedProject;
+  }
+
+  async addProjectLanguage(
+    projectId: string,
+    languageId: string,
+    userId: string
+  ) {
+    // Check if language already exists in project
+    const projectLanguages = await this.projectsDal.getProjectLanguagesById(
+      projectId
+    );
+
+    const existingLanguage = projectLanguages.find(
+      (lang) => lang.language_id === languageId
+    );
+
+    if (existingLanguage) {
+      throw new Error("Language already exists in project");
+    }
+
+    await this.projectsDal.addProjectLanguage(projectId, languageId, false);
+
+    // Get language details for activity log
+    const languages = await this.languagesDal.getAllLanguages();
+    const language = languages.find((lang) => lang.id === languageId);
+
+    // Log activity
+    await this.activitiesDal.logActivity(projectId, userId, "language_added", {
+      action: "added_language",
+      languageName: language?.name || "Unknown language",
+    });
+  }
+
+  async removeProjectLanguage(
+    projectId: string,
+    languageId: string,
+    userId: string
+  ) {
+    // Check if language is the default language
+    const projectLanguages = await this.projectsDal.getProjectLanguagesById(
+      projectId
+    );
+
+    const languageToRemove = projectLanguages.find(
+      (lang) => lang.language_id === languageId
+    );
+
+    if (!languageToRemove) {
+      throw new Error("Language not found in project");
+    }
+
+    if (languageToRemove.is_default) {
+      throw new Error("Cannot remove the default language");
+    }
+
+    // Remove language from project
+    await this.projectsDal.removeProjectLanguage(projectId, languageId);
+
+    // Delete all translations for this language in this project
+    await this.translationsDal.deleteTranslationsForLanguage(
+      projectId,
+      languageId
+    );
+
+    // Log activity
+    await this.activitiesDal.logActivity(projectId, userId, "member_removed", {
+      action: "removed_language",
+      languageName: languageToRemove.languages.name,
+    });
+  }
+
+  async setDefaultLanguage(
+    projectId: string,
+    languageId: string,
+    userId: string
+  ) {
+    // Check if language exists in project
+    const projectLanguages = await this.projectsDal.getProjectLanguagesById(
+      projectId
+    );
+
+    const newDefaultLanguage = projectLanguages.find(
+      (lang) => lang.language_id === languageId
+    );
+
+    if (!newDefaultLanguage) {
+      throw new Error("Language not found in project");
+    }
+
+    // Update project default language
+    await this.projectsDal.setDefaultLanguage(projectId, languageId);
+
+    // Log activity
+    await this.activitiesDal.logActivity(projectId, userId, "language_added", {
+      action: "set_default_language",
+      languageName: newDefaultLanguage.languages.name,
+    });
   }
 }

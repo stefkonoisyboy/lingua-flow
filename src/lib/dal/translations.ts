@@ -456,10 +456,7 @@ export class TranslationsDAL implements ITranslationsDAL {
     };
   }
 
-  async deleteTranslationsForLanguage(
-    projectId: string,
-    languageId: string
-  ): Promise<void> {
+  async deleteTranslationsForLanguage(projectId: string, languageId: string) {
     // First, get all translation keys for this project
     const { data: keys, error: keysError } = await this.supabase
       .from("translation_keys")

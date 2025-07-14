@@ -100,6 +100,29 @@ export interface IProjectsService {
       };
     }[]
   >;
+  updateProject(
+    projectId: string,
+    name: string,
+    description?: string | null
+  ): Promise<Database["public"]["Tables"]["projects"]["Row"]>;
+
+  addProjectLanguage(
+    projectId: string,
+    languageId: string,
+    userId: string
+  ): Promise<void>;
+
+  removeProjectLanguage(
+    projectId: string,
+    languageId: string,
+    userId: string
+  ): Promise<void>;
+
+  setDefaultLanguage(
+    projectId: string,
+    languageId: string,
+    userId: string
+  ): Promise<void>;
 }
 
 export interface PaginatedResponse<T> {
