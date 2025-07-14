@@ -251,6 +251,24 @@ export interface IIntegrationsDAL {
     lastSyncedAt?: string
   ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
   deleteIntegration(integrationId: string): Promise<void>;
+  getProjectTranslationsForExport(
+    projectId: string,
+    languageId?: string
+  ): Promise<
+    {
+      key: string;
+      content: string;
+      language: {
+        code: string;
+      };
+    }[]
+  >;
+  getProjectLanguagesForExport(projectId: string): Promise<
+    {
+      id: string;
+      code: string;
+    }[]
+  >;
 }
 
 // LanguagesDAL Interface
@@ -263,7 +281,7 @@ export interface ILanguagesDAL {
 export interface IPaginationDAL {
   fetchAllPages<T>(
     query: SupabaseClient<Database>["from"]["prototype"]["select"],
-    pageSize: number
+    pageSize?: number
   ): Promise<T[]>;
 }
 

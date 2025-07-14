@@ -1,6 +1,9 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database, Json } from "../types/database.types";
-import { IIntegrationsDAL } from "../di/interfaces/dal.interfaces";
+import {
+  IIntegrationsDAL,
+  IPaginationDAL,
+} from "../di/interfaces/dal.interfaces";
 
 export type IntegrationType = Database["public"]["Enums"]["integration_type"];
 
@@ -14,7 +17,10 @@ export interface IntegrationConfig {
 }
 
 export class IntegrationsDAL implements IIntegrationsDAL {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  constructor(
+    private supabase: SupabaseClient<Database>,
+    private paginationDal: IPaginationDAL
+  ) {}
 
   async createIntegration(
     projectId: string,
@@ -126,5 +132,70 @@ export class IntegrationsDAL implements IIntegrationsDAL {
     }
   ) {
     return await this.createIntegration(projectId, "github", config);
+  }
+
+  async getProjectTranslationsForExport(
+    projectId: string,
+    languageId?: string
+  ) {
+    const query = this.supabase
+      .from("translations")
+      .select(
+        `
+        content,
+        translation_keys!inner (
+          key,
+          project_id
+        ),
+        languages!inner (
+          code
+        )
+      `
+      )
+      .eq("translation_keys.project_id", projectId)
+      .eq("status", "approved");
+
+    if (languageId) {
+      query.eq("language_id", languageId);
+    }
+
+    const data = await this.paginationDal.fetchAllPages<{
+      content: string;
+      translation_keys: {
+        key: string;
+      };
+      languages: {
+        code: string;
+      };
+    }>(query);
+    console.log(`Translations count: ${data.length}`);
+    return data.map((t) => ({
+      key: t.translation_keys.key,
+      content: t.content,
+      language: t.languages,
+    }));
+  }
+
+  async getProjectLanguagesForExport(projectId: string) {
+    const { data, error } = await this.supabase
+      .from("project_languages")
+      .select(
+        `
+        languages!inner (
+          id,
+          code
+        )
+      `
+      )
+      .eq("project_id", projectId);
+
+    if (error) {
+      throw new Error(`Error fetching project languages: ${error.message}`);
+    }
+
+    return data.map((l) => ({
+      id: l.languages.id,
+      code: l.languages.code,
+    }));
   }
 }
