@@ -143,4 +143,27 @@ export const integrationsRouter = router({
         ctx.user.id
       );
     }),
+
+  createGitHubIntegration: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        config: z.object({
+          repository: z.string(),
+          branch: z.string(),
+          translationPath: z.string().optional(),
+          filePattern: z.string().optional(),
+        }),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.createGitHubIntegration(
+        input.projectId,
+        input.config
+      );
+    }),
 });

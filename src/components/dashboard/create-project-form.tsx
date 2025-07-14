@@ -74,11 +74,28 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
     trpc.integrations.findTranslationFiles.useMutation();
 
   const importTranslations = trpc.integrations.importTranslations.useMutation();
+  const createSyncHistory = trpc.syncHistory.create.useMutation();
+
+  const createGitHubIntegration =
+    trpc.integrations.createGitHubIntegration.useMutation();
 
   const createProject = trpc.projects.createProject.useMutation({
     onSuccess: async (data) => {
       if (data?.id && githubEnabled) {
         try {
+          // Create GitHub integration first
+          const integration = await createGitHubIntegration.mutateAsync({
+            projectId: data.id,
+            config: {
+              repository:
+                formikRef.current?.values.githubConfig.repository || "",
+              branch: formikRef.current?.values.githubConfig.branch || "",
+              translationPath:
+                formikRef.current?.values.githubConfig.translationPath,
+              filePattern: formikRef.current?.values.githubConfig.filePattern,
+            },
+          });
+
           // Find translation files
           const files = await findTranslationFiles.mutateAsync({
             repository: formikRef.current?.values.githubConfig.repository || "",
@@ -89,17 +106,70 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
           });
 
           if (files && files.length > 0) {
-            // Import translations
-            await importTranslations.mutateAsync({
-              projectId: data.id,
-              repository:
-                formikRef.current?.values.githubConfig.repository || "",
-              branch: formikRef.current?.values.githubConfig.branch || "",
-              files,
-            });
+            try {
+              // Import translations
+              await importTranslations.mutateAsync({
+                projectId: data.id,
+                repository:
+                  formikRef.current?.values.githubConfig.repository || "",
+                branch: formikRef.current?.values.githubConfig.branch || "",
+                files,
+              });
+
+              // Record successful sync
+              await createSyncHistory.mutateAsync({
+                projectId: data.id,
+                integrationId: integration.id,
+                status: "success",
+                details: {
+                  repository: formikRef.current?.values.githubConfig.repository,
+                  branch: formikRef.current?.values.githubConfig.branch,
+                  filesCount: files.length,
+                  files: files.map((f) => f.path),
+                },
+              });
+            } catch (error) {
+              // Record failed sync
+              await createSyncHistory.mutateAsync({
+                projectId: data.id,
+                integrationId: integration.id,
+                status: "failed",
+                details: {
+                  repository: formikRef.current?.values.githubConfig.repository,
+                  branch: formikRef.current?.values.githubConfig.branch,
+                  error:
+                    error instanceof Error
+                      ? error.message
+                      : "Unknown error during import",
+                  filesCount: files.length,
+                  files: files.map((f) => f.path),
+                },
+              });
+
+              console.error("Error importing translations:", error);
+            }
           }
         } catch (error) {
-          console.error("Error importing translations:", error);
+          // Record failed sync for file finding or integration creation
+          const errorMessage =
+            error instanceof Error ? error.message : "Unknown error";
+          const stage =
+            error instanceof Error && error.message.includes("integration")
+              ? "creating_integration"
+              : "finding_files";
+
+          await createSyncHistory.mutateAsync({
+            projectId: data.id,
+            integrationId: data.id, // Fallback to project ID if integration creation failed
+            status: "failed",
+            details: {
+              repository: formikRef.current?.values.githubConfig.repository,
+              branch: formikRef.current?.values.githubConfig.branch,
+              error: errorMessage,
+              stage,
+            },
+          });
+          console.error(`Error ${stage}:`, error);
         }
       }
 
@@ -138,8 +208,8 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
     }
   };
 
-  const handleCreateProject = (values: ProjectFormValues) => {
-    createProject.mutate({
+  const handleCreateProject = async (values: ProjectFormValues) => {
+    await createProject.mutateAsync({
       name: values.name,
       description: values.description,
       defaultLanguageId: values.defaultLanguageId,

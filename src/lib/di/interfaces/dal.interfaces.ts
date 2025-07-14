@@ -330,3 +330,17 @@ export interface ICommentsDAL {
 
   getTranslationProjectId(translationId: string): Promise<string | null>;
 }
+
+export type CreateSyncHistoryParams = {
+  projectId: string;
+  integrationId: string;
+  status: Database["public"]["Enums"]["sync_status"];
+  details: Database["public"]["Tables"]["sync_history"]["Row"]["details"];
+};
+
+export interface ISyncHistoryDAL {
+  create(data: CreateSyncHistoryParams): Promise<void>;
+  getByProjectId(
+    projectId: string
+  ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;
+}

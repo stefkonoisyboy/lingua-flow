@@ -5,7 +5,11 @@ import {
   Branch,
   TranslationFile,
 } from "../../services/github.service";
-import { Translation, TranslationKey } from "./dal.interfaces";
+import {
+  CreateSyncHistoryParams,
+  Translation,
+  TranslationKey,
+} from "./dal.interfaces";
 
 // Project service interfaces
 export interface ProjectStats {
@@ -201,7 +205,7 @@ export interface IIntegrationsService {
   createGitHubIntegration(
     projectId: string,
     config: GitHubConfig
-  ): Promise<void>;
+  ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
   getProjectIntegration(
     projectId: string
   ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
@@ -298,4 +302,11 @@ export interface ICommentsService {
   >;
 
   deleteComment(commentId: string): Promise<void>;
+}
+
+export interface ISyncHistoryService {
+  create(data: CreateSyncHistoryParams): Promise<void>;
+  getByProjectId(
+    projectId: string
+  ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;
 }

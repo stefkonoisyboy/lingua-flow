@@ -28,11 +28,11 @@ export class IntegrationsService implements IIntegrationsService {
     private projectsDal: IProjectsDAL
   ) {}
 
-  async createGitHubIntegration(
-    projectId: string,
-    config: GitHubConfig
-  ): Promise<void> {
-    await this.integrationsDal.createGitHubIntegration(projectId, config);
+  async createGitHubIntegration(projectId: string, config: GitHubConfig) {
+    return await this.integrationsDal.createGitHubIntegration(
+      projectId,
+      config
+    );
   }
 
   async getProjectIntegration(projectId: string) {

@@ -1,7 +1,6 @@
 import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
 import { IActivitiesDAL } from "../di/interfaces/dal.interfaces";
 import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
-import { IIntegrationsService } from "../di/interfaces/service.interfaces";
 import {
   IProjectsService,
   Project,
@@ -14,7 +13,6 @@ export class ProjectsService implements IProjectsService {
     private projectsDal: IProjectsDAL,
     private activitiesDal: IActivitiesDAL,
     private translationsDal: ITranslationsDAL,
-    private integrationsService: IIntegrationsService,
     private languagesDal: ILanguagesDAL
   ) {}
 
@@ -126,11 +124,6 @@ export class ProjectsService implements IProjectsService {
 
     // Create GitHub integration if config is provided
     if (githubConfig) {
-      await this.integrationsService.createGitHubIntegration(
-        project.id,
-        githubConfig
-      );
-
       // Log GitHub integration activity
       await this.activitiesDal.logActivity(
         project.id,
