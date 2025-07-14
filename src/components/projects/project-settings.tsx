@@ -8,6 +8,7 @@ import {
 } from "@/styles/projects/project-settings.styles";
 import { ProjectDetailsForm } from "./settings/project-details-form";
 import { ProjectLanguages } from "./settings/project-languages";
+import { IntegrationsList } from "./integrations/integrations-list";
 
 interface ProjectSettingsProps {
   projectId: string;
@@ -82,6 +83,12 @@ export function ProjectSettings({
       <ProjectLanguages
         projectId={projectId}
         languages={languages}
+        onSuccess={handleSuccess}
+        onError={handleError}
+      />
+
+      <IntegrationsList
+        projectId={projectId}
         onSuccess={handleSuccess}
         onError={handleError}
       />

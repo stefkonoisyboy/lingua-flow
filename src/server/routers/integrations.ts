@@ -10,6 +10,34 @@ import { GitHubService } from "@/lib/services/github.service";
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
 
 export const integrationsRouter = router({
+  getProjectIntegration: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.getProjectIntegration(input.projectId);
+    }),
+
+  updateIntegrationStatus: protectedProcedure
+    .input(
+      z.object({
+        integrationId: z.string(),
+        isConnected: z.boolean(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.updateIntegrationStatus(
+        input.integrationId,
+        input.isConnected
+      );
+    }),
+
   checkGitHubConnection: protectedProcedure.query(async ({ ctx }) => {
     const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
       DI_TOKENS.GITHUB_TOKENS_SERVICE
