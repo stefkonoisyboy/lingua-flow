@@ -325,6 +325,18 @@ The application uses a custom DI system for better maintainability and testabili
 - Client components ('use client') are minimized to small, isolated components
 - MaterialUI for UI components (no TailwindCSS)
 - MUI styled components instead of sx props
+  - All styles are moved to dedicated style files under /styles directory
+  - No inline styles (sx props) in components for better maintainability
+  - Theme-aware styling with proper light/dark mode support
+  - Custom background colors defined in theme for consistent styling:
+    - customBackground.settingsSection: For settings section backgrounds
+    - customBackground.versionContent: For version history content
+  - Styled components organized by feature:
+    - project-details.styles.ts: Page layout components
+    - project-settings.styles.ts: Settings form and language management
+    - project-tabs.styles.ts: Tab navigation components
+    - translations-header.styles.ts: Translation management header
+    - version-history.styles.ts: Version history dialog
 - Redux Toolkit for global state management
 - Responsive UI with dark theme support
 - Component structure:
@@ -332,6 +344,90 @@ The application uses a custom DI system for better maintainability and testabili
   - Variables/state
   - Handlers
   - useEffects
+
+### Project Settings Implementation
+
+#### Frontend Components
+
+1. ProjectSettings (project-settings.tsx)
+   - Main container for project settings
+   - Manages success/error messages with auto-dismiss
+   - Coordinates ProjectDetailsForm and ProjectLanguages components
+
+2. ProjectDetailsForm (project-details-form.tsx)
+   - Handles project name and description updates
+   - Uses Formik for form management
+   - Implements optimistic updates with tRPC
+   - Styled sections with theme-aware components
+
+3. ProjectLanguages (project-languages.tsx)
+   - Manages project language operations
+   - Add/remove language functionality
+   - Default language selection
+   - Styled language list with flag display
+   - Confirmation dialog for language removal
+
+4. Styled Components Structure
+   - ProjectSettingsContainer: Main container styling
+   - SettingsSection: Section styling with theme-aware background
+   - LanguagesList: Language items container
+   - LanguageItem: Individual language entry styling
+   - ActionButtons: Language action buttons layout
+   - LanguageInfo: Language details display
+   - FormContainer: Form layout management
+   - FormActions: Form buttons layout
+   - LanguageSelectionContainer: Language selection area
+   - AlertContainer: Success/error alerts styling
+
+#### Backend Implementation
+
+1. DAL Layer
+   - ProjectsDAL: Handles project updates
+   - LanguagesDAL: Manages language operations
+   - Implements proper error handling
+   - Maintains updated_at timestamps
+
+2. Service Layer
+   - ProjectsService: Project management logic
+   - LanguagesService: Language operations
+   - Implements business rules and validation
+   - Coordinates with activity logging
+
+3. tRPC Endpoints
+   - projects.updateProject: Updates project details
+   - projects.addProjectLanguage: Adds new language
+   - projects.removeProjectLanguage: Removes language
+   - projects.setDefaultLanguage: Updates default language
+
+4. Data Model Impact
+   - projects table: Stores project details
+   - project_languages table: Manages language associations
+   - activity_log table: Tracks language changes
+
+### UI/UX Improvements
+
+1. Theme Integration
+   - Consistent color scheme across components
+   - Theme-aware styling for light/dark modes
+   - Custom background colors in theme configuration
+   - Proper spacing through theme.spacing
+
+2. Component Organization
+   - Separate style files for each feature
+   - Reusable styled components
+   - Clear component hierarchy
+   - Consistent styling patterns
+
+3. Form Handling
+   - Formik integration for forms
+   - Proper validation feedback
+   - Loading states during mutations
+   - Success/error message handling
+
+4. Navigation
+   - Tab-based navigation with styled indicators
+   - Consistent header layouts
+   - Proper spacing and alignment
 
 ### File Structure
 
@@ -368,7 +464,7 @@ The application uses a custom DI system for better maintainability and testabili
    - id (primary key)
    - name
    - description
-   - created_by (foreign key to auth.users)
+   - created_by (foreign key to profiles)
    - default_language_id (foreign key to languages)
    - status (enum: active, archived)
    - created_at
@@ -408,8 +504,8 @@ The application uses a custom DI system for better maintainability and testabili
    - language_id (foreign key to languages)
    - content
    - status (enum: pending, in_progress, reviewed, approved)
-   - translator_id (foreign key to auth.users)
-   - reviewer_id (foreign key to auth.users)
+   - translator_id (foreign key to profiles)
+   - reviewer_id (foreign key to profiles)
    - created_at
    - updated_at
 
@@ -420,7 +516,7 @@ The application uses a custom DI system for better maintainability and testabili
    - content
    - version_number
    - version_name
-   - changed_by (foreign key to auth.users)
+   - changed_by (foreign key to profiles)
    - created_at
    - updated_at
 
@@ -429,14 +525,14 @@ The application uses a custom DI system for better maintainability and testabili
    - id (primary key)
    - translation_id (foreign key to translations)
    - content
-   - user_id (foreign key to auth.users)
+   - user_id (foreign key to profiles)
    - created_at
    - updated_at
 
 9. project_members
 
    - project_id (foreign key to projects)
-   - user_id (foreign key to auth.users)
+   - user_id (foreign key to profiles)
    - role (enum: owner, translator, viewer)
    - created_at
    - updated_at
@@ -455,7 +551,7 @@ The application uses a custom DI system for better maintainability and testabili
 11. github_tokens
 
     - id (primary key)
-    - user_id (foreign key to auth.users)
+    - user_id (foreign key to profiles)
     - access_token
     - created_at
     - updated_at
@@ -464,7 +560,7 @@ The application uses a custom DI system for better maintainability and testabili
 
     - id (primary key)
     - project_id (foreign key to projects)
-    - user_id (foreign key to auth.users)
+    - user_id (foreign key to profiles)
     - activity_type (enum: translation_updated, language_added, comment_added, member_added, member_removed, integration_connected, integration_disconnected, sync_completed)
     - resource_type
     - resource_id

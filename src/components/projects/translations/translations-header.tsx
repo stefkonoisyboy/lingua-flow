@@ -1,25 +1,36 @@
 "use client";
 
-import { Box, Typography, Button, MenuItem } from "@mui/material";
+import {
+  InputLabel,
+  Select,
+  MenuItem,
+  Button,
+  CircularProgress,
+  Box,
+} from "@mui/material";
 import {
   Add as AddIcon,
   Save as SaveIcon,
   Cancel as CancelIcon,
 } from "@mui/icons-material";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  HeaderContainer,
-  ControlsContainer,
-  StyledSelect,
-} from "@/styles/projects/project-translations.styles";
-import { useAppSelector } from "@/store/hooks";
+  selectSelectedLanguageId,
+  setSelectedLanguageId,
+} from "@/store/slices/selected-language.slice";
 import {
   selectIsAddingKey,
   selectIsEditing,
 } from "@/store/slices/translations.slice";
+import {
+  HeaderContainer,
+  HeaderTitle,
+  HeaderDescription,
+  HeaderActions,
+  LanguageSelectControl,
+} from "@/styles/projects/translations-header.styles";
 
 interface TranslationsHeaderProps {
-  selectedLanguageId: string;
-  onLanguageChange: (languageId: string) => void;
   languages: { language_id: string; languages: { name: string } }[];
   onStartAddingKey: () => void;
   onCancelAddingKey: () => void;
@@ -29,8 +40,6 @@ interface TranslationsHeaderProps {
 }
 
 export function TranslationsHeader({
-  selectedLanguageId,
-  onLanguageChange,
   languages,
   onStartAddingKey,
   onCancelAddingKey,
@@ -38,47 +47,46 @@ export function TranslationsHeader({
   isSaveDisabled,
   isSubmitting,
 }: TranslationsHeaderProps) {
+  const dispatch = useAppDispatch();
+  const selectedLanguageId = useAppSelector(selectSelectedLanguageId);
   const isAddingKey = useAppSelector(selectIsAddingKey);
   const isEditing = useAppSelector(selectIsEditing);
 
   return (
     <HeaderContainer>
       <Box>
-        <Typography variant="h5" fontWeight={600}>
-          Manage Translations
-        </Typography>
-        <Typography variant="body1" color="textSecondary">
+        <HeaderTitle variant="h5">Manage Translations</HeaderTitle>
+        <HeaderDescription variant="body1">
           Edit, add, or review translation strings for different locales.
-        </Typography>
+        </HeaderDescription>
       </Box>
 
-      <ControlsContainer>
-        <StyledSelect
-          value={selectedLanguageId}
-          onChange={(e) => onLanguageChange(e.target.value as string)}
-          displayEmpty
-          disabled={isEditing}
-        >
-          <MenuItem value="" disabled>
-            Select Language
-          </MenuItem>
-          {languages.map((lang) => (
-            <MenuItem key={lang.language_id} value={lang.language_id}>
-              {lang.languages?.name}
-            </MenuItem>
-          ))}
-        </StyledSelect>
+      <HeaderActions>
+        <LanguageSelectControl>
+          <InputLabel>Select Language</InputLabel>
+          <Select
+            value={selectedLanguageId}
+            onChange={(e) => dispatch(setSelectedLanguageId(e.target.value))}
+            label="Select Language"
+            disabled={isEditing}
+          >
+            {languages.map((lang) => (
+              <MenuItem key={lang.language_id} value={lang.language_id}>
+                {lang.languages.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </LanguageSelectControl>
 
         {isAddingKey ? (
           <>
             <Button
               variant="contained"
-              color="primary"
               startIcon={<SaveIcon />}
               onClick={onSave}
               disabled={isSaveDisabled || isSubmitting}
             >
-              Save Changes
+              {isSubmitting ? <CircularProgress size={24} /> : "Save Changes"}
             </Button>
             <Button
               variant="outlined"
@@ -92,15 +100,15 @@ export function TranslationsHeader({
           </>
         ) : (
           <Button
-            disabled={!selectedLanguageId || isEditing}
             variant="contained"
             startIcon={<AddIcon />}
             onClick={onStartAddingKey}
+            disabled={!selectedLanguageId || isEditing}
           >
-            Add Key
+            Add Translation Key
           </Button>
         )}
-      </ControlsContainer>
+      </HeaderActions>
     </HeaderContainer>
   );
 }

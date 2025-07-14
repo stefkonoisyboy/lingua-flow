@@ -1,32 +1,39 @@
 "use client";
 
-import { Tabs, Tab } from "@mui/material";
+import { Tab } from "@mui/material";
 import {
   Translate as TranslateIcon,
   Settings as SettingsIcon,
   Group as GroupIcon,
 } from "@mui/icons-material";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import {
+  selectActiveTab,
+  setActiveTab,
+  ProjectTab,
+} from "@/store/slices/project-tabs.slice";
+import {
+  TabsContainer,
+  StyledTabs,
+} from "@/styles/projects/project-tabs.styles";
 
-import { TabsContainer } from "@/styles/projects/project-tabs.styles";
+export function ProjectTabs() {
+  const dispatch = useAppDispatch();
+  const activeTab = useAppSelector(selectActiveTab);
 
-interface ProjectTabsProps {
-  activeTab: "translations" | "settings" | "collaborators";
-}
-
-export function ProjectTabs({ activeTab }: ProjectTabsProps) {
-  const handleTabChange = (_event: React.SyntheticEvent, newValue: string) => {
-    // Will implement navigation later when we add other tabs
-    console.log(newValue);
+  const handleTabChange = (
+    _event: React.SyntheticEvent,
+    newValue: ProjectTab
+  ) => {
+    dispatch(setActiveTab(newValue));
   };
 
   return (
     <TabsContainer>
-      <Tabs
+      <StyledTabs
         value={activeTab}
         onChange={handleTabChange}
-        TabIndicatorProps={{
-          style: { display: "none" },
-        }}
+        indicatorColor="primary"
       >
         <Tab
           label="Translations"
@@ -46,7 +53,7 @@ export function ProjectTabs({ activeTab }: ProjectTabsProps) {
           icon={<GroupIcon />}
           iconPosition="start"
         />
-      </Tabs>
+      </StyledTabs>
     </TabsContainer>
   );
 }

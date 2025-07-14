@@ -1,19 +1,19 @@
-import { Box, styled } from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { Box, Typography } from "@mui/material";
 
-export const PageHeader = styled(Box)(() => ({
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginTop: 24,
+export const PageHeader = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(4),
 }));
 
-export const HeaderContent = styled(Box)(() => ({
-  display: "flex",
-  flexDirection: "column",
-  gap: 8,
+export const HeaderContent = styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(2),
 }));
 
-export const TabsWrapper = styled(Box)(() => ({
-  marginTop: 32,
-  marginBottom: 16,
+export const TabsWrapper = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+}));
+
+export const ComingSoonText = styled(Typography)(({ theme }) => ({
+  marginTop: theme.spacing(4),
+  textAlign: "center",
 }));

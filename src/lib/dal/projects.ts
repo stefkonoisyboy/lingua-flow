@@ -295,4 +295,87 @@ export class ProjectsDAL implements IProjectsDAL {
 
     return data;
   }
+
+  async updateProject(
+    projectId: string,
+    name: string,
+    description?: string | null
+  ) {
+    const { data, error } = await this.supabase
+      .from("projects")
+      .update({
+        name,
+        description: description || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", projectId)
+      .select()
+      .single();
+
+    if (error) {
+      throw new Error(`Error updating project: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async removeProjectLanguage(projectId: string, languageId: string) {
+    const { error } = await this.supabase
+      .from("project_languages")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("language_id", languageId);
+
+    if (error) {
+      throw new Error(`Error removing project language: ${error.message}`);
+    }
+  }
+
+  async setDefaultLanguage(projectId: string, languageId: string) {
+    // Start a transaction using Supabase's batch operations
+    const { error: updateProjectError } = await this.supabase
+      .from("projects")
+      .update({
+        default_language_id: languageId,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", projectId);
+
+    if (updateProjectError) {
+      throw new Error(
+        `Error updating project default language: ${updateProjectError.message}`
+      );
+    }
+
+    // Reset all is_default flags to false
+    const { error: resetError } = await this.supabase
+      .from("project_languages")
+      .update({
+        is_default: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("project_id", projectId);
+
+    if (resetError) {
+      throw new Error(
+        `Error resetting default languages: ${resetError.message}`
+      );
+    }
+
+    // Set the new default language
+    const { error: setDefaultError } = await this.supabase
+      .from("project_languages")
+      .update({
+        is_default: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("project_id", projectId)
+      .eq("language_id", languageId);
+
+    if (setDefaultError) {
+      throw new Error(
+        `Error setting default language: ${setDefaultError.message}`
+      );
+    }
+  }
 }

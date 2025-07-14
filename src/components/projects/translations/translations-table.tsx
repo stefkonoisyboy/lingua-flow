@@ -33,6 +33,7 @@ import {
 } from "@/store/slices/translations.slice";
 import { VersionHistoryDialog } from "./version-history-dialog";
 import { CommentsDialog } from "./comments-dialog";
+import { selectSelectedLanguageId } from "@/store/slices/selected-language.slice";
 
 export type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
@@ -48,7 +49,6 @@ interface TranslationsTableProps {
   defaultLanguageName: string;
   languageName: string;
   defaultLanguageId: string;
-  selectedLanguageId: string;
   formik: FormikProps<{
     projectId: string;
     key: string;
@@ -63,7 +63,6 @@ export function TranslationsTable({
   defaultLanguageName,
   languageName,
   defaultLanguageId,
-  selectedLanguageId,
   formik,
   onUpdateTranslation,
 }: TranslationsTableProps) {
@@ -76,6 +75,7 @@ export function TranslationsTable({
   const [selectedKeyName, setSelectedKeyName] = useState<string | null>(null);
   const dispatch = useAppDispatch();
   const isAddingKey = useAppSelector(selectIsAddingKey);
+  const selectedLanguageId = useAppSelector(selectSelectedLanguageId);
 
   const handleEditClick = (key: TranslationKey) => {
     setEditingKey(key.id);
