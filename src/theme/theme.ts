@@ -5,6 +5,8 @@ declare module "@mui/material/styles" {
   interface Palette {
     customBackground: {
       gradient: string;
+      settingsSection: string;
+      versionContent: string;
     };
     neutral: {
       main: string;
@@ -14,6 +16,8 @@ declare module "@mui/material/styles" {
   interface PaletteOptions {
     customBackground: {
       gradient: string;
+      settingsSection: string;
+      versionContent: string;
     };
     neutral: {
       main: string;
@@ -77,6 +81,8 @@ export const lightTheme = createTheme({
     },
     customBackground: {
       gradient: "linear-gradient(180deg, #F8FBFF 0%, #E8F4FF 100%)",
+      settingsSection: "#f5f5f5",
+      versionContent: "#f5f5f5",
     },
   },
 });
@@ -104,6 +110,8 @@ export const darkTheme = createTheme({
     },
     customBackground: {
       gradient: "linear-gradient(180deg, #0F172A 0%, #1E293B 100%)",
+      settingsSection: "#333",
+      versionContent: "#1a1a1a",
     },
   },
 });

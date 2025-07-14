@@ -1,16 +1,14 @@
 "use client";
 
-import {
-  Box,
-  Typography,
-  TextField,
-  Button,
-  CircularProgress,
-} from "@mui/material";
+import { Typography, TextField, Button, CircularProgress } from "@mui/material";
 import { Formik, Form, Field } from "formik";
 import * as Yup from "yup";
 import { trpc } from "@/utils/trpc";
-import { SettingsSection } from "@/styles/projects/project-settings.styles";
+import {
+  SettingsSection,
+  FormContainer,
+  FormActions,
+} from "@/styles/projects/project-settings.styles";
 
 interface ProjectDetailsFormProps {
   projectId: string;
@@ -75,9 +73,7 @@ export function ProjectDetailsForm({
           dirty,
         }) => (
           <Form>
-            <Box
-              sx={{ mt: 2, display: "flex", flexDirection: "column", gap: 2 }}
-            >
+            <FormContainer>
               <Field
                 name="name"
                 as={TextField}
@@ -105,7 +101,7 @@ export function ProjectDetailsForm({
                 rows={3}
               />
 
-              <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+              <FormActions>
                 <Button
                   type="submit"
                   variant="contained"
@@ -119,8 +115,8 @@ export function ProjectDetailsForm({
                     "Save Changes"
                   )}
                 </Button>
-              </Box>
-            </Box>
+              </FormActions>
+            </FormContainer>
           </Form>
         )}
       </Formik>

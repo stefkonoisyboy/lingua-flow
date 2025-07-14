@@ -1,6 +1,6 @@
 "use client";
 
-import { Tabs, Tab } from "@mui/material";
+import { Tab } from "@mui/material";
 import {
   Translate as TranslateIcon,
   Settings as SettingsIcon,
@@ -12,7 +12,10 @@ import {
   setActiveTab,
   ProjectTab,
 } from "@/store/slices/project-tabs.slice";
-import { TabsContainer } from "@/styles/projects/project-tabs.styles";
+import {
+  TabsContainer,
+  StyledTabs,
+} from "@/styles/projects/project-tabs.styles";
 
 export function ProjectTabs() {
   const dispatch = useAppDispatch();
@@ -27,11 +30,10 @@ export function ProjectTabs() {
 
   return (
     <TabsContainer>
-      <Tabs
+      <StyledTabs
         value={activeTab}
         onChange={handleTabChange}
         indicatorColor="primary"
-        sx={{ "& .MuiTabs-indicator": { display: "none" } }}
       >
         <Tab
           label="Translations"
@@ -51,7 +53,7 @@ export function ProjectTabs() {
           icon={<GroupIcon />}
           iconPosition="start"
         />
-      </Tabs>
+      </StyledTabs>
     </TabsContainer>
   );
 }

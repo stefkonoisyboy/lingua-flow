@@ -11,7 +11,7 @@ export const ProjectSettingsContainer = styled(Box)(({ theme }) => ({
 export const SettingsSection = styled(Box)(({ theme }) => ({
   marginBottom: theme.spacing(4),
   padding: theme.spacing(3),
-  backgroundColor: theme.palette.mode === "light" ? "#f5f5f5" : "#333",
+  backgroundColor: theme.palette.customBackground.settingsSection,
   borderRadius: theme.shape.borderRadius,
 }));
 
@@ -48,4 +48,33 @@ export const FlagImage = styled("img")({
   height: "16px",
   objectFit: "cover",
   borderRadius: "2px",
+});
+
+export const AlertContainer = styled(Box)(({ theme }) => ({
+  marginBottom: theme.spacing(3),
+}));
+
+export const FormContainer = styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  display: "flex",
+  flexDirection: "column",
+  gap: theme.spacing(2),
+}));
+
+export const FormActions = styled(Box)({
+  display: "flex",
+  justifyContent: "flex-end",
+});
+
+export const LanguageSelectionContainer = styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(3),
+  display: "flex",
+  alignItems: "center",
+  gap: theme.spacing(2),
+}));
+
+export const LanguageMenuItem = styled(Box)({
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
 });

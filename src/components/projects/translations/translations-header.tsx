@@ -1,14 +1,12 @@
 "use client";
 
 import {
-  Box,
-  FormControl,
   InputLabel,
   Select,
   MenuItem,
   Button,
   CircularProgress,
-  Typography,
+  Box,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -24,7 +22,13 @@ import {
   selectIsAddingKey,
   selectIsEditing,
 } from "@/store/slices/translations.slice";
-import { HeaderContainer } from "@/styles/projects/project-translations.styles";
+import {
+  HeaderContainer,
+  HeaderTitle,
+  HeaderDescription,
+  HeaderActions,
+  LanguageSelectControl,
+} from "@/styles/projects/translations-header.styles";
 
 interface TranslationsHeaderProps {
   languages: { language_id: string; languages: { name: string } }[];
@@ -51,16 +55,14 @@ export function TranslationsHeader({
   return (
     <HeaderContainer>
       <Box>
-        <Typography variant="h5" fontWeight={600}>
-          Manage Translations
-        </Typography>
-        <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+        <HeaderTitle variant="h5">Manage Translations</HeaderTitle>
+        <HeaderDescription variant="body1">
           Edit, add, or review translation strings for different locales.
-        </Typography>
+        </HeaderDescription>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-        <FormControl sx={{ minWidth: 200 }}>
+      <HeaderActions>
+        <LanguageSelectControl>
           <InputLabel>Select Language</InputLabel>
           <Select
             value={selectedLanguageId}
@@ -74,7 +76,7 @@ export function TranslationsHeader({
               </MenuItem>
             ))}
           </Select>
-        </FormControl>
+        </LanguageSelectControl>
 
         {isAddingKey ? (
           <>
@@ -106,7 +108,7 @@ export function TranslationsHeader({
             Add Translation Key
           </Button>
         )}
-      </Box>
+      </HeaderActions>
     </HeaderContainer>
   );
 }

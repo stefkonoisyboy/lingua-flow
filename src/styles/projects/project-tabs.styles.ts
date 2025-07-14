@@ -1,10 +1,12 @@
-import { Box, styled } from "@mui/material";
+import { styled } from "@mui/material/styles";
+import { Box, Tabs } from "@mui/material";
 
 export const TabsContainer = styled(Box)(({ theme }) => ({
-  backgroundColor: theme.palette.background.paper,
-  borderRadius: theme.shape.borderRadius,
-  marginBottom: theme.spacing(3),
-  "& .MuiTab-root": {
-    minHeight: 48,
-  },
+  borderBottom: `1px solid ${theme.palette.divider}`,
 }));
+
+export const StyledTabs = styled(Tabs)({
+  "& .MuiTabs-indicator": {
+    display: "none",
+  },
+});

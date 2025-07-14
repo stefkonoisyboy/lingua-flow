@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Box, Alert } from "@mui/material";
-import { ProjectSettingsContainer } from "@/styles/projects/project-settings.styles";
+import { Alert } from "@mui/material";
+import {
+  ProjectSettingsContainer,
+  AlertContainer,
+} from "@/styles/projects/project-settings.styles";
 import { ProjectDetailsForm } from "./settings/project-details-form";
 import { ProjectLanguages } from "./settings/project-languages";
 
@@ -54,7 +57,7 @@ export function ProjectSettings({
   return (
     <ProjectSettingsContainer>
       {(successMessage || errorMessage) && (
-        <Box sx={{ mb: 3 }}>
+        <AlertContainer>
           {successMessage && (
             <Alert severity="success" onClose={() => setSuccessMessage("")}>
               {successMessage}
@@ -65,7 +68,7 @@ export function ProjectSettings({
               {errorMessage}
             </Alert>
           )}
-        </Box>
+        </AlertContainer>
       )}
 
       <ProjectDetailsForm

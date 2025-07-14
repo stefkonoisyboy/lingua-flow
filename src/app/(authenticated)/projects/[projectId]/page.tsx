@@ -18,6 +18,7 @@ import {
   PageHeader,
   HeaderContent,
   TabsWrapper,
+  ComingSoonText,
 } from "@/styles/projects/project-details.styles";
 
 const PAGE_SIZE = 10;
@@ -106,11 +107,10 @@ export default function ProjectDetailsPage() {
           />
         );
       case "collaborators":
-        // Will be implemented later
         return (
-          <Typography variant="h6" sx={{ mt: 4, textAlign: "center" }}>
+          <ComingSoonText variant="h6">
             Collaborators feature coming soon
-          </Typography>
+          </ComingSoonText>
         );
       default:
         return null;

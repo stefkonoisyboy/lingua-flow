@@ -51,9 +51,7 @@ export const VersionMeta = styled(Box)`
 
 export const VersionContent = styled(Box)`
   background-color: ${({ theme }) =>
-    theme.palette.mode === "dark"
-      ? theme.palette.grey[900]
-      : theme.palette.grey[100]};
+    theme.palette.customBackground.versionContent};
   padding: ${({ theme }) => theme.spacing(2)};
   border-radius: ${({ theme }) => theme.shape.borderRadius}px;
   font-family: monospace;

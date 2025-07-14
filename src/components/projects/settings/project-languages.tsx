@@ -14,10 +14,9 @@ import {
   FormControl,
   InputLabel,
   MenuItem,
-  Select,
-  Box,
   IconButton,
   Tooltip,
+  Select,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -33,6 +32,8 @@ import {
   ActionButtons,
   LanguageInfo,
   FlagImage,
+  LanguageSelectionContainer,
+  LanguageMenuItem,
 } from "@/styles/projects/project-settings.styles";
 import { useAppDispatch } from "@/store/hooks";
 import { resetSelectedLanguageId } from "@/store/slices/selected-language.slice";
@@ -215,7 +216,7 @@ export function ProjectLanguages({
         ))}
       </LanguagesList>
 
-      <Box sx={{ mt: 3, display: "flex", alignItems: "center", gap: 2 }}>
+      <LanguageSelectionContainer>
         <FormControl fullWidth>
           <InputLabel>Add Language</InputLabel>
           <Select
@@ -226,12 +227,12 @@ export function ProjectLanguages({
           >
             {filteredAvailableLanguages?.map((lang) => (
               <MenuItem key={lang.id} value={lang.id}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <LanguageMenuItem>
                   {lang.flagUrl && (
                     <FlagImage src={lang.flagUrl} alt={lang.name} />
                   )}
                   {lang.name} ({lang.code})
-                </Box>
+                </LanguageMenuItem>
               </MenuItem>
             ))}
           </Select>
@@ -242,7 +243,6 @@ export function ProjectLanguages({
           startIcon={<AddIcon />}
           onClick={handleAddLanguage}
           disabled={isLoading || !selectedLanguageId}
-          sx={{ mt: 0 }}
         >
           {addLanguageMutation.isPending ? (
             <CircularProgress size={24} />
@@ -250,7 +250,7 @@ export function ProjectLanguages({
             "Add"
           )}
         </Button>
-      </Box>
+      </LanguageSelectionContainer>
 
       <Dialog open={isDialogOpen} onClose={() => setIsDialogOpen(false)}>
         <DialogTitle>Remove Language</DialogTitle>
