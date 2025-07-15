@@ -230,6 +230,7 @@ export class GitHubService {
       });
     } catch (error) {
       console.error("Error creating/updating file:", error);
+
       throw new Error(
         `Failed to create/update file: ${
           error instanceof Error ? error.message : "Unknown error"

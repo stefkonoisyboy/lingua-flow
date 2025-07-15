@@ -194,4 +194,37 @@ export const integrationsRouter = router({
         input.config
       );
     }),
+
+  exportTranslations: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        repository: z.string(),
+        baseBranch: z.string(),
+        languageId: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+        DI_TOKENS.GITHUB_TOKENS_SERVICE
+      );
+
+      const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
+
+      if (!accessToken) {
+        throw new Error("GitHub not connected");
+      }
+
+      return await integrationsService.exportTranslations(
+        input.projectId,
+        accessToken,
+        input.repository,
+        input.baseBranch,
+        input.languageId
+      );
+    }),
 });
