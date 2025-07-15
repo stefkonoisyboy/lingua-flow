@@ -1,6 +1,7 @@
 "use client";
 
-import { Typography } from "@mui/material";
+import { useState } from "react";
+import { Button, Typography } from "@mui/material";
 import {
   IntegrationsContainer,
   StyledIntegrationsList,
@@ -8,6 +9,7 @@ import {
 import { trpc } from "@/utils/trpc";
 import { IntegrationCard } from "./integration-card";
 import { SyncHistory } from "./sync-history";
+import { CreateIntegrationDialog } from "./create-integration-dialog";
 
 interface IntegrationsListProps {
   projectId: string;
@@ -27,6 +29,8 @@ export function IntegrationsList({
   onSuccess,
   onError,
 }: IntegrationsListProps) {
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+
   const { data: integration, isLoading } =
     trpc.integrations.getProjectIntegration.useQuery({
       projectId,
@@ -68,9 +72,19 @@ export function IntegrationsList({
             onError={onError}
           />
         ) : (
-          <Typography variant="body2" color="text.secondary">
-            No integrations configured. Connect a repository to get started.
-          </Typography>
+          <>
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              No integrations configured. Connect a repository to get started.
+            </Typography>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => setIsCreateDialogOpen(true)}
+              sx={{ mt: 2 }}
+            >
+              Connect Repository
+            </Button>
+          </>
         )}
       </StyledIntegrationsList>
 
@@ -79,6 +93,14 @@ export function IntegrationsList({
       </Typography>
 
       <SyncHistory projectId={projectId} />
+
+      <CreateIntegrationDialog
+        open={isCreateDialogOpen}
+        onClose={() => setIsCreateDialogOpen(false)}
+        projectId={projectId}
+        onSuccess={onSuccess}
+        onError={onError}
+      />
     </IntegrationsContainer>
   );
 }

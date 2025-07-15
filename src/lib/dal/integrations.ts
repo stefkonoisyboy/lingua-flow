@@ -54,6 +54,11 @@ export class IntegrationsDAL implements IIntegrationsDAL {
       .eq("project_id", projectId)
       .single();
 
+    // If no integration found, return null
+    if (error && error.code === "PGRST116") {
+      return null;
+    }
+
     if (error) {
       throw new Error(`Error fetching project integration: ${error.message}`);
     }
@@ -170,9 +175,9 @@ export class IntegrationsDAL implements IIntegrationsDAL {
     }>(query);
 
     return data.map((t) => ({
-      key: t.translation_keys.key,
+      key: t.translation_keys?.key,
       content: t.content,
-      language: t.languages.code,
+      language: t.languages?.code,
     }));
   }
 

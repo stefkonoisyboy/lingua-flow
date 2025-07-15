@@ -240,7 +240,9 @@ export interface IIntegrationsDAL {
   ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
   getProjectIntegration(
     projectId: string
-  ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
+  ): Promise<
+    Database["public"]["Tables"]["project_integrations"]["Row"] | null
+  >;
   updateIntegrationConfig(
     integrationId: string,
     config: Partial<IntegrationConfig>
