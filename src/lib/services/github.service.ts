@@ -198,6 +198,9 @@ export class GitHubService {
   ): Promise<void> {
     const [owner, repo] = repository.split("/");
 
+    // Remove leading slash from path if present
+    const normalizedPath = path.replace(/^\/+/, "");
+
     try {
       let sha: string | undefined;
 
@@ -206,7 +209,7 @@ export class GitHubService {
         const { data: existingFile } = await this.octokit.repos.getContent({
           owner,
           repo,
-          path,
+          path: normalizedPath,
           ref: branch,
         });
 
@@ -222,7 +225,7 @@ export class GitHubService {
       await this.octokit.repos.createOrUpdateFileContents({
         owner,
         repo,
-        path,
+        path: normalizedPath,
         message,
         content: Buffer.from(content).toString("base64"),
         branch,

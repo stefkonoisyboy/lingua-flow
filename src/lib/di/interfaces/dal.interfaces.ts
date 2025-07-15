@@ -274,8 +274,8 @@ export interface CreateSyncHistoryParams {
   project_id: string;
   integration_id: string;
   status: "success" | "failed";
-  type: "import" | "export";
   details: {
+    repository?: string;
     branch?: string;
     pullRequestUrl?: string;
     filesCount?: number;

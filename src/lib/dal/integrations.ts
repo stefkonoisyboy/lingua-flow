@@ -169,7 +169,6 @@ export class IntegrationsDAL implements IIntegrationsDAL {
       };
     }>(query);
 
-    console.log(`Translations count: ${data.length}`);
     return data.map((t) => ({
       key: t.translation_keys.key,
       content: t.content,

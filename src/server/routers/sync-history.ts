@@ -26,6 +26,7 @@ export const syncHistoryRouter = router({
       const syncHistoryService = ctx.container.resolve<ISyncHistoryService>(
         DI_TOKENS.SYNC_HISTORY_SERVICE
       );
+
       await syncHistoryService.create(input);
     }),
 });

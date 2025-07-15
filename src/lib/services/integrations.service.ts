@@ -141,8 +141,8 @@ export class IntegrationsService implements IIntegrationsService {
         project_id: projectId,
         integration_id: integration.id,
         status: "success",
-        type: "export",
         details: {
+          repository,
           branch: newBranch,
           pullRequestUrl: url,
           filesCount: Object.keys(files).length,
@@ -165,8 +165,9 @@ export class IntegrationsService implements IIntegrationsService {
             project_id: projectId,
             integration_id: integration.id,
             status: "failed",
-            type: "export",
             details: {
+              repository,
+              branch: baseBranch,
               error: error instanceof Error ? error.message : "Unknown error",
             },
           });

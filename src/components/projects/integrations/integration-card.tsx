@@ -62,6 +62,7 @@ export function IntegrationCard({
             ? "Integration disconnected"
             : "Integration connected"
         );
+
         utils.integrations.getProjectIntegration.invalidate({ projectId });
       },
       onError: (error) => {
@@ -69,22 +70,47 @@ export function IntegrationCard({
       },
     });
 
-  const handleToggleConnection = () => {
+  const exportTranslations = trpc.integrations.exportTranslations.useMutation({
+    onSuccess: (data) => {
+      onSuccess("Translations exported successfully!");
+
+      if (data.pullRequestUrl) {
+        window.open(data.pullRequestUrl, "_blank");
+      }
+
+      utils.syncHistory.getByProjectId.invalidate({ projectId });
+    },
+    onError: (error) => {
+      onError(`Error exporting translations: ${error.message}`);
+      utils.syncHistory.getByProjectId.invalidate({ projectId });
+    },
+  });
+
+  const handleExport = async () => {
+    await exportTranslations.mutateAsync({
+      projectId,
+      repository: integration.config.repository,
+      baseBranch: integration.config.branch,
+    });
+  };
+
+  const handleToggleConnection = async () => {
     if (integration.is_connected) {
       setIsDisconnectDialogOpen(true);
     } else {
-      updateIntegrationStatus.mutate({
+      await updateIntegrationStatus.mutateAsync({
         integrationId: integration.id,
         isConnected: true,
       });
     }
   };
 
-  const handleDisconnect = () => {
-    updateIntegrationStatus.mutate({
+  const handleDisconnect = async () => {
+    await updateIntegrationStatus.mutateAsync({
       integrationId: integration.id,
       isConnected: false,
     });
+
     setIsDisconnectDialogOpen(false);
   };
 
@@ -97,8 +123,18 @@ export function IntegrationCard({
           </Typography>
           <IntegrationActions>
             <Tooltip title="Sync now">
-              <IconButton color="primary" disabled={!integration.is_connected}>
-                <SyncIcon />
+              <IconButton
+                color="primary"
+                disabled={
+                  !integration.is_connected || exportTranslations.isPending
+                }
+                onClick={handleExport}
+              >
+                {exportTranslations.isPending ? (
+                  <CircularProgress size={20} />
+                ) : (
+                  <SyncIcon />
+                )}
               </IconButton>
             </Tooltip>
             <Tooltip title="Settings">
