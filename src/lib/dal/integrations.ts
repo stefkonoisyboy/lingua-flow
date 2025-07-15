@@ -149,10 +149,10 @@ export class IntegrationsDAL implements IIntegrationsDAL {
       .select(
         `
         content,
-        translation_keys (
+        translation_keys!inner (
           key
         ),
-        languages (
+        languages!inner (
           code
         )
       `
@@ -173,11 +173,11 @@ export class IntegrationsDAL implements IIntegrationsDAL {
         code: string;
       };
     }>(query);
-
+    console.log(`Translations count: ${data.length}`);
     return data.map((t) => ({
-      key: t.translation_keys?.key,
+      key: t.translation_keys.key,
       content: t.content,
-      language: t.languages?.code,
+      language: t.languages.code,
     }));
   }
 

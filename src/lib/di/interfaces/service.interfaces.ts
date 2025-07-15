@@ -208,7 +208,9 @@ export interface IIntegrationsService {
   ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
   getProjectIntegration(
     projectId: string
-  ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
+  ): Promise<
+    Database["public"]["Tables"]["project_integrations"]["Row"] | null
+  >;
   listRepositories(accessToken: string): Promise<Repository[]>;
   listBranches(
     accessToken: string,
