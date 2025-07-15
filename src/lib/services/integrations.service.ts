@@ -99,13 +99,47 @@ export class IntegrationsService implements IIntegrationsService {
       const newBranch = `translations/export-${timestamp}`;
       await this.githubService.createBranch(repository, baseBranch, newBranch);
 
-      // Upload translation files
+      // Get existing translation files to detect deleted languages
       const translationPath =
         typeof integration.config === "object" && integration.config !== null
-          ? (integration.config as { translationPath?: string })
-              .translationPath || ""
-          : "";
+          ? (integration.config as { translationPath?: string }).translationPath
+          : undefined;
 
+      const filePattern =
+        typeof integration.config === "object" && integration.config !== null
+          ? (integration.config as { filePattern?: string }).filePattern
+          : undefined;
+
+      // Construct the full pattern with the translation path if provided
+      const fullPattern = translationPath
+        ? `${translationPath}/${filePattern || "*.{json,yaml,yml,po}"}`
+        : filePattern;
+
+      const existingFiles = await this.githubService.findTranslationFiles(
+        repository,
+        baseBranch,
+        fullPattern
+      );
+
+      // Find languages that were deleted (files that exist but language no longer in project)
+      const currentLanguageCodes = new Set(languages.map((l) => l.code));
+
+      const deletedFiles = existingFiles.filter((file) => {
+        const langCode = file.name.split(".")[0];
+        return !currentLanguageCodes.has(langCode);
+      });
+
+      // Delete files for removed languages
+      for (const file of deletedFiles) {
+        await this.githubService.deleteFile(
+          repository,
+          newBranch,
+          file.path,
+          `Remove translations for deleted language: ${file.name}`
+        );
+      }
+
+      // Upload translation files
       for (const [filename, content] of Object.entries(files)) {
         const filePath = translationPath
           ? `${translationPath}/${filename}`

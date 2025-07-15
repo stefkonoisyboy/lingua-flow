@@ -321,4 +321,51 @@ export class GitHubService {
       );
     }
   }
+
+  async deleteFile(
+    repository: string,
+    branch: string,
+    path: string,
+    message: string
+  ): Promise<void> {
+    const [owner, repo] = repository.split("/");
+    const normalizedPath = path.replace(/^\/+/, "");
+
+    try {
+      // Get the file's SHA
+      const { data: existingFile } = await this.octokit.repos.getContent({
+        owner,
+        repo,
+        path: normalizedPath,
+        ref: branch,
+      });
+
+      if (!("sha" in existingFile)) {
+        throw new Error("File not found or is a directory");
+      }
+
+      // Delete the file
+      await this.octokit.repos.deleteFile({
+        owner,
+        repo,
+        path: normalizedPath,
+        message,
+        sha: existingFile.sha,
+        branch,
+      });
+    } catch (error) {
+      console.error("Error deleting file:", error);
+
+      if (error instanceof Error && error.message.includes("Not Found")) {
+        // File doesn't exist, which is fine
+        return;
+      }
+
+      throw new Error(
+        `Failed to delete file: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
 }
