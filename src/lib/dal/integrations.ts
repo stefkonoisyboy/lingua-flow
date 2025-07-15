@@ -3,6 +3,7 @@ import { Database, Json } from "../types/database.types";
 import {
   IIntegrationsDAL,
   IPaginationDAL,
+  CreateSyncHistoryParams,
 } from "../di/interfaces/dal.interfaces";
 
 export type IntegrationType = Database["public"]["Enums"]["integration_type"];
@@ -138,25 +139,24 @@ export class IntegrationsDAL implements IIntegrationsDAL {
     projectId: string,
     languageId?: string
   ) {
-    const query = this.supabase
+    let query = this.supabase
       .from("translations")
       .select(
         `
         content,
-        translation_keys!inner (
-          key,
-          project_id
+        translation_keys (
+          key
         ),
-        languages!inner (
+        languages (
           code
         )
       `
       )
-      .eq("translation_keys.project_id", projectId)
-      .eq("status", "approved");
+      .eq("status", "approved")
+      .eq("translation_keys.project_id", projectId);
 
     if (languageId) {
-      query.eq("language_id", languageId);
+      query = query.eq("language_id", languageId);
     }
 
     const data = await this.paginationDal.fetchAllPages<{
@@ -168,11 +168,12 @@ export class IntegrationsDAL implements IIntegrationsDAL {
         code: string;
       };
     }>(query);
+
     console.log(`Translations count: ${data.length}`);
     return data.map((t) => ({
       key: t.translation_keys.key,
       content: t.content,
-      language: t.languages,
+      language: t.languages.code,
     }));
   }
 
@@ -181,7 +182,7 @@ export class IntegrationsDAL implements IIntegrationsDAL {
       .from("project_languages")
       .select(
         `
-        languages!inner (
+        languages (
           id,
           code
         )
@@ -190,12 +191,22 @@ export class IntegrationsDAL implements IIntegrationsDAL {
       .eq("project_id", projectId);
 
     if (error) {
-      throw new Error(`Error fetching project languages: ${error.message}`);
+      throw new Error(
+        `Error fetching project languages for export: ${error.message}`
+      );
     }
 
-    return data.map((l) => ({
-      id: l.languages.id,
-      code: l.languages.code,
+    return data.map((pl) => ({
+      id: pl.languages.id,
+      code: pl.languages.code,
     }));
+  }
+
+  async createSyncHistory(data: CreateSyncHistoryParams) {
+    const { error } = await this.supabase.from("sync_history").insert(data);
+
+    if (error) {
+      throw new Error(`Error creating sync history: ${error.message}`);
+    }
   }
 }

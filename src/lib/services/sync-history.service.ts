@@ -1,5 +1,5 @@
 import {
-  CreateSyncHistoryParams,
+  CreateSyncHistoryParamsDAL,
   ISyncHistoryDAL,
 } from "../di/interfaces/dal.interfaces";
 import { ISyncHistoryService } from "../di/interfaces/service.interfaces";
@@ -7,7 +7,7 @@ import { ISyncHistoryService } from "../di/interfaces/service.interfaces";
 export class SyncHistoryService implements ISyncHistoryService {
   constructor(private readonly syncHistoryDAL: ISyncHistoryDAL) {}
 
-  async create(data: CreateSyncHistoryParams) {
+  async create(data: CreateSyncHistoryParamsDAL) {
     await this.syncHistoryDAL.create(data);
   }
 

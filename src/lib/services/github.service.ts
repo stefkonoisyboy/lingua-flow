@@ -156,4 +156,118 @@ export class GitHubService {
       return null;
     }
   }
+
+  async createBranch(
+    repository: string,
+    baseBranch: string,
+    newBranch: string
+  ): Promise<void> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      // Get the SHA of the base branch
+      const { data: ref } = await this.octokit.git.getRef({
+        owner,
+        repo,
+        ref: `heads/${baseBranch}`,
+      });
+
+      // Create new branch from the base branch's SHA
+      await this.octokit.git.createRef({
+        owner,
+        repo,
+        ref: `refs/heads/${newBranch}`,
+        sha: ref.object.sha,
+      });
+    } catch (error) {
+      console.error("Error creating branch:", error);
+      throw new Error(
+        `Failed to create branch: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async createOrUpdateFile(
+    repository: string,
+    branch: string,
+    path: string,
+    content: string,
+    message: string
+  ): Promise<void> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      let sha: string | undefined;
+
+      // Try to get existing file to get its SHA
+      try {
+        const { data: existingFile } = await this.octokit.repos.getContent({
+          owner,
+          repo,
+          path,
+          ref: branch,
+        });
+
+        if ("sha" in existingFile) {
+          sha = existingFile.sha;
+        }
+      } catch (error) {
+        // File doesn't exist yet, which is fine
+        console.error("File doesn't exist yet, which is fine: ", error);
+      }
+
+      // Create or update file
+      await this.octokit.repos.createOrUpdateFileContents({
+        owner,
+        repo,
+        path,
+        message,
+        content: Buffer.from(content).toString("base64"),
+        branch,
+        ...(sha ? { sha } : {}),
+      });
+    } catch (error) {
+      console.error("Error creating/updating file:", error);
+      throw new Error(
+        `Failed to create/update file: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async createPullRequest(
+    repository: string,
+    baseBranch: string,
+    headBranch: string,
+    title: string,
+    body: string
+  ): Promise<{ number: number; url: string }> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      const { data } = await this.octokit.pulls.create({
+        owner,
+        repo,
+        title,
+        body,
+        head: headBranch,
+        base: baseBranch,
+      });
+
+      return {
+        number: data.number,
+        url: data.html_url,
+      };
+    } catch (error) {
+      console.error("Error creating pull request:", error);
+      throw new Error(
+        `Failed to create pull request: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
 }

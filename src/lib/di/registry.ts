@@ -113,7 +113,11 @@ export function registerServices(
 
   container.register<IIntegrationsDAL>(
     DI_TOKENS.INTEGRATIONS_DAL,
-    (c) => new IntegrationsDAL(c.resolve(DI_TOKENS.SUPABASE))
+    (c) =>
+      new IntegrationsDAL(
+        c.resolve(DI_TOKENS.SUPABASE),
+        c.resolve(DI_TOKENS.PAGINATION_DAL)
+      )
   );
 
   container.register<ILanguagesDAL>(

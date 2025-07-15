@@ -1,12 +1,12 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
 import { ISyncHistoryDAL } from "../di/interfaces/dal.interfaces";
-import { CreateSyncHistoryParams } from "../di/interfaces/dal.interfaces";
+import { CreateSyncHistoryParamsDAL } from "../di/interfaces/dal.interfaces";
 
 export class SyncHistoryDAL implements ISyncHistoryDAL {
   constructor(private readonly supabase: SupabaseClient<Database>) {}
 
-  async create(data: CreateSyncHistoryParams) {
+  async create(data: CreateSyncHistoryParamsDAL) {
     const { projectId, integrationId, status, details } = data;
 
     await this.supabase.from("sync_history").insert({

@@ -6,7 +6,7 @@ import {
   TranslationFile,
 } from "../../services/github.service";
 import {
-  CreateSyncHistoryParams,
+  CreateSyncHistoryParamsDAL,
   Translation,
   TranslationKey,
 } from "./dal.interfaces";
@@ -240,6 +240,14 @@ export interface IIntegrationsService {
     files: TranslationFile[],
     userId: string
   ): Promise<{ success: boolean }>;
+
+  exportTranslations(
+    projectId: string,
+    accessToken: string,
+    repository: string,
+    baseBranch: string,
+    languageId?: string
+  ): Promise<{ success: boolean; pullRequestUrl?: string }>;
 }
 
 export interface IGitHubTokensService {
@@ -305,7 +313,7 @@ export interface ICommentsService {
 }
 
 export interface ISyncHistoryService {
-  create(data: CreateSyncHistoryParams): Promise<void>;
+  create(data: CreateSyncHistoryParamsDAL): Promise<void>;
   getByProjectId(
     projectId: string
   ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;

@@ -258,9 +258,7 @@ export interface IIntegrationsDAL {
     {
       key: string;
       content: string;
-      language: {
-        code: string;
-      };
+      language: string;
     }[]
   >;
   getProjectLanguagesForExport(projectId: string): Promise<
@@ -269,6 +267,21 @@ export interface IIntegrationsDAL {
       code: string;
     }[]
   >;
+  createSyncHistory(data: CreateSyncHistoryParams): Promise<void>;
+}
+
+export interface CreateSyncHistoryParams {
+  project_id: string;
+  integration_id: string;
+  status: "success" | "failed";
+  type: "import" | "export";
+  details: {
+    branch?: string;
+    pullRequestUrl?: string;
+    filesCount?: number;
+    translationsCount?: number;
+    error?: string;
+  };
 }
 
 // LanguagesDAL Interface
@@ -349,7 +362,7 @@ export interface ICommentsDAL {
   getTranslationProjectId(translationId: string): Promise<string | null>;
 }
 
-export type CreateSyncHistoryParams = {
+export type CreateSyncHistoryParamsDAL = {
   projectId: string;
   integrationId: string;
   status: Database["public"]["Enums"]["sync_status"];
@@ -357,7 +370,7 @@ export type CreateSyncHistoryParams = {
 };
 
 export interface ISyncHistoryDAL {
-  create(data: CreateSyncHistoryParams): Promise<void>;
+  create(data: CreateSyncHistoryParamsDAL): Promise<void>;
   getByProjectId(
     projectId: string
   ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;
