@@ -121,36 +121,64 @@ export class IntegrationsService implements IIntegrationsService {
       }
 
       // Create pull request
-      const { url } = await this.githubService.createPullRequest(
-        repository,
-        baseBranch,
-        newBranch,
-        `Update translations (${new Date().toISOString().split("T")[0]})`,
-        "This PR contains updated translations from LinguaFlow."
-      );
-
-      // Update integration status
-      await this.updateIntegrationStatus(
-        integration.id,
-        true,
-        new Date().toISOString()
-      );
-
-      // Create sync history record
-      await this.integrationsDal.createSyncHistory({
-        project_id: projectId,
-        integration_id: integration.id,
-        status: "success",
-        details: {
+      try {
+        const { url } = await this.githubService.createPullRequest(
           repository,
-          branch: newBranch,
-          pullRequestUrl: url,
-          filesCount: Object.keys(files).length,
-          translationsCount: translations.length,
-        },
-      });
+          baseBranch,
+          newBranch,
+          `Update translations (${new Date().toISOString().split("T")[0]})`,
+          "This PR contains updated translations from LinguaFlow."
+        );
 
-      return { success: true, pullRequestUrl: url };
+        // Update integration status
+        await this.updateIntegrationStatus(
+          integration.id,
+          true,
+          new Date().toISOString()
+        );
+
+        // Create sync history record
+        await this.integrationsDal.createSyncHistory({
+          project_id: projectId,
+          integration_id: integration.id,
+          status: "success",
+          details: {
+            repository,
+            branch: newBranch,
+            pullRequestUrl: url,
+            filesCount: Object.keys(files).length,
+            translationsCount: translations.length,
+          },
+        });
+
+        return { success: true, pullRequestUrl: url };
+      } catch (error) {
+        // If there are no changes, clean up the branch and return success
+        if (
+          error instanceof Error &&
+          error.message.includes("No changes detected")
+        ) {
+          // Clean up the temporary branch
+          if (await this.githubService.hasBranch(repository, newBranch)) {
+            await this.githubService.deleteBranch(repository, newBranch);
+          }
+
+          // Create sync history record for no-changes case
+          await this.integrationsDal.createSyncHistory({
+            project_id: projectId,
+            integration_id: integration.id,
+            status: "success",
+            details: {
+              repository,
+              branch: baseBranch,
+              message: "No changes detected in translations",
+            },
+          });
+
+          return { success: true };
+        }
+        throw error;
+      }
     } catch (error) {
       console.error("Failed to export translations:", error);
 

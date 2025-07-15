@@ -252,6 +252,18 @@ export class GitHubService {
     const [owner, repo] = repository.split("/");
 
     try {
+      // Check if there are any changes between branches
+      const { data: comparison } = await this.octokit.repos.compareCommits({
+        owner,
+        repo,
+        base: baseBranch,
+        head: headBranch,
+      });
+
+      if (comparison.files?.length === 0) {
+        throw new Error("No changes detected between branches");
+      }
+
       const { data } = await this.octokit.pulls.create({
         owner,
         repo,
@@ -269,6 +281,41 @@ export class GitHubService {
       console.error("Error creating pull request:", error);
       throw new Error(
         `Failed to create pull request: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async hasBranch(repository: string, branch: string): Promise<boolean> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      await this.octokit.git.getRef({
+        owner,
+        repo,
+        ref: `heads/${branch}`,
+      });
+      return true;
+    } catch (error) {
+      console.error("Error checking branch:", error);
+      return false;
+    }
+  }
+
+  async deleteBranch(repository: string, branch: string): Promise<void> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      await this.octokit.git.deleteRef({
+        owner,
+        repo,
+        ref: `heads/${branch}`,
+      });
+    } catch (error) {
+      console.error("Error deleting branch:", error);
+      throw new Error(
+        `Failed to delete branch: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );

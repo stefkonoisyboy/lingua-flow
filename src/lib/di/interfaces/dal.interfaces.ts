@@ -281,6 +281,7 @@ export interface CreateSyncHistoryParams {
     filesCount?: number;
     translationsCount?: number;
     error?: string;
+    message?: string;
   };
 }
 

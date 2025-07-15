@@ -73,12 +73,15 @@ export function IntegrationCard({
   const exportTranslations = trpc.integrations.exportTranslations.useMutation({
     onSuccess: (data) => {
       onSuccess("Translations exported successfully!");
+      utils.syncHistory.getByProjectId.invalidate({ projectId });
 
       if (data.pullRequestUrl) {
-        window.open(data.pullRequestUrl, "_blank");
-      }
+        const newWindow = window.open(data.pullRequestUrl, "_blank");
 
-      utils.syncHistory.getByProjectId.invalidate({ projectId });
+        if (newWindow) {
+          newWindow.focus();
+        }
+      }
     },
     onError: (error) => {
       onError(`Error exporting translations: ${error.message}`);

@@ -22,7 +22,8 @@ export class SyncHistoryDAL implements ISyncHistoryDAL {
       .from("sync_history")
       .select("*")
       .eq("project_id", projectId)
-      .order("created_at", { ascending: false });
+      .order("created_at", { ascending: false })
+      .limit(5);
 
     if (error) {
       throw error;

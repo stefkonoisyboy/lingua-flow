@@ -15,6 +15,7 @@ type SyncDetails =
     repository: string;
     branch: string;
     error?: string;
+    message?: string;
   };
 
 interface SyncHistoryProps {
@@ -52,14 +53,22 @@ export function SyncHistory({ projectId }: SyncHistoryProps) {
               {(sync.details as SyncDetails).repository}:
               {(sync.details as SyncDetails).branch}
             </Typography>
+
             <Typography variant="caption" color="text.secondary">
               {formatDistanceToNow(new Date(sync.created_at), {
                 addSuffix: true,
               })}
             </Typography>
+
             {(sync.details as SyncDetails).error && (
               <Typography variant="caption" color="error">
                 Error: {(sync.details as SyncDetails).error}
+              </Typography>
+            )}
+
+            {(sync.details as SyncDetails).message && (
+              <Typography variant="caption" color="text.secondary">
+                Message: {(sync.details as SyncDetails).message}
               </Typography>
             )}
           </SyncDetails>
