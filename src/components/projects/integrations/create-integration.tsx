@@ -301,6 +301,7 @@ export function CreateIntegration({
           </DialogContent>
           <DialogActions>
             <Button onClick={onClose}>Cancel</Button>
+
             <Button
               type="submit"
               variant="contained"
@@ -309,7 +310,8 @@ export function CreateIntegration({
                 isSubmitting ||
                 createGitHubIntegration.isPending ||
                 findTranslationFiles.isPending ||
-                importTranslations.isPending
+                importTranslations.isPending ||
+                !githubEnabled
               }
             >
               {createGitHubIntegration.isPending ||

@@ -10,9 +10,9 @@ import { trpc } from "@/utils/trpc";
 import { IntegrationCard } from "./integration-card";
 import { SyncHistory } from "./sync-history";
 import { CreateIntegrationDialog } from "./create-integration-dialog";
+import { useParams } from "next/navigation";
 
 interface IntegrationsListProps {
-  projectId: string;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }
@@ -25,10 +25,11 @@ interface IntegrationConfig {
 }
 
 export function IntegrationsList({
-  projectId,
   onSuccess,
   onError,
 }: IntegrationsListProps) {
+  const params = useParams();
+  const projectId = params.projectId as string;
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
   const { data: integration, isLoading } =

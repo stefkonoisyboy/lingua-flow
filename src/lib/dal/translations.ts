@@ -5,16 +5,9 @@ import {
   IPaginationDAL,
   TranslationKey,
   Translation,
+  TranslationInsert,
 } from "../di/interfaces/dal.interfaces";
 import { DEFAULT_PAGE_SIZE } from "./pagination";
-
-export type TranslationInsert = {
-  key_id: string;
-  language_id: string;
-  content: string;
-  translator_id: string;
-  status: "approved";
-};
 
 interface TranslationKeyInsert {
   project_id: string;
@@ -129,6 +122,7 @@ export class TranslationsDAL implements ITranslationsDAL {
           status,
           translator_id,
           reviewer_id,
+          entry_order,
           created_at,
           updated_at,
           comments(count)
@@ -160,6 +154,7 @@ export class TranslationsDAL implements ITranslationsDAL {
             status,
             translator_id,
             reviewer_id,
+            entry_order,
             created_at,
             updated_at,
             comments(count)
@@ -208,13 +203,7 @@ export class TranslationsDAL implements ITranslationsDAL {
   }
 
   async upsertTranslations(
-    translations: {
-      key_id: string;
-      language_id: string;
-      content: string;
-      translator_id: string;
-      status: "approved";
-    }[],
+    translations: TranslationInsert[],
     userId: string,
     source: string
   ) {
@@ -344,6 +333,26 @@ export class TranslationsDAL implements ITranslationsDAL {
     content: string,
     userId: string
   ) {
+    // Get the current max entry_order for this key and language
+    const { data: maxOrderData, error: maxOrderError } = await this.supabase
+      .from("translations")
+      .select("entry_order")
+      .eq("language_id", languageId)
+      .order("entry_order", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (maxOrderError && maxOrderError.code !== "PGRST116") {
+      throw new Error(
+        `Failed to get max entry_order: ${maxOrderError.message}`
+      );
+    }
+
+    const nextOrder =
+      typeof maxOrderData?.entry_order === "number"
+        ? maxOrderData.entry_order + 1
+        : 0;
+
     // Create the new translation
     const { data, error } = await this.supabase
       .from("translations")
@@ -355,6 +364,7 @@ export class TranslationsDAL implements ITranslationsDAL {
         status: "approved",
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        entry_order: nextOrder,
       })
       .select()
       .single();
@@ -408,22 +418,75 @@ export class TranslationsDAL implements ITranslationsDAL {
       throw new Error(`Failed to create translation key: ${keyError.message}`);
     }
 
-    // Create the translations
-    const { data: createdTranslations, error: translationsError } =
-      await this.supabase.from("translations").insert(
-        translations.map((t) => ({
+    // For each language, get the max entry_order and assign incrementally
+    // Group translations by language
+    const translationsByLanguage = translations.reduce((acc, t) => {
+      if (!acc[t.languageId]) {
+        acc[t.languageId] = [];
+      }
+
+      acc[t.languageId].push(t);
+      return acc;
+    }, {} as Record<string, typeof translations>);
+
+    // Use the correct type for translationsWithOrder
+    const translationsWithOrder: {
+      key_id: string;
+      language_id: string;
+      content: string;
+      translator_id: string;
+      status: "approved";
+      entry_order: number;
+    }[] = [];
+
+    for (const [languageId, langTranslations] of Object.entries(
+      translationsByLanguage
+    )) {
+      // Get max entry_order for this language
+      const { data: maxOrderData, error: maxOrderError } = await this.supabase
+        .from("translations")
+        .select("entry_order")
+        .eq("language_id", languageId)
+        .order("entry_order", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (maxOrderError && maxOrderError.code !== "PGRST116") {
+        throw new Error(
+          `Failed to get max entry_order: ${maxOrderError.message}`
+        );
+      }
+
+      let nextOrder =
+        typeof maxOrderData?.entry_order === "number"
+          ? maxOrderData.entry_order + 1
+          : 0;
+
+      for (const t of langTranslations) {
+        translationsWithOrder.push({
           key_id: translationKey.id,
           language_id: t.languageId,
           content: t.content,
           translator_id: t.userId,
           status: "approved" as const,
-        }))
-      ).select(`
+          entry_order: nextOrder++,
+        });
+      }
+    }
+
+    // Create the translations
+    const { data: createdTranslations, error: translationsError } =
+      await this.supabase
+        .from("translations")
+        .insert(translationsWithOrder)
+        .select(
+          `
         *,
         translation_keys (
           project_id
         )
-      `);
+      `
+        );
 
     if (translationsError) {
       throw new Error(

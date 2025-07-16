@@ -6,7 +6,7 @@ import {
   IIntegrationsService,
   GitHubConfig,
 } from "../di/interfaces/service.interfaces";
-import { TranslationInsert } from "../dal/translations";
+import { TranslationInsert } from "../di/interfaces/dal.interfaces";
 import { IntegrationConfig } from "../dal/integrations";
 
 interface ParsedTranslation {
@@ -38,6 +38,7 @@ export class IntegrationsService implements IIntegrationsService {
       if (!filesByLanguage[language]) {
         filesByLanguage[language] = {};
       }
+
       filesByLanguage[language][key] = content;
     });
 
@@ -190,7 +191,8 @@ export class IntegrationsService implements IIntegrationsService {
         // If there are no changes, clean up the branch and return success
         if (
           error instanceof Error &&
-          error.message.includes("No changes detected")
+          (error.message.includes("No changes detected") ||
+            error.message.includes("No significant changes"))
         ) {
           // Clean up the temporary branch
           if (await this.githubService.hasBranch(repository, newBranch)) {
@@ -322,7 +324,8 @@ export class IntegrationsService implements IIntegrationsService {
     filePath: string,
     fileType: string
   ) {
-    const translations: ParsedTranslation[] = [];
+    const translations: (ParsedTranslation & { entry_order: number })[] = [];
+    let order = 0;
 
     try {
       if (fileType === "json") {
@@ -332,7 +335,10 @@ export class IntegrationsService implements IIntegrationsService {
 
         // Flatten nested JSON structure
         const flattenObject = (obj: NestedTranslations, prefix = ""): void => {
-          for (const key in obj) {
+          // Get keys in their original order from the file
+          const keys = Object.keys(obj);
+
+          for (const key of keys) {
             const value = obj[key];
 
             if (typeof value === "object" && value !== null) {
@@ -345,6 +351,7 @@ export class IntegrationsService implements IIntegrationsService {
                 key: prefix ? `${prefix}.${key}` : key,
                 value: value,
                 language,
+                entry_order: order++,
               });
             }
           }
@@ -383,6 +390,7 @@ export class IntegrationsService implements IIntegrationsService {
         key: string;
         value: string;
         languageId: string;
+        entry_order: number;
       }[] = [];
 
       // Process each translation file to collect translations
@@ -424,6 +432,7 @@ export class IntegrationsService implements IIntegrationsService {
             key: t.key,
             value: t.value,
             languageId: language.id,
+            entry_order: t.entry_order,
           }))
         );
       }
@@ -459,6 +468,7 @@ export class IntegrationsService implements IIntegrationsService {
               content: translation.value,
               translator_id: userId,
               status: "approved" as const,
+              entry_order: translation.entry_order,
             }));
           })
           .flat()

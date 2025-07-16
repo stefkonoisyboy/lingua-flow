@@ -30,7 +30,9 @@ export class ProjectsService implements IProjectsService {
     const translations = await this.translationsDal.getProjectTranslations(
       projectIds
     );
+
     const totalTranslations = translations?.length || 0;
+
     const approvedTranslations =
       translations?.filter((t) => t.status === "approved").length || 0;
 

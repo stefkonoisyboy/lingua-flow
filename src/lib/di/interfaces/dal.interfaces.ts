@@ -8,6 +8,7 @@ export type TranslationInsert = {
   content: string;
   translator_id: string;
   status: "approved";
+  entry_order: number;
 };
 
 // Custom types for joined queries

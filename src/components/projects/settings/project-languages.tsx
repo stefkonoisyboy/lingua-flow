@@ -37,9 +37,9 @@ import {
 } from "@/styles/projects/project-settings.styles";
 import { useAppDispatch } from "@/store/hooks";
 import { resetSelectedLanguageId } from "@/store/slices/selected-language.slice";
+import { useParams } from "next/navigation";
 
 interface ProjectLanguagesProps {
-  projectId: string;
   languages: {
     language_id: string;
     is_default: boolean;
@@ -56,11 +56,12 @@ interface ProjectLanguagesProps {
 }
 
 export function ProjectLanguages({
-  projectId,
   languages,
   onSuccess,
   onError,
 }: ProjectLanguagesProps) {
+  const params = useParams();
+  const projectId = params.projectId as string;
   const [selectedLanguageId, setSelectedLanguageId] = useState("");
   const [languageToRemove, setLanguageToRemove] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);

@@ -158,7 +158,8 @@ export class IntegrationsDAL implements IIntegrationsDAL {
       `
       )
       .eq("status", "approved")
-      .eq("translation_keys.project_id", projectId);
+      .eq("translation_keys.project_id", projectId)
+      .order("entry_order", { ascending: true });
 
     if (languageId) {
       query = query.eq("language_id", languageId);
@@ -173,7 +174,7 @@ export class IntegrationsDAL implements IIntegrationsDAL {
         code: string;
       };
     }>(query);
-    console.log(`Translations count: ${data.length}`);
+
     return data.map((t) => ({
       key: t.translation_keys.key,
       content: t.content,

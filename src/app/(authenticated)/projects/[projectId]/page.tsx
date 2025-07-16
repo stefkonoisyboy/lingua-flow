@@ -72,14 +72,7 @@ export default function ProjectDetailsPage() {
   const renderTabContent = () => {
     switch (activeTab) {
       case "settings":
-        return (
-          <ProjectSettings
-            projectId={projectId}
-            initialName={project?.name || ""}
-            initialDescription={project?.description || ""}
-            languages={projectLanguages || []}
-          />
-        );
+        return <ProjectSettings languages={projectLanguages || []} />;
       case "translations":
         return (
           <ProjectTranslations

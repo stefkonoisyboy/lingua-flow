@@ -279,6 +279,7 @@ export class GitHubService {
       };
     } catch (error) {
       console.error("Error creating pull request:", error);
+
       throw new Error(
         `Failed to create pull request: ${
           error instanceof Error ? error.message : "Unknown error"

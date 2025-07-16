@@ -9,11 +9,9 @@ import {
   FormContainer,
   FormActions,
 } from "@/styles/projects/project-settings.styles";
+import { useParams } from "next/navigation";
 
 interface ProjectDetailsFormProps {
-  projectId: string;
-  initialName: string;
-  initialDescription: string;
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }
@@ -24,13 +22,16 @@ const validationSchema = Yup.object().shape({
 });
 
 export function ProjectDetailsForm({
-  projectId,
-  initialName,
-  initialDescription,
   onSuccess,
   onError,
 }: ProjectDetailsFormProps) {
   const utils = trpc.useUtils();
+  const params = useParams();
+  const projectId = params.projectId as string;
+
+  const { data: project } = trpc.projects.getProjectById.useQuery({
+    projectId,
+  });
 
   const updateProjectMutation = trpc.projects.updateProject.useMutation({
     onSuccess: () => {
@@ -49,9 +50,10 @@ export function ProjectDetailsForm({
       </Typography>
 
       <Formik
+        enableReinitialize
         initialValues={{
-          name: initialName,
-          description: initialDescription,
+          name: project?.name || "",
+          description: project?.description || "",
         }}
         validationSchema={validationSchema}
         onSubmit={(values, { setSubmitting }) => {
