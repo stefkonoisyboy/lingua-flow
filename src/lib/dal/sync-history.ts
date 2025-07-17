@@ -31,4 +31,20 @@ export class SyncHistoryDAL implements ISyncHistoryDAL {
 
     return data;
   }
+
+  async getLatestSync(projectId: string, integrationId: string) {
+    const { data, error } = await this.supabase
+      .from("sync_history")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("integration_id", integrationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw new Error(`Failed to fetch latest sync: ${error.message}`);
+    }
+    return data || null;
+  }
 }

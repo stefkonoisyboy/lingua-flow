@@ -98,6 +98,88 @@ export class TranslationsDAL implements ITranslationsDAL {
     );
   }
 
+  /**
+   * Fetch all translations for a project and language updated after a given timestamp.
+   */
+  async getProjectTranslationsSince(
+    projectId: string,
+    languageId: string,
+    since: string
+  ) {
+    // First, fetch all translation key IDs for the project
+    const { data: keyData, error: keyError } = await this.supabase
+      .from("translation_keys")
+      .select("id")
+      .eq("project_id", projectId);
+
+    if (keyError) {
+      throw new Error(`Failed to fetch translation keys: ${keyError.message}`);
+    }
+
+    const keyIds = (keyData || []).map((k) => k.id);
+    if (keyIds.length === 0) return [];
+
+    const { data, error } = await this.supabase
+      .from("translations")
+      .select(`*, translation_keys!inner(key, project_id)`)
+      .eq("language_id", languageId)
+      .gt("updated_at", since)
+      .in("key_id", keyIds)
+      .order("updated_at", { ascending: true });
+
+    if (error) {
+      throw new Error(
+        `Failed to fetch translations since timestamp: ${error.message}`
+      );
+    }
+
+    return data || [];
+  }
+
+  /**
+   * Fetch all translations for a project and language as a map of key to translation.
+   */
+  async getProjectTranslationsMap(projectId: string, languageId: string) {
+    // First, fetch all translation key IDs for the project
+    const { data: keyData, error: keyError } = await this.supabase
+      .from("translation_keys")
+      .select("id, key")
+      .eq("project_id", projectId);
+
+    if (keyError) {
+      throw new Error(`Failed to fetch translation keys: ${keyError.message}`);
+    }
+
+    const keyIds = (keyData || []).map((k) => k.id);
+
+    if (keyIds.length === 0) {
+      return {};
+    }
+
+    const { data, error } = await this.supabase
+      .from("translations")
+      .select(`*, translation_keys!inner(key, project_id)`)
+      .eq("language_id", languageId)
+      .in("key_id", keyIds)
+      .order("key_id", { ascending: true });
+
+    if (error) {
+      throw new Error(`Failed to fetch translations map: ${error.message}`);
+    }
+
+    // Map by key (from translation_keys)
+    type TranslationWithKey = Translation & {
+      translation_keys: { key: string; project_id: string };
+    };
+    const map: Record<string, TranslationWithKey> = {};
+    ((data as TranslationWithKey[]) || []).forEach((t) => {
+      if (t.translation_keys && t.translation_keys.key) {
+        map[t.translation_keys.key] = t;
+      }
+    });
+    return map;
+  }
+
   async getTranslationKeys(
     projectId: string,
     from: number,
