@@ -166,7 +166,8 @@ export function registerServices(
       new IntegrationsService(
         c.resolve(DI_TOKENS.INTEGRATIONS_DAL),
         c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
-        c.resolve(DI_TOKENS.PROJECTS_DAL)
+        c.resolve(DI_TOKENS.PROJECTS_DAL),
+        c.resolve(DI_TOKENS.SYNC_HISTORY_DAL)
       )
   );
 

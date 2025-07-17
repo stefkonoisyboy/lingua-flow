@@ -226,6 +226,29 @@ export interface ITranslationsDAL {
     projectId: string,
     languageId: string
   ): Promise<void>;
+
+  // Additions for conflict detection
+  getProjectTranslationsSince(
+    projectId: string,
+    languageId: string,
+    since: string
+  ): Promise<
+    (Database["public"]["Tables"]["translations"]["Row"] & {
+      translation_keys: { key: string; project_id: string };
+    })[]
+  >;
+
+  getProjectTranslationsMap(
+    projectId: string,
+    languageId: string
+  ): Promise<
+    Record<
+      string,
+      Database["public"]["Tables"]["translations"]["Row"] & {
+        translation_keys: { key: string; project_id: string };
+      }
+    >
+  >;
 }
 
 // IntegrationsDAL Interface
@@ -378,4 +401,8 @@ export interface ISyncHistoryDAL {
   getByProjectId(
     projectId: string
   ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;
+  getLatestSync(
+    projectId: string,
+    integrationId: string
+  ): Promise<Database["public"]["Tables"]["sync_history"]["Row"] | null>;
 }

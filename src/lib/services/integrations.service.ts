@@ -1,5 +1,8 @@
 import { GitHubService, TranslationFile } from "./github.service";
-import { IIntegrationsDAL } from "../di/interfaces/dal.interfaces";
+import {
+  IIntegrationsDAL,
+  ISyncHistoryDAL,
+} from "../di/interfaces/dal.interfaces";
 import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
 import { IProjectsDAL } from "../di/interfaces/dal.interfaces";
 import {
@@ -25,7 +28,8 @@ export class IntegrationsService implements IIntegrationsService {
   constructor(
     private integrationsDal: IIntegrationsDAL,
     private translationsDal: ITranslationsDAL,
-    private projectsDal: IProjectsDAL
+    private projectsDal: IProjectsDAL,
+    private syncHistoryDal: ISyncHistoryDAL
   ) {}
 
   private generateTranslationFiles(
@@ -510,5 +514,146 @@ export class IntegrationsService implements IIntegrationsService {
         }`
       );
     }
+  }
+
+  /**
+   * Detect translation conflicts between LinguaFlow and GitHub for a project/language.
+   * @param projectId
+   * @param integrationId
+   * @param languageId
+   * @param githubTranslations: Record<string, string> (key -> value from GitHub)
+   * @returns Array of conflicts: { key, linguaFlowValue, githubValue, lastSyncedValue }
+   */
+  async detectTranslationConflicts(
+    projectId: string,
+    integrationId: string,
+    languageId: string,
+    githubTranslations: Record<string, string>
+  ) {
+    // 1. Get last sync timestamp
+    const latestSync = await this.syncHistoryDal.getLatestSync(
+      projectId,
+      integrationId
+    );
+
+    const lastSyncTime = latestSync?.created_at;
+
+    // 2. Get current LinguaFlow translations
+    const linguaFlowMap = await this.translationsDal.getProjectTranslationsMap(
+      projectId,
+      languageId
+    );
+
+    // 3. Get LinguaFlow translations as of last sync (if available)
+    let lastSyncedMap: typeof linguaFlowMap = {};
+
+    if (lastSyncTime) {
+      const sinceTranslations =
+        await this.translationsDal.getProjectTranslationsSince(
+          projectId,
+          languageId,
+          lastSyncTime
+        );
+      // Build a map of key -> value as of last sync (by subtracting since changes from current)
+      // For simplicity, we assume that if a key is in sinceTranslations, it changed after last sync
+      // So, lastSyncedMap = current map, but for keys in sinceTranslations, we don't know the value at last sync
+      // (A more advanced implementation would use version_history, but this is sufficient for now)
+      lastSyncedMap = { ...linguaFlowMap };
+
+      for (const t of sinceTranslations) {
+        if (t.translation_keys && t.translation_keys.key) {
+          delete lastSyncedMap[t.translation_keys.key];
+        }
+      }
+    } else {
+      // If no sync, treat all as new
+      lastSyncedMap = {};
+    }
+
+    // 4. Detect conflicts
+    const conflicts: Array<{
+      key: string;
+      linguaFlowValue: string | undefined;
+      githubValue: string | undefined;
+      lastSyncedValue: string | undefined;
+    }> = [];
+
+    const allKeys = new Set([
+      ...Object.keys(linguaFlowMap),
+      ...Object.keys(githubTranslations),
+    ]);
+
+    for (const key of allKeys) {
+      const linguaFlowValue = linguaFlowMap[key]?.content;
+      const githubValue = githubTranslations[key];
+      const lastSyncedValue = lastSyncedMap[key]?.content;
+
+      // Conflict if both changed since last sync and values differ
+      if (
+        lastSyncTime &&
+        linguaFlowValue !== lastSyncedValue &&
+        githubValue !== lastSyncedValue &&
+        linguaFlowValue !== githubValue
+      ) {
+        conflicts.push({ key, linguaFlowValue, githubValue, lastSyncedValue });
+      }
+    }
+
+    return conflicts;
+  }
+
+  /**
+   * Apply user resolutions for translation conflicts.
+   * @param projectId
+   * @param languageId
+   * @param resolutions: Array<{ key, resolvedValue, userId }>
+   */
+  async resolveTranslationConflicts(
+    projectId: string,
+    languageId: string,
+    resolutions: Array<{ key: string; resolvedValue: string; userId: string }>
+  ) {
+    // Get translation keys for the project
+    const translationKeys =
+      await this.translationsDal.getProjectTranslationKeys([projectId]);
+
+    const keyMap = Object.fromEntries(
+      translationKeys.map((k) => [k.key, k.id])
+    );
+
+    for (const { key, resolvedValue, userId } of resolutions) {
+      const keyId = keyMap[key];
+
+      if (!keyId) {
+        continue;
+      }
+
+      // Find the translation for this key/language
+      const translations = await this.translationsDal.getProjectTranslations([
+        projectId,
+      ]);
+
+      const translation = translations.find(
+        (t) => t.key_id === keyId && t.language_id === languageId
+      );
+
+      if (translation) {
+        await this.translationsDal.updateTranslation(
+          translation.id,
+          resolvedValue,
+          userId
+        );
+      } else {
+        // If translation does not exist, create it
+        await this.translationsDal.createTranslation(
+          keyId,
+          languageId,
+          resolvedValue,
+          userId
+        );
+      }
+    }
+
+    return { success: true };
   }
 }

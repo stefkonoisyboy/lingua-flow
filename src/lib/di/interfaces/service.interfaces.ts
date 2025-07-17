@@ -250,6 +250,26 @@ export interface IIntegrationsService {
     baseBranch: string,
     languageId?: string
   ): Promise<{ success: boolean; pullRequestUrl?: string }>;
+
+  detectTranslationConflicts(
+    projectId: string,
+    integrationId: string,
+    languageId: string,
+    githubTranslations: Record<string, string>
+  ): Promise<
+    {
+      key: string;
+      linguaFlowValue: string | undefined;
+      githubValue: string | undefined;
+      lastSyncedValue: string | undefined;
+    }[]
+  >;
+
+  resolveTranslationConflicts(
+    projectId: string,
+    languageId: string,
+    resolutions: Array<{ key: string; resolvedValue: string; userId: string }>
+  ): Promise<{ success: boolean }>;
 }
 
 export interface IGitHubTokensService {
