@@ -235,19 +235,28 @@ export const integrationsRouter = router({
         projectId: z.string(),
         integrationId: z.string(),
         languageId: z.string(),
-        githubTranslations: z.record(z.string(), z.string()),
+        repository: z.string(),
+        branch: z.string(),
       })
     )
     .mutation(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
       );
-
-      return await integrationsService.detectTranslationConflicts(
+      const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+        DI_TOKENS.GITHUB_TOKENS_SERVICE
+      );
+      const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
+      if (!accessToken) {
+        throw new Error("GitHub not connected");
+      }
+      return await integrationsService.pullAndDetectConflicts(
         input.projectId,
         input.integrationId,
         input.languageId,
-        input.githubTranslations
+        accessToken,
+        input.repository,
+        input.branch
       );
     }),
 

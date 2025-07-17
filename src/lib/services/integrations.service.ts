@@ -656,4 +656,82 @@ export class IntegrationsService implements IIntegrationsService {
 
     return { success: true };
   }
+
+  /**
+   * Pull translation files from GitHub, parse, and detect conflicts.
+   */
+  async pullAndDetectConflicts(
+    projectId: string,
+    integrationId: string,
+    languageId: string,
+    accessToken: string,
+    repository: string,
+    branch: string
+  ) {
+    // Fetch integration config
+    const integration = await this.integrationsDal.getProjectIntegration(
+      projectId
+    );
+
+    if (!integration) {
+      throw new Error("No integration found for this project");
+    }
+
+    const translationPath =
+      typeof integration.config === "object" && integration.config !== null
+        ? (integration.config as { translationPath?: string }).translationPath
+        : undefined;
+    const filePattern =
+      typeof integration.config === "object" && integration.config !== null
+        ? (integration.config as { filePattern?: string }).filePattern
+        : undefined;
+
+    // 1. Find translation files in the repo
+    const githubService = new GitHubService(accessToken);
+
+    const fullPattern = translationPath
+      ? `${translationPath}/${filePattern || "*.{json,yaml,yml,po}"}`
+      : filePattern;
+
+    const files = await githubService.findTranslationFiles(
+      repository,
+      branch,
+      fullPattern
+    );
+    // 2. Download and parse files for the given language
+    const githubTranslations: Record<string, string> = {};
+    for (const file of files) {
+      // Only process files for the requested language
+      const langCode = file.name.split(".")[0];
+      if (langCode !== languageId) {
+        continue;
+      }
+      const content = await githubService.getFileContent(
+        repository,
+        file.path,
+        branch
+      );
+      if (!content) {
+        continue;
+      }
+      // Parse JSON (extend for YAML/PO as needed)
+      try {
+        const data = JSON.parse(content);
+        for (const [key, value] of Object.entries(data)) {
+          if (typeof value === "string") {
+            githubTranslations[key] = value;
+          }
+        }
+      } catch {
+        // Ignore parse errors for now
+      }
+    }
+    // 3. Run conflict detection
+    return this.detectTranslationConflicts(
+      projectId,
+      integrationId,
+      languageId,
+      githubTranslations
+    );
+  }
 }

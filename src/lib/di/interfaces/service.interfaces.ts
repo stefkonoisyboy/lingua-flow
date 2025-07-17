@@ -270,6 +270,22 @@ export interface IIntegrationsService {
     languageId: string,
     resolutions: Array<{ key: string; resolvedValue: string; userId: string }>
   ): Promise<{ success: boolean }>;
+
+  pullAndDetectConflicts(
+    projectId: string,
+    integrationId: string,
+    languageId: string,
+    accessToken: string,
+    repository: string,
+    branch: string
+  ): Promise<
+    {
+      key: string;
+      linguaFlowValue: string | undefined;
+      githubValue: string | undefined;
+      lastSyncedValue: string | undefined;
+    }[]
+  >;
 }
 
 export interface IGitHubTokensService {
