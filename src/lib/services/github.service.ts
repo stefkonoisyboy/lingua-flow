@@ -156,4 +156,217 @@ export class GitHubService {
       return null;
     }
   }
+
+  async createBranch(
+    repository: string,
+    baseBranch: string,
+    newBranch: string
+  ): Promise<void> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      // Get the SHA of the base branch
+      const { data: ref } = await this.octokit.git.getRef({
+        owner,
+        repo,
+        ref: `heads/${baseBranch}`,
+      });
+
+      // Create new branch from the base branch's SHA
+      await this.octokit.git.createRef({
+        owner,
+        repo,
+        ref: `refs/heads/${newBranch}`,
+        sha: ref.object.sha,
+      });
+    } catch (error) {
+      console.error("Error creating branch:", error);
+      throw new Error(
+        `Failed to create branch: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async createOrUpdateFile(
+    repository: string,
+    branch: string,
+    path: string,
+    content: string,
+    message: string
+  ): Promise<void> {
+    const [owner, repo] = repository.split("/");
+
+    // Remove leading slash from path if present
+    const normalizedPath = path.replace(/^\/+/, "");
+
+    try {
+      let sha: string | undefined;
+
+      // Try to get existing file to get its SHA
+      try {
+        const { data: existingFile } = await this.octokit.repos.getContent({
+          owner,
+          repo,
+          path: normalizedPath,
+          ref: branch,
+        });
+
+        if ("sha" in existingFile) {
+          sha = existingFile.sha;
+        }
+      } catch (error) {
+        // File doesn't exist yet, which is fine
+        console.error("File doesn't exist yet, which is fine: ", error);
+      }
+
+      // Create or update file
+      await this.octokit.repos.createOrUpdateFileContents({
+        owner,
+        repo,
+        path: normalizedPath,
+        message,
+        content: Buffer.from(content).toString("base64"),
+        branch,
+        ...(sha ? { sha } : {}),
+      });
+    } catch (error) {
+      console.error("Error creating/updating file:", error);
+
+      throw new Error(
+        `Failed to create/update file: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async createPullRequest(
+    repository: string,
+    baseBranch: string,
+    headBranch: string,
+    title: string,
+    body: string
+  ): Promise<{ number: number; url: string }> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      // Check if there are any changes between branches
+      const { data: comparison } = await this.octokit.repos.compareCommits({
+        owner,
+        repo,
+        base: baseBranch,
+        head: headBranch,
+      });
+
+      if (comparison.files?.length === 0) {
+        throw new Error("No changes detected between branches");
+      }
+
+      const { data } = await this.octokit.pulls.create({
+        owner,
+        repo,
+        title,
+        body,
+        head: headBranch,
+        base: baseBranch,
+      });
+
+      return {
+        number: data.number,
+        url: data.html_url,
+      };
+    } catch (error) {
+      console.error("Error creating pull request:", error);
+
+      throw new Error(
+        `Failed to create pull request: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async hasBranch(repository: string, branch: string): Promise<boolean> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      await this.octokit.git.getRef({
+        owner,
+        repo,
+        ref: `heads/${branch}`,
+      });
+      return true;
+    } catch (error) {
+      console.error("Error checking branch:", error);
+      return false;
+    }
+  }
+
+  async deleteBranch(repository: string, branch: string): Promise<void> {
+    const [owner, repo] = repository.split("/");
+
+    try {
+      await this.octokit.git.deleteRef({
+        owner,
+        repo,
+        ref: `heads/${branch}`,
+      });
+    } catch (error) {
+      console.error("Error deleting branch:", error);
+      throw new Error(
+        `Failed to delete branch: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async deleteFile(
+    repository: string,
+    branch: string,
+    path: string,
+    message: string
+  ): Promise<void> {
+    const [owner, repo] = repository.split("/");
+    const normalizedPath = path.replace(/^\/+/, "");
+
+    try {
+      // Get the file's SHA
+      const { data: existingFile } = await this.octokit.repos.getContent({
+        owner,
+        repo,
+        path: normalizedPath,
+        ref: branch,
+      });
+
+      if (!("sha" in existingFile)) {
+        throw new Error("File not found or is a directory");
+      }
+
+      // Delete the file
+      await this.octokit.repos.deleteFile({
+        owner,
+        repo,
+        path: normalizedPath,
+        message,
+        sha: existingFile.sha,
+        branch,
+      });
+    } catch (error) {
+      console.error("Error deleting file:", error);
+
+      if (error instanceof Error && error.message.includes("Not Found")) {
+        // File doesn't exist, which is fine
+        return;
+      }
+
+      throw new Error(
+        `Failed to delete file: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
 }

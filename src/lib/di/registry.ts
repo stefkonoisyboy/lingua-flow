@@ -12,6 +12,7 @@ import { PaginationDAL } from "../dal/pagination";
 import { GitHubTokensDAL } from "../dal/github-tokens";
 import { VersionHistoryDAL } from "../dal/version-history";
 import { CommentsDAL } from "../dal/comments";
+import { SyncHistoryDAL } from "../dal/sync-history";
 
 // Service imports
 import { ProjectsService } from "../services/projects.service";
@@ -21,6 +22,7 @@ import { IntegrationsService } from "../services/integrations.service";
 import { GitHubTokensService } from "../services/github-tokens.service";
 import { VersionHistoryService } from "../services/version-history.service";
 import { CommentsService } from "../services/comments.service";
+import { SyncHistoryService } from "../services/sync-history.service";
 
 // Interface imports
 import {
@@ -33,6 +35,7 @@ import {
   IGitHubTokensDAL,
   IVersionHistoryDAL,
   ICommentsDAL,
+  ISyncHistoryDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
@@ -42,6 +45,7 @@ import {
   IGitHubTokensService,
   IVersionHistoryService,
   ICommentsService,
+  ISyncHistoryService,
 } from "./interfaces/service.interfaces";
 
 // Token constants for dependency injection
@@ -56,6 +60,7 @@ export const DI_TOKENS = {
   PAGINATION_DAL: "PAGINATION_DAL",
   GITHUB_TOKENS_DAL: "GITHUB_TOKENS_DAL",
   COMMENTS_DAL: "COMMENTS_DAL",
+  SYNC_HISTORY_DAL: "SYNC_HISTORY_DAL",
 
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
@@ -65,6 +70,7 @@ export const DI_TOKENS = {
   TRANSLATIONS_SERVICE: "TRANSLATIONS_SERVICE",
   VERSION_HISTORY_SERVICE: "VERSION_HISTORY_SERVICE",
   COMMENTS_SERVICE: "COMMENTS_SERVICE",
+  SYNC_HISTORY_SERVICE: "SYNC_HISTORY_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -107,7 +113,11 @@ export function registerServices(
 
   container.register<IIntegrationsDAL>(
     DI_TOKENS.INTEGRATIONS_DAL,
-    (c) => new IntegrationsDAL(c.resolve(DI_TOKENS.SUPABASE))
+    (c) =>
+      new IntegrationsDAL(
+        c.resolve(DI_TOKENS.SUPABASE),
+        c.resolve(DI_TOKENS.PAGINATION_DAL)
+      )
   );
 
   container.register<ILanguagesDAL>(
@@ -139,6 +149,11 @@ export function registerServices(
     (c) => new CommentsDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
+  container.register<ISyncHistoryDAL>(
+    DI_TOKENS.SYNC_HISTORY_DAL,
+    (c) => new SyncHistoryDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
   // Register services
   container.register<ILanguagesService>(
     DI_TOKENS.LANGUAGES_SERVICE,
@@ -162,7 +177,6 @@ export function registerServices(
         c.resolve(DI_TOKENS.PROJECTS_DAL),
         c.resolve(DI_TOKENS.ACTIVITIES_DAL),
         c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
-        c.resolve(DI_TOKENS.INTEGRATIONS_SERVICE),
         c.resolve(DI_TOKENS.LANGUAGES_DAL)
       )
   );
@@ -189,5 +203,10 @@ export function registerServices(
         c.resolve(DI_TOKENS.COMMENTS_DAL),
         c.resolve(DI_TOKENS.ACTIVITIES_DAL)
       )
+  );
+
+  container.register<ISyncHistoryService>(
+    DI_TOKENS.SYNC_HISTORY_SERVICE,
+    (c) => new SyncHistoryService(c.resolve(DI_TOKENS.SYNC_HISTORY_DAL))
   );
 }

@@ -1,6 +1,10 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database, Json } from "../types/database.types";
-import { IIntegrationsDAL } from "../di/interfaces/dal.interfaces";
+import {
+  IIntegrationsDAL,
+  IPaginationDAL,
+  CreateSyncHistoryParams,
+} from "../di/interfaces/dal.interfaces";
 
 export type IntegrationType = Database["public"]["Enums"]["integration_type"];
 
@@ -14,7 +18,10 @@ export interface IntegrationConfig {
 }
 
 export class IntegrationsDAL implements IIntegrationsDAL {
-  constructor(private supabase: SupabaseClient<Database>) {}
+  constructor(
+    private supabase: SupabaseClient<Database>,
+    private paginationDal: IPaginationDAL
+  ) {}
 
   async createIntegration(
     projectId: string,
@@ -46,6 +53,11 @@ export class IntegrationsDAL implements IIntegrationsDAL {
       .select("*")
       .eq("project_id", projectId)
       .single();
+
+    // If no integration found, return null
+    if (error && error.code === "PGRST116") {
+      return null;
+    }
 
     if (error) {
       throw new Error(`Error fetching project integration: ${error.message}`);
@@ -126,5 +138,80 @@ export class IntegrationsDAL implements IIntegrationsDAL {
     }
   ) {
     return await this.createIntegration(projectId, "github", config);
+  }
+
+  async getProjectTranslationsForExport(
+    projectId: string,
+    languageId?: string
+  ) {
+    let query = this.supabase
+      .from("translations")
+      .select(
+        `
+        content,
+        translation_keys!inner (
+          key
+        ),
+        languages!inner (
+          code
+        )
+      `
+      )
+      .eq("status", "approved")
+      .eq("translation_keys.project_id", projectId)
+      .order("entry_order", { ascending: true });
+
+    if (languageId) {
+      query = query.eq("language_id", languageId);
+    }
+
+    const data = await this.paginationDal.fetchAllPages<{
+      content: string;
+      translation_keys: {
+        key: string;
+      };
+      languages: {
+        code: string;
+      };
+    }>(query);
+
+    return data.map((t) => ({
+      key: t.translation_keys.key,
+      content: t.content,
+      language: t.languages.code,
+    }));
+  }
+
+  async getProjectLanguagesForExport(projectId: string) {
+    const { data, error } = await this.supabase
+      .from("project_languages")
+      .select(
+        `
+        languages (
+          id,
+          code
+        )
+      `
+      )
+      .eq("project_id", projectId);
+
+    if (error) {
+      throw new Error(
+        `Error fetching project languages for export: ${error.message}`
+      );
+    }
+
+    return data.map((pl) => ({
+      id: pl.languages.id,
+      code: pl.languages.code,
+    }));
+  }
+
+  async createSyncHistory(data: CreateSyncHistoryParams) {
+    const { error } = await this.supabase.from("sync_history").insert(data);
+
+    if (error) {
+      throw new Error(`Error creating sync history: ${error.message}`);
+    }
   }
 }

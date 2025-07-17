@@ -6,7 +6,7 @@ import {
   IIntegrationsService,
   GitHubConfig,
 } from "../di/interfaces/service.interfaces";
-import { TranslationInsert } from "../dal/translations";
+import { TranslationInsert } from "../di/interfaces/dal.interfaces";
 import { IntegrationConfig } from "../dal/integrations";
 
 interface ParsedTranslation {
@@ -28,11 +28,232 @@ export class IntegrationsService implements IIntegrationsService {
     private projectsDal: IProjectsDAL
   ) {}
 
-  async createGitHubIntegration(
+  private generateTranslationFiles(
+    translations: { key: string; content: string; language: string }[],
+    languages: { id: string; code: string }[]
+  ): { [key: string]: string } {
+    const filesByLanguage: { [key: string]: { [key: string]: string } } = {};
+
+    languages.forEach((language) => {
+      filesByLanguage[language.code] = {};
+    });
+
+    // Group translations by language
+    translations.forEach(({ key, content, language }) => {
+      filesByLanguage[language][key] = content;
+    });
+
+    // Convert each language group to JSON string
+    const files: { [key: string]: string } = {};
+
+    for (const [language, translations] of Object.entries(filesByLanguage)) {
+      files[`${language}.json`] = JSON.stringify(translations, null, 2);
+    }
+
+    return files;
+  }
+
+  async exportTranslations(
     projectId: string,
-    config: GitHubConfig
-  ): Promise<void> {
-    await this.integrationsDal.createGitHubIntegration(projectId, config);
+    accessToken: string,
+    repository: string,
+    baseBranch: string,
+    languageId?: string
+  ): Promise<{ success: boolean; pullRequestUrl?: string }> {
+    try {
+      // Initialize GitHub service
+      this.githubService = new GitHubService(accessToken);
+
+      // Get project integration to get file path configuration
+      const integration = await this.integrationsDal.getProjectIntegration(
+        projectId
+      );
+
+      if (!integration) {
+        throw new Error("No GitHub integration found for this project");
+      }
+
+      // Get translations for export
+      const translations =
+        await this.integrationsDal.getProjectTranslationsForExport(
+          projectId,
+          languageId
+        );
+
+      if (!translations.length) {
+        throw new Error("No approved translations found for export");
+      }
+
+      // Get project languages
+      const languages = await this.integrationsDal.getProjectLanguagesForExport(
+        projectId
+      );
+
+      if (!languages.length) {
+        throw new Error("No languages found for the project");
+      }
+
+      // Generate translation files
+      const files = this.generateTranslationFiles(translations, languages);
+
+      // Create new branch for the export
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const newBranch = `translations/export-${timestamp}`;
+      await this.githubService.createBranch(repository, baseBranch, newBranch);
+
+      // Get existing translation files to detect deleted languages
+      const translationPath =
+        typeof integration.config === "object" && integration.config !== null
+          ? (integration.config as { translationPath?: string }).translationPath
+          : undefined;
+
+      const filePattern =
+        typeof integration.config === "object" && integration.config !== null
+          ? (integration.config as { filePattern?: string }).filePattern
+          : undefined;
+
+      // Construct the full pattern with the translation path if provided
+      const fullPattern = translationPath
+        ? `${translationPath}/${filePattern || "*.{json,yaml,yml,po}"}`
+        : filePattern;
+
+      const existingFiles = await this.githubService.findTranslationFiles(
+        repository,
+        baseBranch,
+        fullPattern
+      );
+
+      // Find languages that were deleted (files that exist but language no longer in project)
+      const currentLanguageCodes = new Set(languages.map((l) => l.code));
+
+      const deletedFiles = existingFiles.filter((file) => {
+        const langCode = file.name.split(".")[0];
+        return !currentLanguageCodes.has(langCode);
+      });
+
+      // Delete files for removed languages
+      for (const file of deletedFiles) {
+        await this.githubService.deleteFile(
+          repository,
+          newBranch,
+          file.path,
+          `Remove translations for deleted language: ${file.name}`
+        );
+      }
+
+      // Upload translation files
+      for (const [filename, content] of Object.entries(files)) {
+        const filePath = translationPath
+          ? `${translationPath}/${filename}`
+          : filename;
+
+        await this.githubService.createOrUpdateFile(
+          repository,
+          newBranch,
+          filePath,
+          content,
+          `Update translations for ${filename}`
+        );
+      }
+
+      // Create pull request
+      try {
+        const { url } = await this.githubService.createPullRequest(
+          repository,
+          baseBranch,
+          newBranch,
+          `Update translations (${new Date().toISOString().split("T")[0]})`,
+          "This PR contains updated translations from LinguaFlow."
+        );
+
+        // Update integration status
+        await this.updateIntegrationStatus(
+          integration.id,
+          true,
+          new Date().toISOString()
+        );
+
+        // Create sync history record
+        await this.integrationsDal.createSyncHistory({
+          project_id: projectId,
+          integration_id: integration.id,
+          status: "success",
+          details: {
+            repository,
+            branch: newBranch,
+            pullRequestUrl: url,
+            filesCount: Object.keys(files).length,
+            translationsCount: translations.length,
+          },
+        });
+
+        return { success: true, pullRequestUrl: url };
+      } catch (error) {
+        // If there are no changes, clean up the branch and return success
+        if (
+          error instanceof Error &&
+          (error.message.includes("No changes detected") ||
+            error.message.includes("No significant changes"))
+        ) {
+          // Clean up the temporary branch
+          if (await this.githubService.hasBranch(repository, newBranch)) {
+            await this.githubService.deleteBranch(repository, newBranch);
+          }
+
+          // Create sync history record for no-changes case
+          await this.integrationsDal.createSyncHistory({
+            project_id: projectId,
+            integration_id: integration.id,
+            status: "success",
+            details: {
+              repository,
+              branch: baseBranch,
+              message: "No changes detected in translations",
+            },
+          });
+
+          return { success: true };
+        }
+        throw error;
+      }
+    } catch (error) {
+      console.error("Failed to export translations:", error);
+
+      // If we have an integration, record the failure
+      try {
+        const integration = await this.integrationsDal.getProjectIntegration(
+          projectId
+        );
+
+        if (integration) {
+          await this.integrationsDal.createSyncHistory({
+            project_id: projectId,
+            integration_id: integration.id,
+            status: "failed",
+            details: {
+              repository,
+              branch: baseBranch,
+              error: error instanceof Error ? error.message : "Unknown error",
+            },
+          });
+        }
+      } catch (syncError) {
+        console.error("Failed to record sync history:", syncError);
+      }
+
+      throw new Error(
+        `Failed to export translations: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async createGitHubIntegration(projectId: string, config: GitHubConfig) {
+    return await this.integrationsDal.createGitHubIntegration(
+      projectId,
+      config
+    );
   }
 
   async getProjectIntegration(projectId: string) {
@@ -104,7 +325,8 @@ export class IntegrationsService implements IIntegrationsService {
     filePath: string,
     fileType: string
   ) {
-    const translations: ParsedTranslation[] = [];
+    const translations: (ParsedTranslation & { entry_order: number })[] = [];
+    let order = 0;
 
     try {
       if (fileType === "json") {
@@ -114,7 +336,10 @@ export class IntegrationsService implements IIntegrationsService {
 
         // Flatten nested JSON structure
         const flattenObject = (obj: NestedTranslations, prefix = ""): void => {
-          for (const key in obj) {
+          // Get keys in their original order from the file
+          const keys = Object.keys(obj);
+
+          for (const key of keys) {
             const value = obj[key];
 
             if (typeof value === "object" && value !== null) {
@@ -127,6 +352,7 @@ export class IntegrationsService implements IIntegrationsService {
                 key: prefix ? `${prefix}.${key}` : key,
                 value: value,
                 language,
+                entry_order: order++,
               });
             }
           }
@@ -165,6 +391,7 @@ export class IntegrationsService implements IIntegrationsService {
         key: string;
         value: string;
         languageId: string;
+        entry_order: number;
       }[] = [];
 
       // Process each translation file to collect translations
@@ -206,6 +433,7 @@ export class IntegrationsService implements IIntegrationsService {
             key: t.key,
             value: t.value,
             languageId: language.id,
+            entry_order: t.entry_order,
           }))
         );
       }
@@ -241,6 +469,7 @@ export class IntegrationsService implements IIntegrationsService {
               content: translation.value,
               translator_id: userId,
               status: "approved" as const,
+              entry_order: translation.entry_order,
             }));
           })
           .flat()

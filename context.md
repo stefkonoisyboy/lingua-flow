@@ -628,3 +628,52 @@ The application uses a custom DI system for better maintainability and testabili
 - Supabase permissions are set up with:
   - Schema usage granted to anon and authenticated users
   - Table permissions (SELECT, INSERT, UPDATE) granted to authenticated and anon users
+
+## [Update: GitHub Integration & Translation Order Improvements]
+
+### Backend Changes
+
+#### 1. Translation Import/Export Order Tracking
+- **entry_order column** added to the `translations` table to track the order in which translations are inserted per language.
+- **Import logic updated**:
+  - During GitHub import, the order of translations in the source file is preserved by assigning `entry_order` based on their appearance.
+  - When inserting multiple translations for the same language in a batch (e.g., via `createTranslationKeyWithTranslations`), the system:
+    - Queries the current max `entry_order` for that language.
+    - Assigns consecutive `entry_order` values (`max + 1`, `max + 2`, ...) to new translations, ensuring uniqueness and order preservation.
+- **Export logic updated**:
+  - When exporting translations to GitHub, translations are ordered by `entry_order` (with a secondary order by `id` for pagination stability).
+
+#### 2. Pagination & Query Stability
+- **Pagination bug fixed**: When paginating joined queries (e.g., translations with keys/languages), a secondary order by `id` is added to ensure stable, unique ordering and prevent off-by-one errors.
+- **Deduplication**: Ensured that translation export queries do not return duplicate or missing rows due to join multiplicity.
+
+#### 3. GitHub PR Change Detection
+- **Improved PR logic**: PRs are only created if there are actual content changes, not just changes in translation order. This prevents unnecessary PRs when only the order of translations changes.
+
+### Frontend Changes
+
+#### 1. Integration Creation Flow
+- **Reusable GitHub integration form**: The logic for connecting a GitHub repository and creating an integration is now shared between project creation and the integrations list (when no integration exists).
+- **UI/UX**:
+  - Users can connect a repository and configure integration directly from the integrations list if none exists.
+  - The integration creation dialog reuses the GitHub config component and logic from the project creation form.
+
+#### 2. Translation Import Feedback
+- **Sync history**: After import/export actions, the sync history is updated and shown in the UI, reflecting the result of the operation (success, failure, or no changes).
+- **Loading and error states**: All integration and translation import/export actions provide user feedback, including loading indicators and error messages.
+
+#### 3. Consistency and Best Practices
+- **Consistent ordering**: The frontend now relies on the backend's `entry_order` to display translations in the same order as in the source files, ensuring a consistent experience between LinguaFlow and GitHub.
+- **Type safety and error handling**: All new logic follows the project's standards for type safety, error handling, and user feedback.
+
+---
+
+**Summary:**
+- The system now robustly tracks and preserves translation order per language, both on import and export.
+- Pagination and data consistency issues with large translation sets and joined queries have been resolved.
+- The GitHub integration flow is more user-friendly and consistent across the app.
+- The frontend and backend are aligned to provide a seamless, reliable translation management experience.
+
+---
+
+# [End of Update]

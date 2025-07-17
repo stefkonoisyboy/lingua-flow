@@ -10,6 +10,34 @@ import { GitHubService } from "@/lib/services/github.service";
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
 
 export const integrationsRouter = router({
+  getProjectIntegration: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.getProjectIntegration(input.projectId);
+    }),
+
+  updateIntegrationStatus: protectedProcedure
+    .input(
+      z.object({
+        integrationId: z.string(),
+        isConnected: z.boolean(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.updateIntegrationStatus(
+        input.integrationId,
+        input.isConnected
+      );
+    }),
+
   checkGitHubConnection: protectedProcedure.query(async ({ ctx }) => {
     const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
       DI_TOKENS.GITHUB_TOKENS_SERVICE
@@ -141,6 +169,62 @@ export const integrationsRouter = router({
         input.branch,
         input.files,
         ctx.user.id
+      );
+    }),
+
+  createGitHubIntegration: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        config: z.object({
+          repository: z.string(),
+          branch: z.string(),
+          translationPath: z.string().optional(),
+          filePattern: z.string().optional(),
+        }),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.createGitHubIntegration(
+        input.projectId,
+        input.config
+      );
+    }),
+
+  exportTranslations: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        repository: z.string(),
+        baseBranch: z.string(),
+        languageId: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+        DI_TOKENS.GITHUB_TOKENS_SERVICE
+      );
+
+      const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
+
+      if (!accessToken) {
+        throw new Error("GitHub not connected");
+      }
+
+      return await integrationsService.exportTranslations(
+        input.projectId,
+        accessToken,
+        input.repository,
+        input.baseBranch,
+        input.languageId
       );
     }),
 });

@@ -16,10 +16,9 @@ export class PaginationDAL implements IPaginationDAL {
     let page = 0;
 
     while (!lastPage) {
-      const { data, error } = await query.range(
-        page * pageSize,
-        (page + 1) * pageSize - 1
-      );
+      const { data, error } = await query
+        .order("id", { ascending: true })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
 
       if (error) {
         throw new Error(`Failed to fetch data: ${error.message}`);

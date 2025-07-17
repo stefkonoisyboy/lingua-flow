@@ -8,6 +8,7 @@ export type TranslationInsert = {
   content: string;
   translator_id: string;
   status: "approved";
+  entry_order: number;
 };
 
 // Custom types for joined queries
@@ -240,7 +241,9 @@ export interface IIntegrationsDAL {
   ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
   getProjectIntegration(
     projectId: string
-  ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
+  ): Promise<
+    Database["public"]["Tables"]["project_integrations"]["Row"] | null
+  >;
   updateIntegrationConfig(
     integrationId: string,
     config: Partial<IntegrationConfig>
@@ -251,6 +254,38 @@ export interface IIntegrationsDAL {
     lastSyncedAt?: string
   ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
   deleteIntegration(integrationId: string): Promise<void>;
+  getProjectTranslationsForExport(
+    projectId: string,
+    languageId?: string
+  ): Promise<
+    {
+      key: string;
+      content: string;
+      language: string;
+    }[]
+  >;
+  getProjectLanguagesForExport(projectId: string): Promise<
+    {
+      id: string;
+      code: string;
+    }[]
+  >;
+  createSyncHistory(data: CreateSyncHistoryParams): Promise<void>;
+}
+
+export interface CreateSyncHistoryParams {
+  project_id: string;
+  integration_id: string;
+  status: "success" | "failed";
+  details: {
+    repository?: string;
+    branch?: string;
+    pullRequestUrl?: string;
+    filesCount?: number;
+    translationsCount?: number;
+    error?: string;
+    message?: string;
+  };
 }
 
 // LanguagesDAL Interface
@@ -263,7 +298,7 @@ export interface ILanguagesDAL {
 export interface IPaginationDAL {
   fetchAllPages<T>(
     query: SupabaseClient<Database>["from"]["prototype"]["select"],
-    pageSize: number
+    pageSize?: number
   ): Promise<T[]>;
 }
 
@@ -329,4 +364,18 @@ export interface ICommentsDAL {
   deleteComment(commentId: string): Promise<void>;
 
   getTranslationProjectId(translationId: string): Promise<string | null>;
+}
+
+export type CreateSyncHistoryParamsDAL = {
+  projectId: string;
+  integrationId: string;
+  status: Database["public"]["Enums"]["sync_status"];
+  details: Database["public"]["Tables"]["sync_history"]["Row"]["details"];
+};
+
+export interface ISyncHistoryDAL {
+  create(data: CreateSyncHistoryParamsDAL): Promise<void>;
+  getByProjectId(
+    projectId: string
+  ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;
 }

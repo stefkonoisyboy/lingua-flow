@@ -1,24 +1,16 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Button,
   DialogActions,
   DialogContent,
-  FormControl,
   FormControlLabel,
-  FormHelperText,
-  InputLabel,
-  MenuItem,
-  Select,
   Switch,
-  TextField,
   Typography,
 } from "@mui/material";
-import { Field, Form, Formik, FormikProps } from "formik";
+import { Form, Formik, FormikProps } from "formik";
 import * as Yup from "yup";
 import { trpc } from "@/utils/trpc";
-import GitHubConfig from "./github-config";
+import GitHubConfig from "@/components/dashboard/github-config";
 import {
   GitHubConfigContainer,
   WaitingText,
@@ -26,10 +18,7 @@ import {
   GitHubSwitchContainer,
 } from "@/styles/projects/create-project-form.styles";
 
-const ProjectSchema = Yup.object().shape({
-  name: Yup.string().required("Project name is required"),
-  description: Yup.string(),
-  defaultLanguageId: Yup.string().required("Default language is required"),
+const IntegrationSchema = Yup.object().shape({
   githubEnabled: Yup.boolean(),
   githubConfig: Yup.object().when("githubEnabled", {
     is: true,
@@ -43,10 +32,7 @@ const ProjectSchema = Yup.object().shape({
   }),
 });
 
-interface ProjectFormValues {
-  name: string;
-  description: string;
-  defaultLanguageId: string;
+interface IntegrationFormValues {
   githubEnabled: boolean;
   githubConfig: {
     repository: string;
@@ -56,18 +42,25 @@ interface ProjectFormValues {
   };
 }
 
-interface CreateProjectFormProps {
+interface CreateIntegrationProps {
+  projectId: string;
   onClose: () => void;
+  onSuccess: (message: string) => void;
+  onError: (message: string) => void;
 }
 
-export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
+export function CreateIntegration({
+  projectId,
+  onClose,
+  onSuccess,
+  onError,
+}: CreateIntegrationProps) {
   const [githubEnabled, setGithubEnabled] = useState(false);
   const [isConnectingGitHub, setIsConnectingGitHub] = useState(false);
   const [isConnectedGitHub, setIsConnectedGitHub] = useState(false);
   const [githubError, setGithubError] = useState<string | null>(null);
-  const formikRef = useRef<FormikProps<ProjectFormValues>>(null);
+  const formikRef = useRef<FormikProps<IntegrationFormValues>>(null);
 
-  const languages = trpc.languages.getLanguages.useQuery();
   const utils = trpc.useUtils();
 
   const findTranslationFiles =
@@ -77,25 +70,9 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
   const createSyncHistory = trpc.syncHistory.create.useMutation();
 
   const createGitHubIntegration =
-    trpc.integrations.createGitHubIntegration.useMutation();
-
-  const createProject = trpc.projects.createProject.useMutation({
-    onSuccess: async (data) => {
-      if (data?.id && githubEnabled) {
+    trpc.integrations.createGitHubIntegration.useMutation({
+      onSuccess: async (data) => {
         try {
-          // Create GitHub integration first
-          const integration = await createGitHubIntegration.mutateAsync({
-            projectId: data.id,
-            config: {
-              repository:
-                formikRef.current?.values.githubConfig.repository || "",
-              branch: formikRef.current?.values.githubConfig.branch || "",
-              translationPath:
-                formikRef.current?.values.githubConfig.translationPath,
-              filePattern: formikRef.current?.values.githubConfig.filePattern,
-            },
-          });
-
           // Find translation files
           const files = await findTranslationFiles.mutateAsync({
             repository: formikRef.current?.values.githubConfig.repository || "",
@@ -109,7 +86,7 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
             try {
               // Import translations
               await importTranslations.mutateAsync({
-                projectId: data.id,
+                projectId,
                 repository:
                   formikRef.current?.values.githubConfig.repository || "",
                 branch: formikRef.current?.values.githubConfig.branch || "",
@@ -118,8 +95,8 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
 
               // Record successful sync
               await createSyncHistory.mutateAsync({
-                projectId: data.id,
-                integrationId: integration.id,
+                projectId,
+                integrationId: data.id,
                 status: "success",
                 details: {
                   repository: formikRef.current?.values.githubConfig.repository,
@@ -128,11 +105,15 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
                   files: files.map((f) => f.path),
                 },
               });
+
+              onSuccess(
+                "Integration created and translations imported successfully!"
+              );
             } catch (error) {
               // Record failed sync
               await createSyncHistory.mutateAsync({
-                projectId: data.id,
-                integrationId: integration.id,
+                projectId,
+                integrationId: data.id,
                 status: "failed",
                 details: {
                   repository: formikRef.current?.values.githubConfig.repository,
@@ -146,41 +127,49 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
                 },
               });
 
+              onError("Failed to import translations. Please try again.");
               console.error("Error importing translations:", error);
             }
+          } else {
+            onSuccess("Integration created successfully!");
           }
+
+          utils.integrations.getProjectIntegration.invalidate({ projectId });
+          utils.syncHistory.getByProjectId.invalidate({ projectId });
+          utils.projects.getProjectLanguages.invalidate({ projectId });
+
+          onClose();
         } catch (error) {
-          // Record failed sync for file finding or integration creation
+          // Record failed sync for file finding
           const errorMessage =
             error instanceof Error ? error.message : "Unknown error";
-          const stage =
-            error instanceof Error && error.message.includes("integration")
-              ? "creating_integration"
-              : "finding_files";
 
           await createSyncHistory.mutateAsync({
-            projectId: data.id,
-            integrationId: data.id, // Fallback to project ID if integration creation failed
+            projectId,
+            integrationId: data.id,
             status: "failed",
             details: {
               repository: formikRef.current?.values.githubConfig.repository,
               branch: formikRef.current?.values.githubConfig.branch,
               error: errorMessage,
-              stage,
+              stage: "finding_files",
             },
           });
-          console.error(`Error ${stage}:`, error);
+
+          utils.syncHistory.getByProjectId.invalidate({ projectId });
+
+          onError(
+            "Failed to find translation files. Please check your configuration."
+          );
+
+          console.error("Error finding translation files:", error);
         }
-      }
-
-      utils.projects.getAll.invalidate();
-      utils.projects.getProjects.invalidate();
-      utils.projects.getStats.invalidate();
-      utils.activities.getRecentActivity.invalidate();
-
-      onClose();
-    },
-  });
+      },
+      onError: (error) => {
+        onError(error.message);
+        utils.syncHistory.getByProjectId.invalidate({ projectId });
+      },
+    });
 
   const githubConnection = trpc.integrations.checkGitHubConnection.useQuery(
     undefined,
@@ -208,15 +197,19 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
     }
   };
 
-  const handleCreateProject = async (values: ProjectFormValues) => {
-    await createProject.mutateAsync({
-      name: values.name,
-      description: values.description,
-      defaultLanguageId: values.defaultLanguageId,
-      githubConfig: values.githubEnabled ? values.githubConfig : undefined,
+  const handleCreateIntegration = async (values: IntegrationFormValues) => {
+    if (!values.githubEnabled) {
+      onError("Please connect to GitHub first");
+      return;
+    }
+
+    await createGitHubIntegration.mutateAsync({
+      projectId,
+      config: values.githubConfig,
     });
   };
 
+  // Monitor GitHub connection status
   useEffect(() => {
     if (githubConnection?.isError) {
       setGithubError(githubConnection?.error?.message);
@@ -235,9 +228,6 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
     <Formik
       innerRef={formikRef}
       initialValues={{
-        name: "",
-        description: "",
-        defaultLanguageId: "",
         githubEnabled: false,
         githubConfig: {
           repository: "",
@@ -246,66 +236,20 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
           filePattern: "",
         },
       }}
-      validationSchema={ProjectSchema}
-      onSubmit={handleCreateProject}
+      validationSchema={IntegrationSchema}
+      onSubmit={handleCreateIntegration}
     >
       {({ errors, touched, isSubmitting, values, setFieldValue }) => (
         <Form>
           <DialogContent>
-            <Field
-              as={TextField}
-              name="name"
-              label="Project Name"
-              fullWidth
-              margin="normal"
-              error={touched.name && Boolean(errors.name)}
-              helperText={touched.name && errors.name}
-            />
-            <Field
-              as={TextField}
-              name="description"
-              label="Description (Optional)"
-              fullWidth
-              margin="normal"
-              multiline
-              rows={4}
-            />
-            <FormControl
-              fullWidth
-              margin="normal"
-              error={
-                touched.defaultLanguageId && Boolean(errors.defaultLanguageId)
-              }
-            >
-              <InputLabel id="language-select-label">
-                Default Language
-              </InputLabel>
-              <Field
-                as={Select}
-                labelId="language-select-label"
-                name="defaultLanguageId"
-                label="Default Language"
-              >
-                {languages.data?.map((language) => (
-                  <MenuItem key={language.id} value={language.id}>
-                    {language.name} ({language.code})
-                  </MenuItem>
-                ))}
-              </Field>
-              {touched.defaultLanguageId && errors.defaultLanguageId && (
-                <FormHelperText>{errors.defaultLanguageId}</FormHelperText>
-              )}
-            </FormControl>
-
             <GitHubSwitchContainer>
-              <Field
-                as={FormControlLabel}
+              <FormControlLabel
                 control={<Switch />}
                 name="githubEnabled"
                 label="Connect GitHub Repository"
                 disabled={isConnectingGitHub}
                 onChange={(
-                  e: React.ChangeEvent<HTMLInputElement>,
+                  e: React.SyntheticEvent<Element, Event>,
                   checked: boolean
                 ) => {
                   setFieldValue("githubEnabled", checked);
@@ -359,22 +303,24 @@ export default function CreateProjectForm({ onClose }: CreateProjectFormProps) {
           </DialogContent>
           <DialogActions>
             <Button onClick={onClose}>Cancel</Button>
+
             <Button
               type="submit"
               variant="contained"
               color="primary"
               disabled={
                 isSubmitting ||
-                createProject.isPending ||
+                createGitHubIntegration.isPending ||
                 findTranslationFiles.isPending ||
-                importTranslations.isPending
+                importTranslations.isPending ||
+                !githubEnabled
               }
             >
-              {createProject.isPending ||
+              {createGitHubIntegration.isPending ||
               findTranslationFiles.isPending ||
               importTranslations.isPending
-                ? "Creating Project..."
-                : "Create Project"}
+                ? "Creating Integration..."
+                : "Create Integration"}
             </Button>
           </DialogActions>
         </Form>

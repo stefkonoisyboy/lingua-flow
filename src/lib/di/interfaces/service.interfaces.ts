@@ -5,7 +5,11 @@ import {
   Branch,
   TranslationFile,
 } from "../../services/github.service";
-import { Translation, TranslationKey } from "./dal.interfaces";
+import {
+  CreateSyncHistoryParamsDAL,
+  Translation,
+  TranslationKey,
+} from "./dal.interfaces";
 
 // Project service interfaces
 export interface ProjectStats {
@@ -201,10 +205,12 @@ export interface IIntegrationsService {
   createGitHubIntegration(
     projectId: string,
     config: GitHubConfig
-  ): Promise<void>;
+  ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
   getProjectIntegration(
     projectId: string
-  ): Promise<Database["public"]["Tables"]["project_integrations"]["Row"]>;
+  ): Promise<
+    Database["public"]["Tables"]["project_integrations"]["Row"] | null
+  >;
   listRepositories(accessToken: string): Promise<Repository[]>;
   listBranches(
     accessToken: string,
@@ -236,6 +242,14 @@ export interface IIntegrationsService {
     files: TranslationFile[],
     userId: string
   ): Promise<{ success: boolean }>;
+
+  exportTranslations(
+    projectId: string,
+    accessToken: string,
+    repository: string,
+    baseBranch: string,
+    languageId?: string
+  ): Promise<{ success: boolean; pullRequestUrl?: string }>;
 }
 
 export interface IGitHubTokensService {
@@ -298,4 +312,11 @@ export interface ICommentsService {
   >;
 
   deleteComment(commentId: string): Promise<void>;
+}
+
+export interface ISyncHistoryService {
+  create(data: CreateSyncHistoryParamsDAL): Promise<void>;
+  getByProjectId(
+    projectId: string
+  ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;
 }
