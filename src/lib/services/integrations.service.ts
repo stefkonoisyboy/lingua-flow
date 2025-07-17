@@ -29,16 +29,17 @@ export class IntegrationsService implements IIntegrationsService {
   ) {}
 
   private generateTranslationFiles(
-    translations: { key: string; content: string; language: string }[]
+    translations: { key: string; content: string; language: string }[],
+    languages: { id: string; code: string }[]
   ): { [key: string]: string } {
     const filesByLanguage: { [key: string]: { [key: string]: string } } = {};
 
+    languages.forEach((language) => {
+      filesByLanguage[language.code] = {};
+    });
+
     // Group translations by language
     translations.forEach(({ key, content, language }) => {
-      if (!filesByLanguage[language]) {
-        filesByLanguage[language] = {};
-      }
-
       filesByLanguage[language][key] = content;
     });
 
@@ -93,7 +94,7 @@ export class IntegrationsService implements IIntegrationsService {
       }
 
       // Generate translation files
-      const files = this.generateTranslationFiles(translations);
+      const files = this.generateTranslationFiles(translations, languages);
 
       // Create new branch for the export
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");

@@ -65,6 +65,7 @@ export function CreateIntegration({
 
   const findTranslationFiles =
     trpc.integrations.findTranslationFiles.useMutation();
+
   const importTranslations = trpc.integrations.importTranslations.useMutation();
   const createSyncHistory = trpc.syncHistory.create.useMutation();
 
@@ -135,6 +136,7 @@ export function CreateIntegration({
 
           utils.integrations.getProjectIntegration.invalidate({ projectId });
           utils.syncHistory.getByProjectId.invalidate({ projectId });
+          utils.projects.getProjectLanguages.invalidate({ projectId });
 
           onClose();
         } catch (error) {
