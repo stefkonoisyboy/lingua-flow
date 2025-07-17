@@ -227,4 +227,54 @@ export const integrationsRouter = router({
         input.languageId
       );
     }),
+
+  // Add: Pull and detect conflicts
+  pullAndDetectConflicts: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        integrationId: z.string(),
+        languageId: z.string(),
+        githubTranslations: z.record(z.string(), z.string()),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.detectTranslationConflicts(
+        input.projectId,
+        input.integrationId,
+        input.languageId,
+        input.githubTranslations
+      );
+    }),
+
+  // Add: Resolve conflicts
+  resolveConflicts: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        languageId: z.string(),
+        resolutions: z.array(
+          z.object({
+            key: z.string(),
+            resolvedValue: z.string(),
+            userId: z.string(),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.resolveTranslationConflicts(
+        input.projectId,
+        input.languageId,
+        input.resolutions
+      );
+    }),
 });
