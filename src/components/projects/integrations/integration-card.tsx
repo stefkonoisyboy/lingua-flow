@@ -89,11 +89,30 @@ export function IntegrationCard({
     },
   });
 
+  const pullAndDetectConflicts =
+    trpc.integrations.pullAndDetectConflicts.useMutation({
+      onSuccess: (data) => {
+        onSuccess("Conflicts detected successfully!");
+        console.log(data);
+      },
+      onError: (error) => {
+        onError(`Error pulling and detecting conflicts: ${error.message}`);
+        console.log(error);
+      },
+    });
+
   const handleExport = async () => {
-    await exportTranslations.mutateAsync({
+    // await exportTranslations.mutateAsync({
+    //   projectId,
+    //   repository: integration.config.repository,
+    //   baseBranch: integration.config.branch,
+    // });
+
+    await pullAndDetectConflicts.mutateAsync({
       projectId,
+      integrationId: integration.id,
       repository: integration.config.repository,
-      baseBranch: integration.config.branch,
+      branch: integration.config.branch,
     });
   };
 

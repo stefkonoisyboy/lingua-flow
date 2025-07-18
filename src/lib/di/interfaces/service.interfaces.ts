@@ -273,18 +273,20 @@ export interface IIntegrationsService {
 
   pullAndDetectConflicts(
     projectId: string,
-    integrationId: string,
-    languageId: string,
     accessToken: string,
     repository: string,
     branch: string
   ): Promise<
-    {
-      key: string;
-      linguaFlowValue: string | undefined;
-      githubValue: string | undefined;
-      lastSyncedValue: string | undefined;
-    }[]
+    Record<
+      string,
+      Array<{
+        linguaFlowKey: string | undefined;
+        linguaFlowValue: string | undefined;
+        githubKey: string | undefined;
+        githubValue: string | undefined;
+        position: number;
+      }>
+    >
   >;
 }
 

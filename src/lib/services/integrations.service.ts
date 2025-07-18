@@ -554,6 +554,7 @@ export class IntegrationsService implements IIntegrationsService {
           languageId,
           lastSyncTime
         );
+      console.log("Since", sinceTranslations);
       // Build a map of key -> value as of last sync (by subtracting since changes from current)
       // For simplicity, we assume that if a key is in sinceTranslations, it changed after last sync
       // So, lastSyncedMap = current map, but for keys in sinceTranslations, we don't know the value at last sync
@@ -662,8 +663,6 @@ export class IntegrationsService implements IIntegrationsService {
    */
   async pullAndDetectConflicts(
     projectId: string,
-    integrationId: string,
-    languageId: string,
     accessToken: string,
     repository: string,
     branch: string
@@ -681,12 +680,17 @@ export class IntegrationsService implements IIntegrationsService {
       typeof integration.config === "object" && integration.config !== null
         ? (integration.config as { translationPath?: string }).translationPath
         : undefined;
+
     const filePattern =
       typeof integration.config === "object" && integration.config !== null
         ? (integration.config as { filePattern?: string }).filePattern
         : undefined;
 
-    // 1. Find translation files in the repo
+    // Get all project languages
+    const languages = await this.integrationsDal.getProjectLanguagesForExport(
+      projectId
+    );
+
     const githubService = new GitHubService(accessToken);
 
     const fullPattern = translationPath
@@ -698,40 +702,124 @@ export class IntegrationsService implements IIntegrationsService {
       branch,
       fullPattern
     );
-    // 2. Download and parse files for the given language
-    const githubTranslations: Record<string, string> = {};
+
+    // Map: languageCode -> github ordered array
+    const githubByLang: Record<
+      string,
+      Array<{ key: string; value: string }>
+    > = {};
+
+    for (const lang of languages) {
+      githubByLang[lang.code] = [];
+    }
+
     for (const file of files) {
-      // Only process files for the requested language
       const langCode = file.name.split(".")[0];
-      if (langCode !== languageId) {
+
+      if (!githubByLang[langCode]) {
         continue;
       }
+
       const content = await githubService.getFileContent(
         repository,
         file.path,
         branch
       );
+
       if (!content) {
         continue;
       }
-      // Parse JSON (extend for YAML/PO as needed)
+
       try {
         const data = JSON.parse(content);
-        for (const [key, value] of Object.entries(data)) {
+
+        // Preserve order as in file
+        for (const key of Object.keys(data)) {
+          const value = data[key];
+
           if (typeof value === "string") {
-            githubTranslations[key] = value;
+            githubByLang[langCode].push({ key, value });
           }
         }
-      } catch {
-        // Ignore parse errors for now
+      } catch (error) {
+        console.error("Error parsing translation file:", error);
       }
     }
-    // 3. Run conflict detection
-    return this.detectTranslationConflicts(
-      projectId,
-      integrationId,
-      languageId,
-      githubTranslations
-    );
+
+    // Run robust conflict detection for each language
+    const result: Record<
+      string,
+      Array<{
+        linguaFlowKey: string | undefined;
+        linguaFlowValue: string | undefined;
+        githubKey: string | undefined;
+        githubValue: string | undefined;
+        position: number;
+      }>
+    > = {};
+
+    for (const lang of languages) {
+      // 1. Get LinguaFlow translations as ordered array
+      const linguaFlowArr = (
+        await this.integrationsDal.getProjectTranslationsForExport(
+          projectId,
+          lang.id
+        )
+      ).map((t) => ({ key: t.key, value: t.content }));
+
+      // 2. Get GitHub translations as ordered array
+      const githubArr = githubByLang[lang.code];
+
+      // 3. Compare by index
+      const maxLen = Math.max(linguaFlowArr.length, githubArr.length);
+
+      const conflicts: Array<{
+        linguaFlowKey: string | undefined;
+        linguaFlowValue: string | undefined;
+        githubKey: string | undefined;
+        githubValue: string | undefined;
+        position: number;
+      }> = [];
+
+      for (let i = 0; i < maxLen; i++) {
+        const lf = linguaFlowArr[i];
+        const gh = githubArr[i];
+
+        if (!lf && gh) {
+          // Only in GitHub
+          conflicts.push({
+            linguaFlowKey: undefined,
+            linguaFlowValue: undefined,
+            githubKey: gh.key,
+            githubValue: gh.value,
+            position: i,
+          });
+        } else if (lf && !gh) {
+          // Only in LinguaFlow
+          conflicts.push({
+            linguaFlowKey: lf.key,
+            linguaFlowValue: lf.value,
+            githubKey: undefined,
+            githubValue: undefined,
+            position: i,
+          });
+        } else if (lf && gh) {
+          // Both exist, compare key and value
+          if (lf.key !== gh.key || lf.value !== gh.value) {
+            conflicts.push({
+              linguaFlowKey: lf.key,
+              linguaFlowValue: lf.value,
+              githubKey: gh.key,
+              githubValue: gh.value,
+              position: i,
+            });
+          }
+        }
+      }
+
+      result[lang.code] = conflicts;
+    }
+
+    return result;
   }
 }

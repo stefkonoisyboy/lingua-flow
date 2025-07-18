@@ -234,7 +234,6 @@ export const integrationsRouter = router({
       z.object({
         projectId: z.string(),
         integrationId: z.string(),
-        languageId: z.string(),
         repository: z.string(),
         branch: z.string(),
       })
@@ -243,17 +242,19 @@ export const integrationsRouter = router({
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
       );
+
       const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
         DI_TOKENS.GITHUB_TOKENS_SERVICE
       );
+
       const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
+
       if (!accessToken) {
         throw new Error("GitHub not connected");
       }
+
       return await integrationsService.pullAndDetectConflicts(
         input.projectId,
-        input.integrationId,
-        input.languageId,
         accessToken,
         input.repository,
         input.branch
