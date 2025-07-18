@@ -7,6 +7,7 @@ declare module "@mui/material/styles" {
       gradient: string;
       settingsSection: string;
       versionContent: string;
+      conflictResolution: string;
     };
     neutral: {
       main: string;
@@ -18,6 +19,7 @@ declare module "@mui/material/styles" {
       gradient: string;
       settingsSection: string;
       versionContent: string;
+      conflictResolution: string;
     };
     neutral: {
       main: string;
@@ -83,6 +85,7 @@ export const lightTheme = createTheme({
       gradient: "linear-gradient(180deg, #F8FBFF 0%, #E8F4FF 100%)",
       settingsSection: "#f5f5f5",
       versionContent: "#f5f5f5",
+      conflictResolution: "#f7fafd",
     },
   },
 });
@@ -112,6 +115,7 @@ export const darkTheme = createTheme({
       gradient: "linear-gradient(180deg, #0F172A 0%, #1E293B 100%)",
       settingsSection: "#333",
       versionContent: "#1a1a1a",
+      conflictResolution: "#1a2633",
     },
   },
 });

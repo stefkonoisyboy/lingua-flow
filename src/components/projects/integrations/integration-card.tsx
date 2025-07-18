@@ -26,6 +26,9 @@ import {
   IntegrationActions,
 } from "@/styles/projects/integrations.styles";
 import { trpc } from "@/utils/trpc";
+import { useRouter } from "next/navigation";
+import { useDispatch } from "react-redux";
+import { setConflicts } from "@/store/slices/conflict-resolution.slice";
 
 interface IntegrationCardProps {
   projectId: string;
@@ -53,6 +56,8 @@ export function IntegrationCard({
 }: IntegrationCardProps) {
   const [isDisconnectDialogOpen, setIsDisconnectDialogOpen] = useState(false);
   const utils = trpc.useUtils();
+  const router = useRouter();
+  const dispatch = useDispatch();
 
   const updateIntegrationStatus =
     trpc.integrations.updateIntegrationStatus.useMutation({
@@ -93,7 +98,8 @@ export function IntegrationCard({
     trpc.integrations.pullAndDetectConflicts.useMutation({
       onSuccess: (data) => {
         onSuccess("Conflicts detected successfully!");
-        console.log(data);
+        dispatch(setConflicts(data));
+        router.push(`/projects/${projectId}/conflict-resolution`);
       },
       onError: (error) => {
         onError(`Error pulling and detecting conflicts: ${error.message}`);
