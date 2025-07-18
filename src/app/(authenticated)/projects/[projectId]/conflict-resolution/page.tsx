@@ -20,6 +20,7 @@ import { selectConflicts } from "@/store/slices/conflict-resolution.slice";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { Conflict } from "@/store/slices/conflict-resolution.slice";
 import { trpc } from "@/utils/trpc";
+import { useParams } from "next/navigation";
 
 export default function ConflictResolutionPage() {
   const { data: availableLanguages } = trpc.languages.getLanguages.useQuery();
@@ -35,6 +36,12 @@ export default function ConflictResolutionPage() {
     string,
     Conflict[]
   > | null;
+
+  const resolveConflicts = trpc.integrations.resolveConflicts.useMutation();
+  const [success, setSuccess] = useState(false);
+
+  const params = useParams();
+  const projectId = params.projectId as string;
 
   if (!conflicts || Object.values(conflicts).every((arr) => arr.length === 0)) {
     return (
@@ -94,6 +101,60 @@ export default function ConflictResolutionPage() {
     setResolutions(newRes);
   };
 
+  const handleApplyResolutions = async () => {
+    if (!conflicts) {
+      return;
+    }
+
+    try {
+      for (const [lang, conflictArr] of Object.entries(conflicts)) {
+        const langRes = resolutions[lang];
+
+        if (!langRes) {
+          continue;
+        }
+
+        const payload = Object.entries(langRes).map(([idx, res]) => {
+          const conflict = conflictArr[Number(idx)];
+          let resolvedValue = "";
+
+          if (res.type === "linguaflow") {
+            resolvedValue = conflict.linguaFlowValue || "";
+          } else if (res.type === "github") {
+            resolvedValue = conflict.githubValue || "";
+          } else if (res.type === "manual") {
+            resolvedValue = res.manualValue;
+          }
+
+          return {
+            key: conflict.linguaFlowKey || conflict.githubKey || "",
+            resolvedValue,
+          };
+        });
+
+        if (payload.length > 0) {
+          const languageId = availableLanguages?.find(
+            (l) => l.code === lang
+          )?.id;
+
+          if (!languageId) {
+            continue;
+          }
+
+          await resolveConflicts.mutateAsync({
+            projectId,
+            languageId,
+            resolutions: payload,
+          });
+        }
+      }
+
+      setSuccess(true);
+    } catch {
+      setSuccess(false);
+    }
+  };
+
   return (
     <>
       <Box mb={3}>
@@ -122,11 +183,21 @@ export default function ConflictResolutionPage() {
             variant="contained"
             color="primary"
             disabled={resolvedCount === 0}
+            onClick={handleApplyResolutions}
           >
             Apply Resolutions ({resolvedCount})
           </Button>
         </Stack>
       </Box>
+
+      {success && (
+        <Box textAlign="center" mt={4}>
+          <CheckCircleIcon color="success" sx={{ fontSize: 48 }} />
+          <Typography variant="h6" mt={2}>
+            Resolutions applied successfully!
+          </Typography>
+        </Box>
+      )}
 
       {Object.entries(conflicts)
         .filter(([, conflictArr]) => conflictArr.length > 0)

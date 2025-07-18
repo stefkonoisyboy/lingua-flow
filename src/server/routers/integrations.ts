@@ -271,7 +271,6 @@ export const integrationsRouter = router({
           z.object({
             key: z.string(),
             resolvedValue: z.string(),
-            userId: z.string(),
           })
         ),
       })
@@ -284,6 +283,7 @@ export const integrationsRouter = router({
       return await integrationsService.resolveTranslationConflicts(
         input.projectId,
         input.languageId,
+        ctx.user.id,
         input.resolutions
       );
     }),

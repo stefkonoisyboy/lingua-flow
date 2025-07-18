@@ -612,7 +612,8 @@ export class IntegrationsService implements IIntegrationsService {
   async resolveTranslationConflicts(
     projectId: string,
     languageId: string,
-    resolutions: Array<{ key: string; resolvedValue: string; userId: string }>
+    userId: string,
+    resolutions: Array<{ key: string; resolvedValue: string }>
   ) {
     // Get translation keys for the project
     const translationKeys =
@@ -622,7 +623,7 @@ export class IntegrationsService implements IIntegrationsService {
       translationKeys.map((k) => [k.key, k.id])
     );
 
-    for (const { key, resolvedValue, userId } of resolutions) {
+    for (const { key, resolvedValue } of resolutions) {
       const keyId = keyMap[key];
 
       if (!keyId) {

@@ -268,7 +268,8 @@ export interface IIntegrationsService {
   resolveTranslationConflicts(
     projectId: string,
     languageId: string,
-    resolutions: Array<{ key: string; resolvedValue: string; userId: string }>
+    userId: string,
+    resolutions: Array<{ key: string; resolvedValue: string }>
   ): Promise<{ success: boolean }>;
 
   pullAndDetectConflicts(

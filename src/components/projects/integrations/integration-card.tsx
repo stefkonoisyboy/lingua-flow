@@ -154,11 +154,14 @@ export function IntegrationCard({
               <IconButton
                 color="primary"
                 disabled={
-                  !integration.is_connected || exportTranslations.isPending
+                  !integration.is_connected ||
+                  exportTranslations.isPending ||
+                  pullAndDetectConflicts.isPending
                 }
                 onClick={handleExport}
               >
-                {exportTranslations.isPending ? (
+                {exportTranslations.isPending ||
+                pullAndDetectConflicts.isPending ? (
                   <CircularProgress size={20} />
                 ) : (
                   <SyncIcon />
