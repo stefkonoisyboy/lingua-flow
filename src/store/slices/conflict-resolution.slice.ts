@@ -41,11 +41,48 @@ const conflictResolutionSlice = createSlice({
       state.error = action.payload;
       state.status = "error";
     },
+    clearResolvedConflicts(
+      state,
+      action: PayloadAction<
+        Record<string, Record<number, { type: string; manualValue: string }>>
+      >
+    ) {
+      if (!state.conflicts) {
+        return;
+      }
+
+      const resolutions = action.payload;
+
+      // Remove resolved conflicts from each language
+      Object.entries(resolutions).forEach(([lang, langResolutions]) => {
+        if (state.conflicts && state.conflicts[lang]) {
+          // Get indices of resolved conflicts (in reverse order to avoid index shifting)
+          const resolvedIndices = Object.keys(langResolutions)
+            .map(Number)
+            .sort((a, b) => b - a);
+
+          // Remove resolved conflicts from the array
+          resolvedIndices.forEach((index) => {
+            state.conflicts![lang].splice(index, 1);
+          });
+
+          // Remove language entry if no conflicts remain
+          if (state.conflicts[lang].length === 0) {
+            delete state.conflicts[lang];
+          }
+        }
+      });
+    },
   },
 });
 
-export const { setConflicts, clearConflicts, setStatus, setError } =
-  conflictResolutionSlice.actions;
+export const {
+  setConflicts,
+  clearConflicts,
+  setStatus,
+  setError,
+  clearResolvedConflicts,
+} = conflictResolutionSlice.actions;
 
 export const selectConflicts = (state: {
   conflictResolution: ConflictResolutionState;

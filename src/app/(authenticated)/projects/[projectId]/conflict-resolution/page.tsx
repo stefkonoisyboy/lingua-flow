@@ -15,12 +15,15 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { useTheme } from "@mui/material/styles";
-import { useSelector } from "react-redux";
-import { selectConflicts } from "@/store/slices/conflict-resolution.slice";
+import {
+  selectConflicts,
+  clearResolvedConflicts,
+} from "@/store/slices/conflict-resolution.slice";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { Conflict } from "@/store/slices/conflict-resolution.slice";
 import { trpc } from "@/utils/trpc";
 import { useParams } from "next/navigation";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
 
 export default function ConflictResolutionPage() {
   const { data: availableLanguages } = trpc.languages.getLanguages.useQuery();
@@ -32,10 +35,12 @@ export default function ConflictResolutionPage() {
 
   const theme = useTheme();
 
-  const conflicts = useSelector(selectConflicts) as Record<
+  const conflicts = useAppSelector(selectConflicts) as Record<
     string,
     Conflict[]
   > | null;
+
+  const dispatch = useAppDispatch();
 
   const resolveConflicts = trpc.integrations.resolveConflicts.useMutation();
   const [success, setSuccess] = useState(false);
@@ -107,49 +112,69 @@ export default function ConflictResolutionPage() {
     }
 
     try {
-      for (const [lang, conflictArr] of Object.entries(conflicts)) {
-        const langRes = resolutions[lang];
+      // Prepare all resolutions for all languages in one request
+      const allResolutions = Object.entries(conflicts)
+        .map(([lang, conflictArr]) => {
+          const langRes = resolutions[lang];
 
-        if (!langRes) {
-          continue;
-        }
-
-        const payload = Object.entries(langRes).map(([idx, res]) => {
-          const conflict = conflictArr[Number(idx)];
-          let resolvedValue = "";
-
-          if (res.type === "linguaflow") {
-            resolvedValue = conflict.linguaFlowValue || "";
-          } else if (res.type === "github") {
-            resolvedValue = conflict.githubValue || "";
-          } else if (res.type === "manual") {
-            resolvedValue = res.manualValue;
+          if (!langRes) {
+            return null;
           }
 
-          return {
-            key: conflict.linguaFlowKey || conflict.githubKey || "",
-            resolvedValue,
-          };
-        });
-
-        if (payload.length > 0) {
           const languageId = availableLanguages?.find(
             (l) => l.code === lang
           )?.id;
 
           if (!languageId) {
-            continue;
+            return null;
           }
 
-          await resolveConflicts.mutateAsync({
-            projectId,
+          const payload = Object.entries(langRes).map(([idx, res]) => {
+            const conflict = conflictArr[Number(idx)];
+            let resolvedValue = "";
+
+            if (res.type === "linguaflow") {
+              resolvedValue = conflict.linguaFlowValue || "";
+            } else if (res.type === "github") {
+              resolvedValue = conflict.githubValue || "";
+            } else if (res.type === "manual") {
+              resolvedValue = res.manualValue;
+            }
+
+            return {
+              key: conflict.linguaFlowKey || conflict.githubKey || "",
+              resolvedValue,
+            };
+          });
+
+          return {
             languageId,
             resolutions: payload,
-          });
-        }
-      }
+          };
+        })
+        .filter(
+          (
+            item
+          ): item is {
+            languageId: string;
+            resolutions: { key: string; resolvedValue: string }[];
+          } => item !== null
+        );
 
-      setSuccess(true);
+      if (allResolutions.length > 0) {
+        await resolveConflicts.mutateAsync({
+          projectId,
+          resolutions: allResolutions,
+        });
+
+        // Clear resolved conflicts from Redux state
+        dispatch(clearResolvedConflicts(resolutions));
+
+        // Clear resolved resolutions from local state
+        setResolutions({});
+
+        setSuccess(true);
+      }
     } catch {
       setSuccess(false);
     }
@@ -182,10 +207,13 @@ export default function ConflictResolutionPage() {
           <Button
             variant="contained"
             color="primary"
-            disabled={resolvedCount === 0}
+            disabled={resolvedCount === 0 || resolveConflicts.isPending}
+            loading={resolveConflicts.isPending}
             onClick={handleApplyResolutions}
           >
-            Apply Resolutions ({resolvedCount})
+            {resolveConflicts.isPending
+              ? "Applying..."
+              : `Apply Resolutions (${resolvedCount})`}
           </Button>
         </Stack>
       </Box>

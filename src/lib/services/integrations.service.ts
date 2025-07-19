@@ -615,6 +615,19 @@ export class IntegrationsService implements IIntegrationsService {
     userId: string,
     resolutions: Array<{ key: string; resolvedValue: string }>
   ) {
+    return await this.resolveAllTranslationConflicts(projectId, userId, [
+      { languageId, resolutions },
+    ]);
+  }
+
+  async resolveAllTranslationConflicts(
+    projectId: string,
+    userId: string,
+    resolutions: Array<{
+      languageId: string;
+      resolutions: Array<{ key: string; resolvedValue: string }>;
+    }>
+  ) {
     // Get translation keys for the project
     const translationKeys =
       await this.translationsDal.getProjectTranslationKeys([projectId]);
@@ -623,36 +636,49 @@ export class IntegrationsService implements IIntegrationsService {
       translationKeys.map((k) => [k.key, k.id])
     );
 
-    for (const { key, resolvedValue } of resolutions) {
-      const keyId = keyMap[key];
+    // Process all language resolutions
+    for (const { languageId, resolutions: langResolutions } of resolutions) {
+      for (const { key, resolvedValue } of langResolutions) {
+        let keyId = keyMap[key];
 
-      if (!keyId) {
-        continue;
-      }
+        // If key doesn't exist, create it
+        if (!keyId) {
+          const newKey = await this.translationsDal.createTranslationKey({
+            project_id: projectId,
+            key: key,
+            description: null,
+          });
 
-      // Find the translation for this key/language
-      const translations = await this.translationsDal.getProjectTranslations([
-        projectId,
-      ]);
+          keyId = newKey.id;
 
-      const translation = translations.find(
-        (t) => t.key_id === keyId && t.language_id === languageId
-      );
+          // Update the keyMap for subsequent iterations
+          keyMap[key] = keyId;
+        }
 
-      if (translation) {
-        await this.translationsDal.updateTranslation(
-          translation.id,
-          resolvedValue,
-          userId
+        // Find the translation for this key/language
+        const translations = await this.translationsDal.getProjectTranslations([
+          projectId,
+        ]);
+
+        const translation = translations.find(
+          (t) => t.key_id === keyId && t.language_id === languageId
         );
-      } else {
-        // If translation does not exist, create it
-        await this.translationsDal.createTranslation(
-          keyId,
-          languageId,
-          resolvedValue,
-          userId
-        );
+
+        if (translation) {
+          await this.translationsDal.updateTranslation(
+            translation.id,
+            resolvedValue,
+            userId
+          );
+        } else {
+          // If translation does not exist, create it
+          await this.translationsDal.createTranslation(
+            keyId,
+            languageId,
+            resolvedValue,
+            userId
+          );
+        }
       }
     }
 
@@ -771,8 +797,20 @@ export class IntegrationsService implements IIntegrationsService {
       // 2. Get GitHub translations as ordered array
       const githubArr = githubByLang[lang.code];
 
-      // 3. Compare by index
-      const maxLen = Math.max(linguaFlowArr.length, githubArr.length);
+      // 3. Create maps for key-based comparison
+      const linguaFlowMap = Object.fromEntries(
+        linguaFlowArr.map((t) => [t.key, t.value])
+      );
+
+      const githubMap = Object.fromEntries(
+        githubArr.map((t) => [t.key, t.value])
+      );
+
+      // 4. Get all unique keys
+      const allKeys = new Set([
+        ...Object.keys(linguaFlowMap),
+        ...Object.keys(githubMap),
+      ]);
 
       const conflicts: Array<{
         linguaFlowKey: string | undefined;
@@ -782,39 +820,21 @@ export class IntegrationsService implements IIntegrationsService {
         position: number;
       }> = [];
 
-      for (let i = 0; i < maxLen; i++) {
-        const lf = linguaFlowArr[i];
-        const gh = githubArr[i];
+      let position = 0;
 
-        if (!lf && gh) {
-          // Only in GitHub
+      for (const key of allKeys) {
+        const linguaFlowValue = linguaFlowMap[key];
+        const githubValue = githubMap[key];
+
+        // Check if there's a conflict (different values or missing in one side)
+        if (linguaFlowValue !== githubValue) {
           conflicts.push({
-            linguaFlowKey: undefined,
-            linguaFlowValue: undefined,
-            githubKey: gh.key,
-            githubValue: gh.value,
-            position: i,
+            linguaFlowKey: linguaFlowValue !== undefined ? key : undefined,
+            linguaFlowValue,
+            githubKey: githubValue !== undefined ? key : undefined,
+            githubValue,
+            position: position++,
           });
-        } else if (lf && !gh) {
-          // Only in LinguaFlow
-          conflicts.push({
-            linguaFlowKey: lf.key,
-            linguaFlowValue: lf.value,
-            githubKey: undefined,
-            githubValue: undefined,
-            position: i,
-          });
-        } else if (lf && gh) {
-          // Both exist, compare key and value
-          if (lf.key !== gh.key || lf.value !== gh.value) {
-            conflicts.push({
-              linguaFlowKey: lf.key,
-              linguaFlowValue: lf.value,
-              githubKey: gh.key,
-              githubValue: gh.value,
-              position: i,
-            });
-          }
         }
       }
 

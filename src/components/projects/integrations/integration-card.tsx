@@ -27,8 +27,8 @@ import {
 } from "@/styles/projects/integrations.styles";
 import { trpc } from "@/utils/trpc";
 import { useRouter } from "next/navigation";
-import { useDispatch } from "react-redux";
 import { setConflicts } from "@/store/slices/conflict-resolution.slice";
+import { useAppDispatch } from "@/store/hooks";
 
 interface IntegrationCardProps {
   projectId: string;
@@ -57,7 +57,7 @@ export function IntegrationCard({
   const [isDisconnectDialogOpen, setIsDisconnectDialogOpen] = useState(false);
   const utils = trpc.useUtils();
   const router = useRouter();
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
 
   const updateIntegrationStatus =
     trpc.integrations.updateIntegrationStatus.useMutation({

@@ -266,11 +266,15 @@ export const integrationsRouter = router({
     .input(
       z.object({
         projectId: z.string(),
-        languageId: z.string(),
         resolutions: z.array(
           z.object({
-            key: z.string(),
-            resolvedValue: z.string(),
+            languageId: z.string(),
+            resolutions: z.array(
+              z.object({
+                key: z.string(),
+                resolvedValue: z.string(),
+              })
+            ),
           })
         ),
       })
@@ -280,9 +284,8 @@ export const integrationsRouter = router({
         DI_TOKENS.INTEGRATIONS_SERVICE
       );
 
-      return await integrationsService.resolveTranslationConflicts(
+      return await integrationsService.resolveAllTranslationConflicts(
         input.projectId,
-        input.languageId,
         ctx.user.id,
         input.resolutions
       );
