@@ -15,7 +15,6 @@ import {
 } from "@mui/material";
 import {
   Sync as SyncIcon,
-  Settings as SettingsIcon,
   Link as LinkIcon,
   LinkOff as LinkOffIcon,
 } from "@mui/icons-material";
@@ -75,25 +74,6 @@ export function IntegrationCard({
       },
     });
 
-  const exportTranslations = trpc.integrations.exportTranslations.useMutation({
-    onSuccess: (data) => {
-      onSuccess("Translations exported successfully!");
-      utils.syncHistory.getByProjectId.invalidate({ projectId });
-
-      if (data.pullRequestUrl) {
-        const newWindow = window.open(data.pullRequestUrl, "_blank");
-
-        if (newWindow) {
-          newWindow.focus();
-        }
-      }
-    },
-    onError: (error) => {
-      onError(`Error exporting translations: ${error.message}`);
-      utils.syncHistory.getByProjectId.invalidate({ projectId });
-    },
-  });
-
   const pullAndDetectConflicts =
     trpc.integrations.pullAndDetectConflicts.useMutation({
       onSuccess: (data) => {
@@ -107,13 +87,7 @@ export function IntegrationCard({
       },
     });
 
-  const handleExport = async () => {
-    // await exportTranslations.mutateAsync({
-    //   projectId,
-    //   repository: integration.config.repository,
-    //   baseBranch: integration.config.branch,
-    // });
-
+  const handleSyncAndResolve = async () => {
     await pullAndDetectConflicts.mutateAsync({
       projectId,
       integrationId: integration.id,
@@ -150,29 +124,22 @@ export function IntegrationCard({
             {integration.type === "github" ? "GitHub" : "Unknown"} Repository
           </Typography>
           <IntegrationActions>
-            <Tooltip title="Sync now">
+            <Tooltip title="Sync & Resolve Conflicts">
               <IconButton
                 color="primary"
                 disabled={
-                  !integration.is_connected ||
-                  exportTranslations.isPending ||
-                  pullAndDetectConflicts.isPending
+                  !integration.is_connected || pullAndDetectConflicts.isPending
                 }
-                onClick={handleExport}
+                onClick={handleSyncAndResolve}
               >
-                {exportTranslations.isPending ||
-                pullAndDetectConflicts.isPending ? (
+                {pullAndDetectConflicts.isPending ? (
                   <CircularProgress size={20} />
                 ) : (
                   <SyncIcon />
                 )}
               </IconButton>
             </Tooltip>
-            <Tooltip title="Settings">
-              <IconButton color="primary">
-                <SettingsIcon />
-              </IconButton>
-            </Tooltip>
+
             <Button
               variant="outlined"
               color={integration.is_connected ? "error" : "primary"}

@@ -1,13 +1,14 @@
 "use client";
 
 import { ProjectBreadcrumbs } from "@/components/projects/project-breadcrumbs";
-import { useParams } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { trpc } from "@/utils/trpc";
 import {
   HeaderContent,
   PageHeader,
 } from "@/styles/projects/project-details.styles";
-import { Container, Typography } from "@mui/material";
+import { Container, Typography, Button, Box } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 export default function ProjectLayout({
   children,
@@ -16,21 +17,46 @@ export default function ProjectLayout({
 }) {
   const params = useParams();
   const projectId = params.projectId as string;
+  const pathname = usePathname();
+  const router = useRouter();
 
   const { data: project } = trpc.projects.getProjectById.useQuery({
     projectId,
   });
 
+  const isConflictResolutionPage = pathname.includes("/conflict-resolution");
+
+  const handleBackToProject = () => {
+    router.push(`/projects/${projectId}`);
+  };
+
   return (
     <Container maxWidth="xl">
       <PageHeader>
-        <HeaderContent>
-          <ProjectBreadcrumbs projectName={project?.name || ""} />
+        <Box
+          display="flex"
+          justifyContent="space-between"
+          alignItems="center"
+          width="100%"
+        >
+          <HeaderContent>
+            <ProjectBreadcrumbs projectName={project?.name || ""} />
 
-          <Typography variant="h5" fontWeight={600}>
-            {project?.name}
-          </Typography>
-        </HeaderContent>
+            <Typography variant="h5" fontWeight={600}>
+              {project?.name}
+            </Typography>
+          </HeaderContent>
+
+          {isConflictResolutionPage && (
+            <Button
+              variant="outlined"
+              startIcon={<ArrowBackIcon />}
+              onClick={handleBackToProject}
+            >
+              Back to Project
+            </Button>
+          )}
+        </Box>
       </PageHeader>
 
       {children}
