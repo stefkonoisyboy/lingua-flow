@@ -668,12 +668,248 @@ The application uses a custom DI system for better maintainability and testabili
 
 ---
 
-**Summary:**
-- The system now robustly tracks and preserves translation order per language, both on import and export.
-- Pagination and data consistency issues with large translation sets and joined queries have been resolved.
-- The GitHub integration flow is more user-friendly and consistent across the app.
-- The frontend and backend are aligned to provide a seamless, reliable translation management experience.
+## [Update: Conflict Resolution System]
+
+### Overview
+
+The conflict resolution system provides a comprehensive workflow for detecting and resolving translation conflicts between LinguaFlow and GitHub repositories. It supports both automatic and manual export options, with robust conflict detection and resolution capabilities.
+
+### Backend Implementation
+
+#### 1. Conflict Detection Service (IntegrationsService)
+
+**Key Methods:**
+- `pullAndDetectConflicts`: Pulls translation files from GitHub and detects conflicts
+- `resolveAllTranslationConflicts`: Resolves conflicts for all languages in a single request
+- `resolveTranslationConflicts`: Legacy method that delegates to the new batch method
+
+**Conflict Detection Logic:**
+- **Key-based comparison**: Conflicts are detected by comparing actual translation keys, not by position
+- **Multi-language support**: Detects conflicts across all project languages simultaneously
+- **Position tracking**: Maintains position information for UI display purposes
+- **Robust parsing**: Handles JSON translation files with proper error handling
+
+**Conflict Types Detected:**
+- **Only in LinguaFlow**: Translation exists locally but not in GitHub
+- **Only in GitHub**: Translation exists in GitHub but not in LinguaFlow
+- **Different values**: Same key exists in both but with different values
+
+#### 2. Resolution Processing
+
+**Batch Processing:**
+- **Single API request**: All language resolutions processed in one call for efficiency
+- **Key creation**: Automatically creates new translation keys if they don't exist in LinguaFlow
+- **Translation updates**: Updates existing translations or creates new ones as needed
+- **Error handling**: Comprehensive error handling with proper rollback
+
+**Data Flow:**
+1. Collect all resolutions from frontend
+2. Create missing translation keys
+3. Update/create translations for each resolution
+4. Return success status
+
+#### 3. Export Integration
+
+**Automatic Export:**
+- **Post-resolution export**: Automatically triggers GitHub export after successful conflict resolution
+- **Pull request creation**: Creates PRs with resolved translations
+- **No-changes detection**: Handles cases where no changes are needed (e.g., all GitHub versions selected)
+- **Error recovery**: Provides retry mechanism for failed exports
+
+**Export Response Handling:**
+- **With changes**: Returns pull request URL for user access
+- **No changes**: Returns success without PR URL, indicating no changes were needed
+
+#### 4. tRPC Endpoints
+
+**New Endpoints:**
+- `integrations.pullAndDetectConflicts`: Pulls from GitHub and detects conflicts
+- `integrations.resolveConflicts`: Resolves all conflicts in a single request
+
+**Input/Output Schemas:**
+```typescript
+// Pull and detect conflicts
+input: {
+  projectId: string;
+  integrationId: string;
+  repository: string;
+  branch: string;
+}
+output: Record<string, Conflict[]>
+
+// Resolve conflicts
+input: {
+  projectId: string;
+  resolutions: Array<{
+    languageId: string;
+    resolutions: Array<{
+      key: string;
+      resolvedValue: string;
+    }>;
+  }>;
+}
+output: { success: boolean }
+```
+
+### Frontend Implementation
+
+#### 1. Redux State Management
+
+**Conflict Resolution Slice:**
+- **State structure**: Stores conflicts by language code with position tracking
+- **Actions**:
+  - `setConflicts`: Stores detected conflicts
+  - `clearConflicts`: Clears all conflicts
+  - `clearResolvedConflicts`: Removes specific resolved conflicts
+  - `setStatus`/`setError`: Manages loading and error states
+
+**Conflict Data Structure:**
+```typescript
+type Conflict = {
+  linguaFlowKey: string | undefined;
+  linguaFlowValue: string | undefined;
+  githubKey: string | undefined;
+  githubValue: string | undefined;
+  position: number;
+};
+```
+
+#### 2. Conflict Resolution Page
+
+**Component Structure:**
+- **Main page**: `src/app/(authenticated)/projects/[projectId]/conflict-resolution/page.tsx`
+- **Layout**: Reuses project header with dynamic breadcrumbs
+- **Navigation**: "Back to Project" button for easy navigation
+
+**Key Features:**
+- **Multi-language conflict display**: Accordion-based interface grouped by language
+- **Resolution options**: Radio buttons for LinguaFlow, GitHub, or manual values
+- **Bulk actions**: "Keep All LinguaFlow" and "Keep All GitHub" buttons
+- **Progress tracking**: Real-time conflict count and resolution status
+- **Auto-export control**: Checkbox to enable/disable automatic export
+
+**UI States:**
+- **Loading**: During conflict detection and resolution
+- **Resolved**: All controls disabled, success messages displayed
+- **Export progress**: Shows export status and pull request creation
+- **Error handling**: Retry mechanisms for failed operations
+
+#### 3. Integration Card Updates
+
+**Sync Button Enhancement:**
+- **Updated tooltip**: "Sync & Resolve Conflicts" to clarify functionality
+- **Workflow**: Click sync → Detect conflicts → Navigate to resolution page
+- **Removed export**: Export functionality moved to conflict resolution page
+
+**User Flow:**
+1. Click "Sync & Resolve Conflicts" button
+2. System pulls from GitHub and detects conflicts
+3. Redirects to conflict resolution page
+4. User resolves conflicts and applies resolutions
+5. Automatic export to GitHub (if enabled)
+
+#### 4. Hybrid Export System
+
+**Auto-Export Feature:**
+- **Default behavior**: Automatic export after resolution (enabled by default)
+- **Manual option**: Checkbox to disable auto-export for manual control
+- **Button text**: Dynamically shows "Apply Resolutions & Export" or "Apply Resolutions"
+
+**Manual Export:**
+- **Export button**: Appears when auto-export is disabled
+- **Button text**: "Export to GitHub (if changes)" to set expectations
+- **No-changes feedback**: Clear messaging when no changes are detected
+
+#### 5. Success/Error Handling
+
+**Success States:**
+- **Resolutions applied**: "Resolutions applied successfully!" or "Resolutions applied locally!"
+- **Exporting**: "Exporting to GitHub..." with progress indicator
+- **Completed**: "Sync completed successfully!" with pull request link
+- **No changes**: "No changes to export!" with explanation
+
+**Error Handling:**
+- **Export errors**: Displays error message with retry button
+- **Network errors**: Proper error messages and recovery options
+- **Validation errors**: Form validation with clear feedback
+
+#### 6. UI/UX Enhancements
+
+**Visual Design:**
+- **Theme integration**: Consistent with light/dark mode support
+- **Loading states**: Proper loading indicators throughout the workflow
+- **Disabled states**: All controls disabled after resolution
+- **Responsive design**: Works across different screen sizes
+
+**Accessibility:**
+- **Keyboard navigation**: Full keyboard support for all controls
+- **Screen reader support**: Proper ARIA labels and descriptions
+- **Focus management**: Logical tab order and focus indicators
+
+### Data Flow
+
+#### 1. Conflict Detection Flow
+1. User clicks "Sync & Resolve Conflicts"
+2. Frontend calls `pullAndDetectConflicts` tRPC endpoint
+3. Backend pulls translation files from GitHub
+4. Backend compares translations by key (not position)
+5. Backend returns conflicts grouped by language
+6. Frontend stores conflicts in Redux and navigates to resolution page
+
+#### 2. Conflict Resolution Flow
+1. User selects resolutions for each conflict
+2. User clicks "Apply Resolutions"
+3. Frontend collects all resolutions and calls `resolveConflicts`
+4. Backend processes all resolutions in a single request
+5. Backend creates missing keys and updates translations
+6. Frontend clears resolved conflicts from Redux
+7. If auto-export enabled, triggers export to GitHub
+
+#### 3. Export Flow
+1. Frontend calls `exportTranslations` tRPC endpoint
+2. Backend creates new branch and updates translation files
+3. Backend creates pull request (if changes detected)
+4. Backend returns pull request URL or success status
+5. Frontend displays appropriate success message
+
+### Error Handling
+
+#### Backend Error Handling
+- **GitHub API errors**: Proper error messages and logging
+- **Database errors**: Transaction rollback and error reporting
+- **Validation errors**: Input validation with clear error messages
+- **Network errors**: Retry mechanisms and timeout handling
+
+#### Frontend Error Handling
+- **API errors**: User-friendly error messages with retry options
+- **Validation errors**: Form validation with inline error display
+- **Network errors**: Loading states and error recovery
+- **State errors**: Proper error boundaries and fallback UI
+
+### Performance Optimizations
+
+#### Backend Optimizations
+- **Single request processing**: All resolutions handled in one API call
+- **Batch operations**: Efficient database operations for multiple translations
+- **Key mapping**: Optimized key lookup for translation operations
+- **Error recovery**: Graceful handling of partial failures
+
+#### Frontend Optimizations
+- **Redux state management**: Efficient conflict state updates
+- **Lazy loading**: Components loaded only when needed
+- **Memoization**: Optimized re-renders for large conflict sets
+- **Progressive enhancement**: Works with JavaScript disabled
+
+### Security Considerations
+
+- **Input validation**: All user inputs validated on both frontend and backend
+- **Authorization**: All endpoints protected with proper authentication
+- **Data sanitization**: User inputs sanitized before database operations
+- **Error information**: Limited error details exposed to users
 
 ---
 
-# [End of Update]
+**Summary:**
+The conflict resolution system provides a complete, user-friendly workflow for detecting and resolving translation conflicts between LinguaFlow and GitHub repositories. It supports both automatic and manual export options, with robust error handling and performance optimizations. The system maintains data integrity while providing a seamless user experience for managing translation conflicts.
+
+---

@@ -405,6 +405,7 @@ export default function ConflictResolutionPage() {
                   />
                 </Typography>
               </AccordionSummary>
+
               <AccordionDetails>
                 {conflictArr.map((conf, i) => {
                   const res = resolutions[lang]?.[i];
