@@ -1,18 +1,23 @@
 import { styled } from "@mui/material/styles";
-import { Box } from "@mui/material";
+import { Box, Button, Typography } from "@mui/material";
 
 export const IntegrationsContainer = styled(Box)(({ theme }) => ({
-  marginBottom: theme.spacing(4),
   padding: theme.spacing(3),
-  backgroundColor: theme.palette.customBackground.settingsSection,
+  backgroundColor: theme.palette.background.paper,
   borderRadius: theme.shape.borderRadius,
+  boxShadow: theme.shadows[1],
 }));
 
 export const StyledIntegrationsList = styled(Box)(({ theme }) => ({
   marginTop: theme.spacing(2),
-  display: "flex",
-  flexDirection: "column",
-  gap: theme.spacing(2),
+}));
+
+export const StyledConnectButton = styled(Button)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+}));
+
+export const StyledSyncHistoryTitle = styled(Typography)(({ theme }) => ({
+  marginTop: theme.spacing(4),
 }));
 
 export const IntegrationCard = styled(Box)(({ theme }) => ({
