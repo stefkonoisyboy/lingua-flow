@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button, Typography } from "@mui/material";
+import { Typography } from "@mui/material";
 import {
   IntegrationsContainer,
   StyledIntegrationsList,
+  StyledConnectButton,
+  StyledSyncHistoryTitle,
 } from "@/styles/projects/integrations.styles";
 import { trpc } from "@/utils/trpc";
 import { IntegrationCard } from "./integration-card";
@@ -77,21 +79,20 @@ export function IntegrationsList({
             <Typography variant="body2" color="text.secondary" gutterBottom>
               No integrations configured. Connect a repository to get started.
             </Typography>
-            <Button
+            <StyledConnectButton
               variant="contained"
               color="primary"
               onClick={() => setIsCreateDialogOpen(true)}
-              sx={{ mt: 2 }}
             >
               Connect Repository
-            </Button>
+            </StyledConnectButton>
           </>
         )}
       </StyledIntegrationsList>
 
-      <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mt: 4 }}>
+      <StyledSyncHistoryTitle variant="h6" fontWeight={600} gutterBottom>
         Sync History
-      </Typography>
+      </StyledSyncHistoryTitle>
 
       <SyncHistory projectId={projectId} />
 

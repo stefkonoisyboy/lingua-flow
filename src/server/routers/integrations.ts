@@ -227,4 +227,67 @@ export const integrationsRouter = router({
         input.languageId
       );
     }),
+
+  // Add: Pull and detect conflicts
+  pullAndDetectConflicts: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        integrationId: z.string(),
+        repository: z.string(),
+        branch: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      const githubTokensService = ctx.container.resolve<IGitHubTokensService>(
+        DI_TOKENS.GITHUB_TOKENS_SERVICE
+      );
+
+      const accessToken = await githubTokensService.getAccessToken(ctx.user.id);
+
+      if (!accessToken) {
+        throw new Error("GitHub not connected");
+      }
+
+      return await integrationsService.pullAndDetectConflicts(
+        input.projectId,
+        accessToken,
+        input.repository,
+        input.branch
+      );
+    }),
+
+  // Add: Resolve conflicts
+  resolveConflicts: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        resolutions: z.array(
+          z.object({
+            languageId: z.string(),
+            resolutions: z.array(
+              z.object({
+                key: z.string(),
+                resolvedValue: z.string(),
+              })
+            ),
+          })
+        ),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const integrationsService = ctx.container.resolve<IIntegrationsService>(
+        DI_TOKENS.INTEGRATIONS_SERVICE
+      );
+
+      return await integrationsService.resolveAllTranslationConflicts(
+        input.projectId,
+        ctx.user.id,
+        input.resolutions
+      );
+    }),
 });

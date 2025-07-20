@@ -15,6 +15,10 @@ interface TranslationKeyInsert {
   description?: string;
 }
 
+type TranslationWithKey = Translation & {
+  translation_keys: { key: string; project_id: string };
+};
+
 export class TranslationsDAL implements ITranslationsDAL {
   constructor(
     private supabase: SupabaseClient<Database>,
@@ -96,6 +100,110 @@ export class TranslationsDAL implements ITranslationsDAL {
       query,
       DEFAULT_PAGE_SIZE
     );
+  }
+
+  /**
+   * Fetch all translations for a project and language updated after a given timestamp.
+   */
+  async getProjectTranslationsSince(
+    projectId: string,
+    languageId: string,
+    since: string
+  ) {
+    // First, fetch all translation key IDs for the project
+    const { data: keyData, error: keyError } = await this.supabase
+      .from("translation_keys")
+      .select("id")
+      .eq("project_id", projectId);
+
+    if (keyError) {
+      throw new Error(`Failed to fetch translation keys: ${keyError.message}`);
+    }
+
+    const keyIds = (keyData || []).map((k) => k.id);
+
+    if (keyIds.length === 0) {
+      return [];
+    }
+
+    // Batch keyIds to avoid URI too large errors
+    const BATCH_SIZE = 100;
+    let allData: TranslationWithKey[] = [];
+
+    for (let i = 0; i < keyIds.length; i += BATCH_SIZE) {
+      const chunk = keyIds.slice(i, i + BATCH_SIZE);
+
+      const { data, error } = await this.supabase
+        .from("translations")
+        .select(`*, translation_keys!inner(key, project_id)`)
+        .eq("language_id", languageId)
+        .gt("updated_at", since)
+        .in("key_id", chunk)
+        .order("updated_at", { ascending: true });
+
+      if (error) {
+        throw new Error(
+          `Failed to fetch translations since timestamp: ${error.message}`
+        );
+      }
+
+      allData = allData.concat(data || []);
+    }
+
+    return allData;
+  }
+
+  /**
+   * Fetch all translations for a project and language as a map of key to translation.
+   */
+  async getProjectTranslationsMap(projectId: string, languageId: string) {
+    // First, fetch all translation key IDs for the project
+    const { data: keyData, error: keyError } = await this.supabase
+      .from("translation_keys")
+      .select("id, key")
+      .eq("project_id", projectId);
+
+    if (keyError) {
+      throw new Error(`Failed to fetch translation keys: ${keyError.message}`);
+    }
+
+    const keyIds = (keyData || []).map((k) => k.id);
+
+    if (keyIds.length === 0) {
+      return {};
+    }
+
+    // Batch keyIds to avoid URI too large errors
+    const BATCH_SIZE = 100;
+    let allData: TranslationWithKey[] = [];
+
+    for (let i = 0; i < keyIds.length; i += BATCH_SIZE) {
+      const chunk = keyIds.slice(i, i + BATCH_SIZE);
+
+      const { data, error } = await this.supabase
+        .from("translations")
+        .select(`*, translation_keys!inner(key, project_id)`)
+        .eq("language_id", languageId)
+        .in("key_id", chunk)
+        .order("key_id", { ascending: true });
+
+      if (error) {
+        throw new Error(`Failed to fetch translations map: ${error.message}`);
+      }
+
+      allData = allData.concat(data || []);
+    }
+
+    // Map by key (from translation_keys)
+    const map: Record<string, TranslationWithKey> = {};
+
+    (allData || []).forEach((t) => {
+      if (t.translation_keys && t.translation_keys.key) {
+        map[t.translation_keys.key] = t;
+      }
+    });
+
+    return map;
   }
 
   async getTranslationKeys(

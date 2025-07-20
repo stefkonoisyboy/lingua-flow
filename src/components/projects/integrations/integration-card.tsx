@@ -15,7 +15,6 @@ import {
 } from "@mui/material";
 import {
   Sync as SyncIcon,
-  Settings as SettingsIcon,
   Link as LinkIcon,
   LinkOff as LinkOffIcon,
 } from "@mui/icons-material";
@@ -26,6 +25,9 @@ import {
   IntegrationActions,
 } from "@/styles/projects/integrations.styles";
 import { trpc } from "@/utils/trpc";
+import { useRouter } from "next/navigation";
+import { setConflicts } from "@/store/slices/conflict-resolution.slice";
+import { useAppDispatch } from "@/store/hooks";
 
 interface IntegrationCardProps {
   projectId: string;
@@ -53,6 +55,8 @@ export function IntegrationCard({
 }: IntegrationCardProps) {
   const [isDisconnectDialogOpen, setIsDisconnectDialogOpen] = useState(false);
   const utils = trpc.useUtils();
+  const router = useRouter();
+  const dispatch = useAppDispatch();
 
   const updateIntegrationStatus =
     trpc.integrations.updateIntegrationStatus.useMutation({
@@ -70,30 +74,25 @@ export function IntegrationCard({
       },
     });
 
-  const exportTranslations = trpc.integrations.exportTranslations.useMutation({
-    onSuccess: (data) => {
-      onSuccess("Translations exported successfully!");
-      utils.syncHistory.getByProjectId.invalidate({ projectId });
+  const pullAndDetectConflicts =
+    trpc.integrations.pullAndDetectConflicts.useMutation({
+      onSuccess: (data) => {
+        onSuccess("Conflicts detected successfully!");
+        dispatch(setConflicts(data));
+        router.push(`/projects/${projectId}/conflict-resolution`);
+      },
+      onError: (error) => {
+        onError(`Error pulling and detecting conflicts: ${error.message}`);
+        console.log(error);
+      },
+    });
 
-      if (data.pullRequestUrl) {
-        const newWindow = window.open(data.pullRequestUrl, "_blank");
-
-        if (newWindow) {
-          newWindow.focus();
-        }
-      }
-    },
-    onError: (error) => {
-      onError(`Error exporting translations: ${error.message}`);
-      utils.syncHistory.getByProjectId.invalidate({ projectId });
-    },
-  });
-
-  const handleExport = async () => {
-    await exportTranslations.mutateAsync({
+  const handleSyncAndResolve = async () => {
+    await pullAndDetectConflicts.mutateAsync({
       projectId,
+      integrationId: integration.id,
       repository: integration.config.repository,
-      baseBranch: integration.config.branch,
+      branch: integration.config.branch,
     });
   };
 
@@ -125,26 +124,22 @@ export function IntegrationCard({
             {integration.type === "github" ? "GitHub" : "Unknown"} Repository
           </Typography>
           <IntegrationActions>
-            <Tooltip title="Sync now">
+            <Tooltip title="Sync & Resolve Conflicts">
               <IconButton
                 color="primary"
                 disabled={
-                  !integration.is_connected || exportTranslations.isPending
+                  !integration.is_connected || pullAndDetectConflicts.isPending
                 }
-                onClick={handleExport}
+                onClick={handleSyncAndResolve}
               >
-                {exportTranslations.isPending ? (
+                {pullAndDetectConflicts.isPending ? (
                   <CircularProgress size={20} />
                 ) : (
                   <SyncIcon />
                 )}
               </IconButton>
             </Tooltip>
-            <Tooltip title="Settings">
-              <IconButton color="primary">
-                <SettingsIcon />
-              </IconButton>
-            </Tooltip>
+
             <Button
               variant="outlined"
               color={integration.is_connected ? "error" : "primary"}
