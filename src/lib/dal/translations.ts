@@ -441,11 +441,23 @@ export class TranslationsDAL implements ITranslationsDAL {
     content: string,
     userId: string
   ) {
-    // Get the current max entry_order for this key and language
+    const { data: keyData, error: keyError } = await this.supabase
+      .from("translation_keys")
+      .select("project_id")
+      .eq("id", keyId)
+      .single();
+
+    if (keyError) {
+      throw new Error(`Failed to get translation key: ${keyError.message}`);
+    }
+
+    const projectId = keyData?.project_id;
+
     const { data: maxOrderData, error: maxOrderError } = await this.supabase
       .from("translations")
-      .select("entry_order")
+      .select("entry_order, translation_keys!inner(project_id)")
       .eq("language_id", languageId)
+      .eq("translation_keys.project_id", projectId)
       .order("entry_order", { ascending: false })
       .limit(1)
       .single();
@@ -550,11 +562,12 @@ export class TranslationsDAL implements ITranslationsDAL {
     for (const [languageId, langTranslations] of Object.entries(
       translationsByLanguage
     )) {
-      // Get max entry_order for this language
+      // Get max entry_order for this project and language
       const { data: maxOrderData, error: maxOrderError } = await this.supabase
         .from("translations")
-        .select("entry_order")
+        .select("entry_order, translation_keys!inner(project_id)")
         .eq("language_id", languageId)
+        .eq("translation_keys.project_id", projectId)
         .order("entry_order", { ascending: false })
         .limit(1)
         .single();
@@ -659,5 +672,23 @@ export class TranslationsDAL implements ITranslationsDAL {
         throw new Error(`Error deleting translations: ${deleteError.message}`);
       }
     }
+  }
+
+  async getMaxEntryOrder(projectId: string, languageId: string) {
+    // Query translations for this language, get max entry_order
+    const { data: maxData, error: maxError } = await this.supabase
+      .from("translations")
+      .select("entry_order, translation_keys!inner(project_id)")
+      .eq("language_id", languageId)
+      .eq("translation_keys.project_id", projectId)
+      .order("entry_order", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (maxError && maxError.code !== "PGRST116") {
+      throw new Error(`Failed to fetch max entry_order: ${maxError.message}`);
+    }
+
+    return typeof maxData?.entry_order === "number" ? maxData.entry_order : -1;
   }
 }

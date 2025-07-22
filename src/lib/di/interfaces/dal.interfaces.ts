@@ -249,6 +249,11 @@ export interface ITranslationsDAL {
       }
     >
   >;
+
+  /**
+   * Returns the current max entry_order for a project and language.
+   */
+  getMaxEntryOrder(projectId: string, languageId: string): Promise<number>;
 }
 
 // IntegrationsDAL Interface

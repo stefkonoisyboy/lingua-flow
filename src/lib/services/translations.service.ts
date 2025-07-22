@@ -142,4 +142,113 @@ export class TranslationsService implements ITranslationsService {
 
     return result;
   }
+
+  /**
+   * Import translations from a JSON file for a specific language.
+   * Supports 'merge' (default) and 'replace' modes.
+   */
+  async importFromJSON(
+    projectId: string,
+    languageId: string,
+    jsonContent: string,
+    importMode: "merge" | "replace",
+    userId: string
+  ) {
+    // Parse and flatten JSON
+    const parsed: Record<string, string> = {};
+
+    try {
+      const data = JSON.parse(jsonContent);
+
+      // Flatten nested structure
+      const flatten = (obj: Record<string, unknown>, prefix = ""): void => {
+        for (const key of Object.keys(obj)) {
+          const value = obj[key];
+          const fullKey = prefix ? `${prefix}.${key}` : key;
+
+          if (typeof value === "object" && value !== null) {
+            flatten(value as Record<string, unknown>, fullKey);
+          } else if (typeof value === "string") {
+            parsed[fullKey] = value;
+          }
+        }
+      };
+
+      flatten(data);
+    } catch (err) {
+      console.error(err);
+      throw new Error("Invalid JSON file.");
+    }
+
+    const keys = Object.keys(parsed);
+
+    if (!keys.length) {
+      throw new Error("No translations found in file.");
+    }
+
+    // If replace mode, delete all existing translations for this language
+    if (importMode === "replace") {
+      await this.translationsDAL.deleteTranslationsForLanguage(
+        projectId,
+        languageId
+      );
+    }
+
+    // Upsert translation keys
+    const translationKeys = keys.map((key) => ({ project_id: projectId, key }));
+
+    const insertedKeys = await this.translationsDAL.upsertTranslationKeys(
+      translationKeys
+    );
+
+    const keyIdMap = Object.fromEntries(insertedKeys.map((k) => [k.key, k.id]));
+
+    let startOrder = 0;
+
+    if (importMode === "merge") {
+      startOrder =
+        (await this.translationsDAL.getMaxEntryOrder(projectId, languageId)) +
+        1;
+    }
+    // For replace mode, startOrder remains 0
+    const translations = keys.map((key, idx) => ({
+      key_id: keyIdMap[key],
+      language_id: languageId,
+      content: parsed[key],
+      translator_id: userId,
+      status: "approved" as const,
+      entry_order: startOrder + idx,
+    }));
+
+    // Upsert translations
+    const upserted = await this.translationsDAL.upsertTranslations(
+      translations,
+      userId,
+      "import:json"
+    );
+
+    // Stats
+    const totalKeys = keys.length;
+
+    const newKeys = insertedKeys.filter(
+      (k) => k.created_at === k.updated_at
+    ).length;
+
+    const updatedTranslations = upserted.filter(
+      (t) => t.updated_at !== t.created_at
+    ).length;
+
+    const unchangedTranslations = totalKeys - newKeys - updatedTranslations;
+
+    return {
+      success: true,
+      stats: {
+        totalKeys,
+        newKeys,
+        updatedTranslations,
+        unchangedTranslations,
+        errors: [],
+      },
+    };
+  }
 }
