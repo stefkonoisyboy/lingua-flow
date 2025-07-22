@@ -1,8 +1,12 @@
 import { IVersionHistoryDAL } from "../di/interfaces/dal.interfaces";
 import { IVersionHistoryService } from "../di/interfaces/service.interfaces";
+import { ITranslationsDAL } from "../di/interfaces/dal.interfaces";
 
 export class VersionHistoryService implements IVersionHistoryService {
-  constructor(private versionHistoryDal: IVersionHistoryDAL) {}
+  constructor(
+    private versionHistoryDal: IVersionHistoryDAL,
+    private translationsDal: ITranslationsDAL
+  ) {}
 
   async getVersionHistory(translationId: string) {
     const history = await this.versionHistoryDal.getVersionHistory(
@@ -35,5 +39,30 @@ export class VersionHistoryService implements IVersionHistoryService {
     );
 
     return version;
+  }
+
+  async revertTranslationToVersion(
+    translationId: string,
+    versionId: string,
+    userId: string
+  ): Promise<{ success: boolean }> {
+    // 1. Fetch the target version entry
+    const version = await this.versionHistoryDal.getVersionHistoryEntry(
+      versionId
+    );
+
+    if (!version) {
+      throw new Error("Version not found");
+    }
+
+    // 2. Update the translation to the content of the target version
+    await this.translationsDal.updateTranslation(
+      translationId,
+      version.content,
+      userId
+    );
+
+    // 3. (Optional) Log activity here if needed
+    return { success: true };
   }
 }
