@@ -104,4 +104,20 @@ export class VersionHistoryDAL implements IVersionHistoryDAL {
       DEFAULT_PAGE_SIZE
     );
   }
+
+  async getVersionHistoryEntry(versionId: string) {
+    const { data, error } = await this.supabase
+      .from("version_history")
+      .select("*")
+      .eq("id", versionId)
+      .single();
+
+    if (error) {
+      throw new Error(
+        `Failed to fetch version history entry: ${error.message}`
+      );
+    }
+
+    return data;
+  }
 }

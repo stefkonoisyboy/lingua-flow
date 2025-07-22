@@ -352,6 +352,9 @@ export interface IVersionHistoryDAL {
       };
     })[]
   >;
+  getVersionHistoryEntry(
+    versionId: string
+  ): Promise<Database["public"]["Tables"]["version_history"]["Row"]>;
 }
 
 export interface IGitHubTokensDAL {
