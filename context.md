@@ -164,15 +164,19 @@ Key Features:
       - Automatic version number incrementation
       - Type-safe version history tracking
       - Proper error handling and constraints
+    - One-by-one revert: Provides a method to fetch a single version entry and revert a translation to that specific version (no bulk/group revert).
     - Service Layer (VersionHistoryService):
       - Type-safe version history operations
       - Consistent interface with DAL
       - Email lookup through profiles table
+    - Implements revertTranslationToVersion: Updates a single translation to the content of a selected version, creates a new version history entry, and logs the activity. No batch or group revert is performed.
     - Data Model:
       - version_history table with user relationship
       - Foreign key to profiles for user information
       - Composite unique constraints
       - Automatic timestamp management
+    - tRPC Router:
+      - Exposes getVersionHistory (query) and revertTranslationToVersion (mutation) endpoints for per-translation version history and revert actions.
   - Frontend Implementation:
     - VersionHistoryDialog component:
       - Modal dialog for version history display
@@ -188,6 +192,9 @@ Key Features:
       - User-friendly date formatting
       - Clear version numbering
       - Email display for change tracking
+      - For each version (except the latest), displays a revert icon button. When clicked, opens a confirmation modal.
+      - On confirmation, calls the revertTranslationToVersion mutation to revert the translation to the selected version. Shows loading state and feedback via snackbar.
+      - No group or bulk revert is available; revert is strictly one-by-one per version entry.
     - Integration with TranslationsTable
     - tRPC query integration
     - Proper error handling
