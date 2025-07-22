@@ -29,9 +29,10 @@ import {
   HeaderActions,
   LanguageSelectControl,
 } from "@/styles/projects/translations-header.styles";
+import { trpc } from "@/utils/trpc";
+import { useParams } from "next/navigation";
 
 interface TranslationsHeaderProps {
-  languages: { language_id: string; languages: { name: string } }[];
   onStartAddingKey: () => void;
   onCancelAddingKey: () => void;
   onSave: () => void;
@@ -40,7 +41,6 @@ interface TranslationsHeaderProps {
 }
 
 export function TranslationsHeader({
-  languages,
   onStartAddingKey,
   onCancelAddingKey,
   onSave,
@@ -51,6 +51,16 @@ export function TranslationsHeader({
   const selectedLanguageId = useAppSelector(selectSelectedLanguageId);
   const isAddingKey = useAppSelector(selectIsAddingKey);
   const isEditing = useAppSelector(selectIsEditing);
+  const params = useParams();
+  const projectId = params.projectId as string;
+
+  const { data: projectLanguages } = trpc.projects.getProjectLanguages.useQuery(
+    {
+      projectId,
+    }
+  );
+
+  const languages = projectLanguages || [];
 
   return (
     <HeaderContainer>

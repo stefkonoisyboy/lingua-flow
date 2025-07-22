@@ -27,20 +27,13 @@ import {
   NoLanguageSelectedPlaceholder,
   NoTranslationsPlaceholder,
 } from "./translations/translations-placeholders";
-import { TranslationKey } from "./translations/translations-table";
-
-interface ProjectTranslationsProps {
-  translationKeys: TranslationKey[];
-  isLoading: boolean;
-  languageName: string;
-  defaultLanguageName: string;
-  defaultLanguageId: string;
-  languages: { language_id: string; languages: { name: string } }[];
-  page: number;
-  totalPages: number;
-  onPageChange: (page: number) => void;
-  projectId: string;
-}
+import { useParams } from "next/navigation";
+import {
+  selectSelectedLanguageId,
+  setSelectedLanguageId,
+} from "@/store/slices/selected-language.slice";
+import { selectActiveTab } from "@/store/slices/project-tabs.slice";
+import { useEffect, useState } from "react";
 
 // Validation schema matching tRPC input
 const newTranslationSchema = z.object({
@@ -52,24 +45,56 @@ const newTranslationSchema = z.object({
 
 type NewTranslationForm = z.infer<typeof newTranslationSchema>;
 
-export function ProjectTranslations({
-  translationKeys,
-  isLoading,
-  languageName,
-  defaultLanguageName,
-  defaultLanguageId,
-  languages,
-  page,
-  totalPages,
-  onPageChange,
-  projectId,
-}: ProjectTranslationsProps) {
+const PAGE_SIZE = 10;
+
+export function ProjectTranslations() {
+  const params = useParams();
+  const projectId = params.projectId as string;
+
   const dispatch = useAppDispatch();
   const utils = trpc.useUtils();
 
   // Redux selectors
   const isAddingKey = useAppSelector(selectIsAddingKey);
   const error = useAppSelector(selectError);
+  const selectedLanguageId = useAppSelector(selectSelectedLanguageId);
+  const activeTab = useAppSelector(selectActiveTab);
+
+  const [page, setPage] = useState(1);
+
+  const { data: projectLanguages, isLoading: isProjectLanguagesLoading } =
+    trpc.projects.getProjectLanguages.useQuery({ projectId });
+
+  const defaultLanguage = projectLanguages?.find((lang) => lang.is_default);
+
+  const { data: translationKeysData, isLoading: isTranslationKeysLoading } =
+    trpc.translations.getTranslationKeys.useQuery(
+      {
+        projectId,
+        page,
+        pageSize: PAGE_SIZE,
+        languageId: selectedLanguageId,
+        defaultLanguageId: defaultLanguage?.language_id,
+      },
+      {
+        enabled:
+          !!selectedLanguageId &&
+          !!defaultLanguage?.language_id &&
+          activeTab === "translations",
+      }
+    );
+
+  const totalPages = Math.ceil((translationKeysData?.total || 0) / PAGE_SIZE);
+
+  const translationKeys = translationKeysData?.data || [];
+  const defaultLanguageId = defaultLanguage?.language_id || "";
+  const defaultLanguageName = defaultLanguage?.languages.name || "";
+
+  const languageName =
+    projectLanguages?.find((lang) => lang.language_id === selectedLanguageId)
+      ?.languages.name || "";
+
+  const isLoading = isProjectLanguagesLoading || isTranslationKeysLoading;
 
   // tRPC mutation
   const createKeyMutation =
@@ -127,6 +152,9 @@ export function ProjectTranslations({
     },
   });
 
+  const hasRequiredTranslations =
+    formik.values.translations[defaultLanguageId]?.trim();
+
   const handleStartAddingKey = () => {
     dispatch(startAddingKey());
   };
@@ -154,8 +182,16 @@ export function ProjectTranslations({
       }
       formik.resetForm();
     }
-    onPageChange(value);
+
+    setPage(value);
   };
+
+  // Set selected language to default language when project languages load
+  useEffect(() => {
+    if (defaultLanguage && !selectedLanguageId) {
+      dispatch(setSelectedLanguageId(defaultLanguage.language_id));
+    }
+  }, [defaultLanguage, selectedLanguageId, dispatch]);
 
   if (isLoading) {
     return (
@@ -165,13 +201,9 @@ export function ProjectTranslations({
     );
   }
 
-  const hasRequiredTranslations =
-    formik.values.translations[defaultLanguageId]?.trim();
-
   return (
     <TranslationsContainer>
       <TranslationsHeader
-        languages={languages}
         onStartAddingKey={handleStartAddingKey}
         onCancelAddingKey={handleCancelAddingKey}
         onSave={formik.handleSubmit}

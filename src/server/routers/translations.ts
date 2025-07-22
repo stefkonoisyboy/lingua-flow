@@ -139,7 +139,7 @@ export const translationsRouter = router({
         languageIds: z.array(z.string()),
       })
     )
-    .query(async ({ input, ctx }) => {
+    .mutation(async ({ input, ctx }) => {
       const translationsService = ctx.container.resolve<ITranslationsService>(
         DI_TOKENS.TRANSLATIONS_SERVICE
       );
