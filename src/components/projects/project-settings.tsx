@@ -9,22 +9,9 @@ import {
 import { ProjectDetailsForm } from "./settings/project-details-form";
 import { ProjectLanguages } from "./settings/project-languages";
 import { IntegrationsList } from "./integrations/integrations-list";
+import { ImportExport } from "./translations/import-export";
 
-interface ProjectSettingsProps {
-  languages: {
-    language_id: string;
-    is_default: boolean;
-    languages: {
-      id: string;
-      name: string;
-      code: string;
-      flag_url: string | null;
-      is_rtl: boolean;
-    };
-  }[];
-}
-
-export function ProjectSettings({ languages }: ProjectSettingsProps) {
+export function ProjectSettings() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
@@ -66,13 +53,11 @@ export function ProjectSettings({ languages }: ProjectSettingsProps) {
 
       <ProjectDetailsForm onSuccess={handleSuccess} onError={handleError} />
 
-      <ProjectLanguages
-        languages={languages}
-        onSuccess={handleSuccess}
-        onError={handleError}
-      />
+      <ProjectLanguages onSuccess={handleSuccess} onError={handleError} />
 
       <IntegrationsList onSuccess={handleSuccess} onError={handleError} />
+
+      <ImportExport />
     </ProjectSettingsContainer>
   );
 }

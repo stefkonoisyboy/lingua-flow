@@ -189,7 +189,11 @@ export function registerServices(
 
   container.register<ITranslationsService>(
     DI_TOKENS.TRANSLATIONS_SERVICE,
-    (c) => new TranslationsService(c.resolve(DI_TOKENS.TRANSLATIONS_DAL))
+    (c) =>
+      new TranslationsService(
+        c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
+        c.resolve(DI_TOKENS.INTEGRATIONS_DAL)
+      )
   );
 
   container.register<IVersionHistoryService>(

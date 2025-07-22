@@ -40,23 +40,11 @@ import { resetSelectedLanguageId } from "@/store/slices/selected-language.slice"
 import { useParams } from "next/navigation";
 
 interface ProjectLanguagesProps {
-  languages: {
-    language_id: string;
-    is_default: boolean;
-    languages: {
-      id: string;
-      name: string;
-      code: string;
-      flag_url: string | null;
-      is_rtl: boolean;
-    };
-  }[];
   onSuccess: (message: string) => void;
   onError: (message: string) => void;
 }
 
 export function ProjectLanguages({
-  languages,
   onSuccess,
   onError,
 }: ProjectLanguagesProps) {
@@ -70,6 +58,14 @@ export function ProjectLanguages({
   const utils = trpc.useUtils();
 
   const { data: availableLanguages } = trpc.languages.getLanguages.useQuery();
+
+  const { data: projectLanguages } = trpc.projects.getProjectLanguages.useQuery(
+    {
+      projectId,
+    }
+  );
+
+  const languages = projectLanguages || [];
 
   const addLanguageMutation = trpc.projects.addProjectLanguage.useMutation({
     onSuccess: () => {

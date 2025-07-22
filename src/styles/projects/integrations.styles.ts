@@ -3,7 +3,8 @@ import { Box, Button, Typography } from "@mui/material";
 
 export const IntegrationsContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(3),
-  backgroundColor: theme.palette.background.paper,
+  marginBottom: theme.spacing(4),
+  backgroundColor: theme.palette.customBackground.settingsSection,
   borderRadius: theme.shape.borderRadius,
   boxShadow: theme.shadows[1],
 }));

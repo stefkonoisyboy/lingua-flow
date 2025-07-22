@@ -920,3 +920,38 @@ type Conflict = {
 The conflict resolution system provides a complete, user-friendly workflow for detecting and resolving translation conflicts between LinguaFlow and GitHub repositories. It supports both automatic and manual export options, with robust error handling and performance optimizations. The system maintains data integrity while providing a seamless user experience for managing translation conflicts.
 
 ---
+
+### Export Translation Files (MVP)
+
+- **Location:** Project Settings page, below Integrations section, as an Import/Export card.
+- **User Flow:**
+  1. User navigates to Project Settings.
+  2. User clicks "Export Translations" in the Import/Export section.
+  3. System fetches all translations for all project languages.
+  4. Each language's translations are exported as a flat JSON file (e.g., `en.json`, `fr.json`).
+  5. All JSON files are bundled into a ZIP archive (`project-translations.zip`) and downloaded to the user.
+  6. Button shows a loading state during export.
+
+- **Backend Implementation:**
+  - **tRPC Endpoint:** `translations.exportTranslations` accepts `projectId` and `languageIds`, returns a mapping of language code to JSON string.
+  - **Service Layer:** `exportToJSON` method in `TranslationsService` fetches translations for each language, serializes to JSON, and returns the result.
+  - **DAL:** Uses `getProjectTranslationsForExport` and `getProjectLanguagesForExport` from IntegrationsDAL for efficient, ordered data retrieval.
+
+- **Frontend Implementation:**
+  - **Component:** `ImportExport` in `src/components/projects/translations/import-export.tsx`.
+  - **Behavior:**
+    - Fetches available languages and project ID automatically.
+    - Calls the export endpoint for all languages.
+    - Uses JSZip to bundle all JSON files into a ZIP archive.
+    - Triggers a browser download of the ZIP file.
+    - UI matches the design in the MVP screenshot.
+    - Import button is present but static/disabled for now.
+
+- **File Format:**
+  - Each language is exported as a flat JSON file: `{ "key": "value", ... }`
+  - All files are zipped for a single download.
+
+- **Notes:**
+  - Only approved translations are exported.
+  - The export logic is fully self-contained in the ImportExport component.
+  - Designed for extensibility (future: YAML, CSV, import dialog, etc).

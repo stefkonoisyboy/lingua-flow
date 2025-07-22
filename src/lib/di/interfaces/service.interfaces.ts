@@ -185,6 +185,15 @@ export interface ITranslationsService {
     content: string,
     userId: string
   ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
+
+  /**
+   * Export translations for the given project and languages as JSON files.
+   * Returns an object mapping language code to JSON string.
+   */
+  exportToJSON(
+    projectId: string,
+    languageIds: string[]
+  ): Promise<Record<string, string>>;
 }
 
 // Languages service interface
