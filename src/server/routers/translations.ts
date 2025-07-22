@@ -131,4 +131,22 @@ export const translationsRouter = router({
         ctx.user.id
       );
     }),
+
+  exportTranslations: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        languageIds: z.array(z.string()),
+      })
+    )
+    .query(async ({ input, ctx }) => {
+      const translationsService = ctx.container.resolve<ITranslationsService>(
+        DI_TOKENS.TRANSLATIONS_SERVICE
+      );
+
+      return await translationsService.exportToJSON(
+        input.projectId,
+        input.languageIds
+      );
+    }),
 });
