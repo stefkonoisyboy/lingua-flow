@@ -1,4 +1,4 @@
-import { FC } from "react";
+import { FC, useState } from "react";
 import {
   DialogTitle,
   DialogContent,
@@ -7,11 +7,19 @@ import {
   Chip,
   CircularProgress,
   Box,
+  IconButton,
+  Snackbar,
+  Alert,
+  Dialog as MuiDialog,
+  DialogTitle as MuiDialogTitle,
+  DialogContent as MuiDialogContent,
+  Button,
 } from "@mui/material";
 import {
   Close as CloseIcon,
   Person as PersonIcon,
   AccessTime as AccessTimeIcon,
+  History as HistoryIcon,
 } from "@mui/icons-material";
 import { format } from "date-fns";
 import { trpc } from "@/utils/trpc";
@@ -27,6 +35,7 @@ import {
   StyledVersionChip,
   KeyName,
 } from "@/styles/projects/version-history.styles";
+import { useParams } from "next/navigation";
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -43,11 +52,68 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
   keyName,
   languageName,
 }) => {
+  const utils = trpc.useUtils();
+  const params = useParams();
+  const projectId = params.projectId as string;
+
   const { data: versions, isLoading } =
     trpc.versionHistory.getVersionHistory.useQuery(
       { translationId },
       { enabled: open }
     );
+
+  const revertMutation =
+    trpc.versionHistory.revertTranslationToVersion.useMutation({
+      onSuccess: () => {
+        utils.versionHistory.getVersionHistory.invalidate({ translationId });
+        utils.translations.getTranslationKeys.invalidate({ projectId });
+
+        setSnackbar({
+          open: true,
+          message: "Reverted successfully!",
+          severity: "success",
+        });
+      },
+      onError: (err) => {
+        setSnackbar({
+          open: true,
+          message: err.message || "Failed to revert",
+          severity: "error",
+        });
+      },
+    });
+  const [revertTarget, setRevertTarget] = useState<string | null>(null);
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: "success" | "error";
+  }>({ open: false, message: "", severity: "success" });
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingVersionId, setPendingVersionId] = useState<string | null>(null);
+
+  const handleRevert = (versionId: string) => {
+    setPendingVersionId(versionId);
+    setConfirmOpen(true);
+  };
+
+  const handleConfirmRevert = async () => {
+    if (!pendingVersionId) {
+      return;
+    }
+
+    setRevertTarget(pendingVersionId);
+
+    try {
+      await revertMutation.mutateAsync({
+        translationId,
+        versionId: pendingVersionId,
+      });
+      setConfirmOpen(false);
+    } finally {
+      setRevertTarget(null);
+      setPendingVersionId(null);
+    }
+  };
 
   return (
     <StyledDialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -109,6 +175,27 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
                       variant="outlined"
                     />
                   )}
+                  {versions.length > 1 && (
+                    <Tooltip title="Revert to this version">
+                      <span>
+                        <IconButton
+                          color="error"
+                          onClick={() => handleRevert(version.id)}
+                          disabled={
+                            revertMutation.isPending &&
+                            revertTarget === version.id
+                          }
+                        >
+                          {revertMutation.isPending &&
+                          revertTarget === version.id ? (
+                            <CircularProgress size={20} />
+                          ) : (
+                            <HistoryIcon />
+                          )}
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  )}
                 </VersionMeta>
                 <VersionContent>{version.content}</VersionContent>
               </VersionEntry>
@@ -116,6 +203,49 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
           )}
         </HistoryContent>
       </DialogContent>
+      <MuiDialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <MuiDialogTitle>Revert to this version?</MuiDialogTitle>
+        <MuiDialogContent>
+          <Typography>
+            Are you sure you want to revert this translation to the selected
+            version? This action cannot be undone.
+          </Typography>
+        </MuiDialogContent>
+        <Box display="flex" justifyContent="flex-end" gap={1} p={2}>
+          <Button
+            onClick={() => setConfirmOpen(false)}
+            disabled={revertMutation.isPending}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmRevert}
+            color="error"
+            variant="contained"
+            disabled={revertMutation.isPending}
+            startIcon={<HistoryIcon />}
+          >
+            {revertMutation.isPending ? (
+              <CircularProgress size={20} />
+            ) : (
+              "Revert"
+            )}
+          </Button>
+        </Box>
+      </MuiDialog>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </StyledDialog>
   );
 };

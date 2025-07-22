@@ -194,7 +194,11 @@ export function registerServices(
 
   container.register<IVersionHistoryService>(
     DI_TOKENS.VERSION_HISTORY_SERVICE,
-    (c) => new VersionHistoryService(c.resolve(DI_TOKENS.VERSION_HISTORY_DAL))
+    (c) =>
+      new VersionHistoryService(
+        c.resolve(DI_TOKENS.VERSION_HISTORY_DAL),
+        c.resolve(DI_TOKENS.TRANSLATIONS_DAL)
+      )
   );
 
   container.register<ICommentsService>(

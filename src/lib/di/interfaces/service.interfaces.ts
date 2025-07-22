@@ -332,6 +332,11 @@ export interface IVersionHistoryService {
       };
     }
   >;
+  revertTranslationToVersion(
+    translationId: string,
+    versionId: string,
+    userId: string
+  ): Promise<{ success: boolean }>;
 }
 
 export interface ICommentsService {

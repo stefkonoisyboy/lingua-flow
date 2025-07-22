@@ -35,4 +35,24 @@ export const versionHistoryRouter = router({
         input.translationIds
       );
     }),
+
+  revertTranslationToVersion: protectedProcedure
+    .input(
+      z.object({
+        translationId: z.string().uuid(),
+        versionId: z.string().uuid(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const versionHistoryService =
+        ctx.container.resolve<IVersionHistoryService>(
+          DI_TOKENS.VERSION_HISTORY_SERVICE
+        );
+
+      return await versionHistoryService.revertTranslationToVersion(
+        input.translationId,
+        input.versionId,
+        ctx.user.id
+      );
+    }),
 });
