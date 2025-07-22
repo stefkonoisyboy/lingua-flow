@@ -210,6 +210,7 @@ export class TranslationsService implements ITranslationsService {
         (await this.translationsDAL.getMaxEntryOrder(projectId, languageId)) +
         1;
     }
+
     // For replace mode, startOrder remains 0
     const translations = keys.map((key, idx) => ({
       key_id: keyIdMap[key],

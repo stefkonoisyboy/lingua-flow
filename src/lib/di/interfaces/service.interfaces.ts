@@ -194,6 +194,14 @@ export interface ITranslationsService {
     projectId: string,
     languageIds: string[]
   ): Promise<Record<string, string>>;
+
+  importFromJSON(
+    projectId: string,
+    languageId: string,
+    jsonContent: string,
+    importMode: "merge" | "replace",
+    userId: string
+  ): Promise<{ success: boolean }>;
 }
 
 // Languages service interface
