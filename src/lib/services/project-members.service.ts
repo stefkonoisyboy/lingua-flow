@@ -1,6 +1,45 @@
 import { IProjectMembersService } from "../di/interfaces/service.interfaces";
 import { IProjectMembersDAL, UserRole } from "../di/interfaces/dal.interfaces";
 import { randomUUID } from "crypto";
+import fetch from "node-fetch";
+
+const SUPABASE_EDGE_FUNCTION_URL = `https://${process.env.SUPABASE_PROJECT_ID}.functions.supabase.co/functions/v1/send-invitation-email`;
+
+async function sendInvitationEmail({
+  to,
+  inviter,
+  project,
+  role,
+  token,
+  expiresAt,
+}: {
+  to: string;
+  inviter: string;
+  project: string;
+  role: string;
+  token: string;
+  expiresAt: string;
+}) {
+  const response = await fetch(SUPABASE_EDGE_FUNCTION_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+    },
+    body: JSON.stringify({
+      to,
+      inviter,
+      project,
+      role,
+      token,
+      expiresAt,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to send invitation email");
+  }
+}
 
 export class ProjectMembersService implements IProjectMembersService {
   constructor(private projectMembersDal: IProjectMembersDAL) {}
@@ -47,7 +86,23 @@ export class ProjectMembersService implements IProjectMembersService {
       expiresAt
     );
 
-    // TODO: send email notification here
+    // Fetch inviter and project details using DAL
+    const inviterProfile = await this.projectMembersDal.getProfileById(
+      inviterId
+    );
+
+    const project = await this.projectMembersDal.getProjectById(projectId);
+
+    await sendInvitationEmail({
+      to: inviteeEmail,
+      inviter:
+        inviterProfile?.full_name || inviterProfile?.email || "A team member",
+      project: project?.name || "Project",
+      role,
+      token,
+      expiresAt,
+    });
+
     return token;
   }
 

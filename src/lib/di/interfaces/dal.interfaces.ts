@@ -472,4 +472,6 @@ export interface IProjectMembersDAL {
     inviteeId: string
   ): Promise<void>;
   deleteInvitation(invitationId: string): Promise<void>;
+  getProfileById(userId: string): Promise<Profile | null>;
+  getProjectById(projectId: string): Promise<{ name: string } | null>;
 }

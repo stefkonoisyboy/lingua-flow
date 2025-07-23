@@ -2,6 +2,7 @@ import {
   IProjectMembersDAL,
   UserRole,
   ProjectInvitation,
+  Profile,
 } from "../di/interfaces/dal.interfaces";
 import { SupabaseClient } from "@supabase/supabase-js";
 import { Database } from "../types/database.types";
@@ -152,5 +153,33 @@ export class ProjectMembersDAL implements IProjectMembersDAL {
     if (error) {
       throw error;
     }
+  }
+
+  async getProfileById(userId: string): Promise<Profile | null> {
+    const { data, error } = await this.supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw error;
+    }
+
+    return data ?? null;
+  }
+
+  async getProjectById(projectId: string): Promise<{ name: string } | null> {
+    const { data, error } = await this.supabase
+      .from("projects")
+      .select("name")
+      .eq("id", projectId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw error;
+    }
+
+    return data ?? null;
   }
 }
