@@ -142,4 +142,174 @@ export class TranslationsService implements ITranslationsService {
 
     return result;
   }
+
+  /**
+   * Import translations from a JSON file for a specific language.
+   * Supports 'merge' (default) and 'replace' modes.
+   */
+  async importFromJSON(
+    projectId: string,
+    languageId: string,
+    jsonContent: string,
+    importMode: "merge" | "replace",
+    userId: string
+  ) {
+    // Parse and flatten JSON
+    const parsed: Record<string, string> = {};
+
+    try {
+      const data = JSON.parse(jsonContent);
+
+      // Flatten nested structure
+      const flatten = (obj: Record<string, unknown>, prefix = ""): void => {
+        for (const key of Object.keys(obj)) {
+          const value = obj[key];
+          const fullKey = prefix ? `${prefix}.${key}` : key;
+
+          if (typeof value === "object" && value !== null) {
+            flatten(value as Record<string, unknown>, fullKey);
+          } else if (typeof value === "string") {
+            parsed[fullKey] = value;
+          }
+        }
+      };
+
+      flatten(data);
+    } catch (err) {
+      console.error(err);
+      throw new Error("Invalid JSON file.");
+    }
+
+    const keys = Object.keys(parsed);
+
+    if (!keys.length) {
+      throw new Error("No translations found in file.");
+    }
+
+    // If replace mode, delete all existing translations for this language
+    if (importMode === "replace") {
+      await this.translationsDAL.deleteTranslationsForLanguage(
+        projectId,
+        languageId
+      );
+    }
+
+    // Upsert translation keys
+    const translationKeys = keys.map((key) => ({ project_id: projectId, key }));
+
+    const insertedKeys = await this.translationsDAL.upsertTranslationKeys(
+      translationKeys
+    );
+
+    const keyIdMap = Object.fromEntries(insertedKeys.map((k) => [k.key, k.id]));
+
+    // Prepare translations for upsert
+    let startOrder = 0;
+
+    if (importMode === "merge") {
+      startOrder =
+        (await this.translationsDAL.getMaxEntryOrder(projectId, languageId)) +
+        1;
+    }
+    // For replace mode, startOrder remains 0
+    const translations = keys.map((key, idx) => ({
+      key_id: keyIdMap[key],
+      language_id: languageId,
+      content: parsed[key],
+      translator_id: userId,
+      status: "approved" as const,
+      entry_order: startOrder + idx,
+    }));
+
+    // Efficient version history for updates in merge mode
+    // Map: key = key_id|language_id, value = { id, content }
+    let existingMap: Map<string, { id: string; content: string }> = new Map();
+
+    if (importMode === "merge") {
+      const pairs = translations.map((t) => ({
+        key_id: t.key_id,
+        language_id: t.language_id,
+      }));
+
+      const existing =
+        await this.translationsDAL.getTranslationsByKeyAndLanguage(pairs);
+
+      existingMap = new Map(
+        existing.map((t) => [
+          `${t.key_id}|${t.language_id}`,
+          { id: t.id, content: t.content },
+        ])
+      );
+    }
+
+    // Upsert translations
+    const upserted = await this.translationsDAL.upsertTranslations(
+      translations,
+      userId,
+      "import:json"
+    );
+
+    // After upsert, batch-create version history for updated translations (merge mode only)
+    if (importMode === "merge" && upserted.length > 0) {
+      // Only create version history for translations where content actually changed
+      const updated = upserted.filter((t) => {
+        const prev = existingMap.get(`${t.key_id}|${t.language_id}`);
+        // Only if previous exists and content changed
+        return prev && prev.content !== t.content;
+      });
+
+      if (updated.length > 0) {
+        const updatedIds = updated.map((t) => t.id);
+
+        const versionNumbers =
+          await this.translationsDAL.getLatestVersionNumbers(updatedIds);
+
+        const versionMap = new Map(
+          versionNumbers.map((v) => [v.translation_id, v.version_number])
+        );
+
+        const versionEntries = updated.map((t) => {
+          const prev = existingMap.get(`${t.key_id}|${t.language_id}`);
+
+          return {
+            translation_id: t.id,
+            content: prev?.content ?? "",
+            changed_by: userId,
+            version_name: "Import update",
+            version_number: (versionMap.get(t.id) ?? 0) + 1,
+          };
+        });
+
+        await this.translationsDAL.batchInsertVersionHistory(versionEntries);
+      }
+    }
+
+    // Accurate stats
+    let added = 0,
+      updated = 0,
+      skipped = 0;
+
+    for (const t of upserted) {
+      const prev = existingMap.get(`${t.key_id}|${t.language_id}`);
+
+      if (!prev) {
+        added++;
+      } else if (prev.content !== t.content) {
+        updated++;
+      } else {
+        skipped++;
+      }
+    }
+
+    return {
+      success: true,
+      stats: {
+        totalKeys: keys.length,
+        newKeys: added,
+        updatedTranslations: updated,
+        unchangedTranslations: skipped,
+        errors: [],
+      },
+    };
+  }
 }

@@ -9,7 +9,6 @@ import {
   Box,
   IconButton,
   Snackbar,
-  Alert,
   Dialog as MuiDialog,
   DialogTitle as MuiDialogTitle,
   DialogContent as MuiDialogContent,
@@ -36,6 +35,7 @@ import {
   KeyName,
 } from "@/styles/projects/version-history.styles";
 import { useParams } from "next/navigation";
+import { FullWidthAlert } from "./version-history-dialog.styles";
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -238,13 +238,12 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
-        <Alert
+        <FullWidthAlert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
-          sx={{ width: "100%" }}
         >
           {snackbar.message}
-        </Alert>
+        </FullWidthAlert>
       </Snackbar>
     </StyledDialog>
   );

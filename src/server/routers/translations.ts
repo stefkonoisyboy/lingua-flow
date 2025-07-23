@@ -149,4 +149,28 @@ export const translationsRouter = router({
         input.languageIds
       );
     }),
+
+  importTranslations: protectedProcedure
+    .input(
+      z.object({
+        projectId: z.string(),
+        languageId: z.string(),
+        fileContent: z.string(), // JSON file content as string
+        fileName: z.string(),
+        importMode: z.enum(["merge", "replace"]),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const translationsService = ctx.container.resolve<ITranslationsService>(
+        DI_TOKENS.TRANSLATIONS_SERVICE
+      );
+
+      return await translationsService.importFromJSON(
+        input.projectId,
+        input.languageId,
+        input.fileContent,
+        input.importMode,
+        ctx.user.id
+      );
+    }),
 });

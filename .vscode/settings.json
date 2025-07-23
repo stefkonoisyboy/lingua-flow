@@ -12,7 +12,8 @@
     "Postgrest",
     "supabase",
     "Topbar",
-    "turbopack"
+    "turbopack",
+    "upserted"
   ],
   "deno.enablePaths": ["supabase/functions"],
   "deno.lint": true,

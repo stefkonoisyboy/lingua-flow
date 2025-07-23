@@ -227,17 +227,6 @@ export interface ITranslationsDAL {
     languageId: string
   ): Promise<void>;
 
-  // Additions for conflict detection
-  getProjectTranslationsSince(
-    projectId: string,
-    languageId: string,
-    since: string
-  ): Promise<
-    (Database["public"]["Tables"]["translations"]["Row"] & {
-      translation_keys: { key: string; project_id: string };
-    })[]
-  >;
-
   getProjectTranslationsMap(
     projectId: string,
     languageId: string
@@ -249,6 +238,38 @@ export interface ITranslationsDAL {
       }
     >
   >;
+
+  /**
+   * Returns the current max entry_order for a project and language.
+   */
+  getMaxEntryOrder(projectId: string, languageId: string): Promise<number>;
+
+  /**
+   * Fetch all translations for a list of (key_id, language_id) pairs.
+   */
+  getTranslationsByKeyAndLanguage(
+    pairs: { key_id: string; language_id: string }[]
+  ): Promise<Translation[]>;
+
+  /**
+   * Batch insert version history entries.
+   */
+  batchInsertVersionHistory(
+    entries: {
+      translation_id: string;
+      content: string;
+      changed_by: string;
+      version_name: string;
+      version_number: number;
+    }[]
+  ): Promise<void>;
+
+  /**
+   * Batch fetch latest version numbers for a list of translation IDs.
+   */
+  getLatestVersionNumbers(
+    translationIds: string[]
+  ): Promise<{ translation_id: string; version_number: number }[]>;
 }
 
 // IntegrationsDAL Interface

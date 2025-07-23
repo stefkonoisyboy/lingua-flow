@@ -955,3 +955,49 @@ The conflict resolution system provides a complete, user-friendly workflow for d
   - Only approved translations are exported.
   - The export logic is fully self-contained in the ImportExport component.
   - Designed for extensibility (future: YAML, CSV, import dialog, etc).
+
+### Import Translation Files (MVP)
+
+- **Location:** Project Settings page, below Integrations section, as part of the Import/Export card.
+- **User Flow:**
+  1. User clicks "Import (JSON, YAML, CSV)" in the Import/Export section.
+  2. Dialog opens with drag-and-drop area for JSON file upload (max 5MB).
+  3. User uploads a file, sees a preview of detected keys.
+  4. User selects the target language and import mode (Merge or Replace).
+  5. User clicks "Start Import"; progress is shown.
+  6. On completion, dialog displays a summary: Added, Updated, Skipped.
+  7. User can close the dialog and see changes reflected in the project.
+
+- **Backend Implementation:**
+  - **tRPC Endpoint:** `translations.importTranslations` accepts `projectId`, `languageId`, `fileContent`, `fileName`, and `importMode` (merge/replace).
+  - **Service Layer:**
+    - Parses and flattens JSON file.
+    - In "replace" mode, deletes all existing translations for the language before import.
+    - In "merge" mode, performs a batch upsert of translations for performance.
+    - Before upsert, fetches all existing translations for the (key_id, language_id) pairs.
+    - After upsert, only creates version history entries for translations where the content actually changed (not for skipped/unchanged).
+    - Uses batch DAL methods for upsert, version history, and version number retrieval (all batched for performance).
+    - Computes accurate import stats: Added, Updated, Skipped.
+  - **DAL:**
+    - All .in queries are batched for reliability and performance.
+    - Efficient batch upsert and batch version history insertions.
+
+- **Frontend Implementation:**
+  - **Component:** `ImportTranslationsDialog` in `src/components/projects/translations/import-translations-dialog.tsx`.
+  - **Behavior:**
+    - Drag-and-drop or click to upload JSON file.
+    - File validation (type, size), preview of keys.
+    - Language dropdown (auto-fetched from project), import mode radio (Merge/Replace).
+    - Progress indicator during import, result summary on completion.
+    - Error handling for file, network, and API errors.
+    - All UI uses theme values and styled components; no inline styles.
+    - Designed for extensibility (future: YAML, CSV, multi-file, etc.).
+
+- **Performance and Audit Trail:**
+  - Import is highly performant due to batch operations and minimal queries.
+  - Version history is only created for actual updates, ensuring a clean audit trail.
+  - Skipped/unchanged translations do not generate version history or extra writes.
+
+- **Notes:**
+  - Only approved translations are imported/updated.
+  - The import logic is robust, efficient, and extensible for future formats and features.

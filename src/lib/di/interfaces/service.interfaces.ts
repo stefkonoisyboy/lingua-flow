@@ -194,6 +194,23 @@ export interface ITranslationsService {
     projectId: string,
     languageIds: string[]
   ): Promise<Record<string, string>>;
+
+  importFromJSON(
+    projectId: string,
+    languageId: string,
+    jsonContent: string,
+    importMode: "merge" | "replace",
+    userId: string
+  ): Promise<{
+    success: boolean;
+    stats: {
+      totalKeys: number;
+      newKeys: number;
+      updatedTranslations: number;
+      unchangedTranslations: number;
+      errors: string[];
+    };
+  }>;
 }
 
 // Languages service interface
@@ -259,20 +276,6 @@ export interface IIntegrationsService {
     baseBranch: string,
     languageId?: string
   ): Promise<{ success: boolean; pullRequestUrl?: string }>;
-
-  detectTranslationConflicts(
-    projectId: string,
-    integrationId: string,
-    languageId: string,
-    githubTranslations: Record<string, string>
-  ): Promise<
-    {
-      key: string;
-      linguaFlowValue: string | undefined;
-      githubValue: string | undefined;
-      lastSyncedValue: string | undefined;
-    }[]
-  >;
 
   resolveTranslationConflicts(
     projectId: string,
