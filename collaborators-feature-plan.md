@@ -269,6 +269,7 @@ const permissions = useProjectPermissions(projectId);
 ### Phase 1: Database and Backend Foundation (Week 1)
 - Create database tables and migrations
 - Implement DAL and Service layers
+- Set up email service integration
 - Create basic tRPC endpoints
 
 ### Phase 2: Permission System (Week 1-2)
@@ -278,7 +279,6 @@ const permissions = useProjectPermissions(projectId);
 
 ### Phase 3: Invitation Flow (Week 2)
 - Implement invitation creation and management
-- Set up email service integration
 - Create invitation acceptance flow
 
 ### Phase 4: Frontend Implementation (Week 3)
