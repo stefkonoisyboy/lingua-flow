@@ -8,12 +8,13 @@ import { ImportExportCard, ActionsRow } from "./import-export.styles";
 import JSZip from "jszip";
 import { trpc } from "@/utils/trpc";
 import { useParams } from "next/navigation";
+import ImportTranslationsDialog from "./import-translations-dialog";
 
 export const ImportExport: React.FC = () => {
   const params = useParams();
   const projectId = params.projectId as string;
 
-  const [loading, setLoading] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   const exportMutation = trpc.translations.exportTranslations.useMutation();
 
   const { data: projectLanguages } = trpc.projects.getProjectLanguages.useQuery(
@@ -28,8 +29,6 @@ export const ImportExport: React.FC = () => {
     if (!projectId || !languages.length) {
       return;
     }
-
-    setLoading(true);
 
     try {
       const languageIds = languages.map((l) => l.language_id);
@@ -66,34 +65,47 @@ export const ImportExport: React.FC = () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }, 0);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error("Error exporting translations:", error);
     }
   };
 
   return (
-    <ImportExportCard>
-      <CardContent>
-        <Typography variant="h5" fontWeight={700} gutterBottom>
-          Import / Export
-        </Typography>
-        <Typography variant="body1" color="text.secondary" gutterBottom>
-          Manage your translation files.
-        </Typography>
-        <ActionsRow>
-          <Button variant="outlined" startIcon={<UploadIcon />} disabled>
-            Import (JSON, YAML, CSV)
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={handleExport}
-            disabled={loading}
-          >
-            {loading ? "Exporting..." : "Export Translations"}
-          </Button>
-        </ActionsRow>
-      </CardContent>
-    </ImportExportCard>
+    <>
+      <ImportExportCard>
+        <CardContent>
+          <Typography variant="h5" fontWeight={700} gutterBottom>
+            Import / Export
+          </Typography>
+          <Typography variant="body1" color="text.secondary" gutterBottom>
+            Manage your translation files.
+          </Typography>
+          <ActionsRow>
+            <Button
+              variant="outlined"
+              startIcon={<UploadIcon />}
+              onClick={() => setImportDialogOpen(true)}
+            >
+              Import (JSON, YAML, CSV)
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={handleExport}
+              disabled={exportMutation.isPending}
+            >
+              {exportMutation.isPending
+                ? "Exporting..."
+                : "Export Translations"}
+            </Button>
+          </ActionsRow>
+        </CardContent>
+      </ImportExportCard>
+      <ImportTranslationsDialog
+        open={importDialogOpen}
+        onClose={() => setImportDialogOpen(false)}
+        projectId={projectId}
+      />
+    </>
   );
 };

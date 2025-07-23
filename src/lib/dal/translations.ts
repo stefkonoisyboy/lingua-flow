@@ -13,6 +13,7 @@ interface TranslationKeyInsert {
   project_id: string;
   key: string;
   description?: string;
+  updated_at?: string;
 }
 
 type TranslationWithKey = Translation & {
@@ -100,57 +101,6 @@ export class TranslationsDAL implements ITranslationsDAL {
       query,
       DEFAULT_PAGE_SIZE
     );
-  }
-
-  /**
-   * Fetch all translations for a project and language updated after a given timestamp.
-   */
-  async getProjectTranslationsSince(
-    projectId: string,
-    languageId: string,
-    since: string
-  ) {
-    // First, fetch all translation key IDs for the project
-    const { data: keyData, error: keyError } = await this.supabase
-      .from("translation_keys")
-      .select("id")
-      .eq("project_id", projectId);
-
-    if (keyError) {
-      throw new Error(`Failed to fetch translation keys: ${keyError.message}`);
-    }
-
-    const keyIds = (keyData || []).map((k) => k.id);
-
-    if (keyIds.length === 0) {
-      return [];
-    }
-
-    // Batch keyIds to avoid URI too large errors
-    const BATCH_SIZE = 100;
-    let allData: TranslationWithKey[] = [];
-
-    for (let i = 0; i < keyIds.length; i += BATCH_SIZE) {
-      const chunk = keyIds.slice(i, i + BATCH_SIZE);
-
-      const { data, error } = await this.supabase
-        .from("translations")
-        .select(`*, translation_keys!inner(key, project_id)`)
-        .eq("language_id", languageId)
-        .gt("updated_at", since)
-        .in("key_id", chunk)
-        .order("updated_at", { ascending: true });
-
-      if (error) {
-        throw new Error(
-          `Failed to fetch translations since timestamp: ${error.message}`
-        );
-      }
-
-      allData = allData.concat(data || []);
-    }
-
-    return allData;
   }
 
   /**
@@ -358,6 +308,48 @@ export class TranslationsDAL implements ITranslationsDAL {
     }
 
     return data?.version_number || 0;
+  }
+
+  async getLatestVersionNumbers(
+    translationIds: string[]
+  ): Promise<{ translation_id: string; version_number: number }[]> {
+    if (!translationIds.length) {
+      return [];
+    }
+
+    const BATCH_SIZE = 100;
+    const allRows: { translation_id: string; version_number: number }[] = [];
+
+    for (let i = 0; i < translationIds.length; i += BATCH_SIZE) {
+      const batch = translationIds.slice(i, i + BATCH_SIZE);
+
+      const { data, error } = await this.supabase
+        .from("version_history")
+        .select("translation_id, version_number")
+        .in("translation_id", batch)
+        .order("version_number", { ascending: false });
+
+      if (error) {
+        throw new Error(`Failed to fetch version numbers: ${error.message}`);
+      }
+
+      if (data) {
+        allRows.push(...data);
+      }
+    }
+
+    // For each translation_id, keep only the highest version_number
+    const versionMap = new Map<string, number>();
+
+    for (const row of allRows) {
+      if (!versionMap.has(row.translation_id)) {
+        versionMap.set(row.translation_id, row.version_number);
+      }
+    }
+
+    return Array.from(versionMap.entries()).map(
+      ([translation_id, version_number]) => ({ translation_id, version_number })
+    );
   }
 
   async updateTranslationKey(keyId: string, newKey: string) {
@@ -690,5 +682,64 @@ export class TranslationsDAL implements ITranslationsDAL {
     }
 
     return typeof maxData?.entry_order === "number" ? maxData.entry_order : -1;
+  }
+
+  async getTranslationsByKeyAndLanguage(
+    pairs: { key_id: string; language_id: string }[]
+  ) {
+    if (!pairs.length) {
+      return [];
+    }
+
+    const results: Translation[] = [];
+    const BATCH_SIZE = 100;
+
+    for (let i = 0; i < pairs.length; i += BATCH_SIZE) {
+      const batch = pairs.slice(i, i + BATCH_SIZE);
+      const keyIds = batch.map((p) => p.key_id);
+      const languageIds = batch.map((p) => p.language_id);
+
+      const { data, error } = await this.supabase
+        .from("translations")
+        .select(
+          `
+          *,
+          translation_keys!inner(project_id)
+        `
+        )
+        .in("key_id", keyIds)
+        .in("language_id", languageIds);
+
+      if (error) {
+        throw new Error(`Failed to fetch translations: ${error.message}`);
+      }
+
+      if (data) {
+        results.push(...data);
+      }
+    }
+    return results;
+  }
+
+  async batchInsertVersionHistory(
+    entries: {
+      translation_id: string;
+      content: string;
+      changed_by: string;
+      version_name: string;
+      version_number: number;
+    }[]
+  ) {
+    if (!entries.length) {
+      return;
+    }
+
+    const { error } = await this.supabase
+      .from("version_history")
+      .insert(entries);
+
+    if (error) {
+      throw new Error(`Failed to insert version history: ${error.message}`);
+    }
   }
 }
