@@ -23,6 +23,7 @@ import { GitHubTokensService } from "../services/github-tokens.service";
 import { VersionHistoryService } from "../services/version-history.service";
 import { CommentsService } from "../services/comments.service";
 import { SyncHistoryService } from "../services/sync-history.service";
+import { ProjectMembersService } from "../services/project-members.service";
 
 // Interface imports
 import {
@@ -36,6 +37,7 @@ import {
   IVersionHistoryDAL,
   ICommentsDAL,
   ISyncHistoryDAL,
+  IProjectMembersDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
@@ -46,7 +48,9 @@ import {
   IVersionHistoryService,
   ICommentsService,
   ISyncHistoryService,
+  IProjectMembersService,
 } from "./interfaces/service.interfaces";
+import { ProjectMembersDAL } from "../dal/project-members";
 
 // Token constants for dependency injection
 export const DI_TOKENS = {
@@ -61,6 +65,7 @@ export const DI_TOKENS = {
   GITHUB_TOKENS_DAL: "GITHUB_TOKENS_DAL",
   COMMENTS_DAL: "COMMENTS_DAL",
   SYNC_HISTORY_DAL: "SYNC_HISTORY_DAL",
+  PROJECT_MEMBERS_DAL: "PROJECT_MEMBERS_DAL",
 
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
@@ -71,6 +76,7 @@ export const DI_TOKENS = {
   VERSION_HISTORY_SERVICE: "VERSION_HISTORY_SERVICE",
   COMMENTS_SERVICE: "COMMENTS_SERVICE",
   SYNC_HISTORY_SERVICE: "SYNC_HISTORY_SERVICE",
+  PROJECT_MEMBERS_SERVICE: "PROJECT_MEMBERS_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -154,6 +160,11 @@ export function registerServices(
     (c) => new SyncHistoryDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
+  container.register<IProjectMembersDAL>(
+    DI_TOKENS.PROJECT_MEMBERS_DAL,
+    (c) => new ProjectMembersDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
   // Register services
   container.register<ILanguagesService>(
     DI_TOKENS.LANGUAGES_SERVICE,
@@ -217,5 +228,10 @@ export function registerServices(
   container.register<ISyncHistoryService>(
     DI_TOKENS.SYNC_HISTORY_SERVICE,
     (c) => new SyncHistoryService(c.resolve(DI_TOKENS.SYNC_HISTORY_DAL))
+  );
+
+  container.register<IProjectMembersService>(
+    DI_TOKENS.PROJECT_MEMBERS_SERVICE,
+    (c) => new ProjectMembersService(c.resolve(DI_TOKENS.PROJECT_MEMBERS_DAL))
   );
 }

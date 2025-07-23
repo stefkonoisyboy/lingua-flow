@@ -9,6 +9,9 @@ import {
   CreateSyncHistoryParamsDAL,
   Translation,
   TranslationKey,
+  UserRole,
+  ProjectMemberWithProfile,
+  ProjectInvitation,
 } from "./dal.interfaces";
 
 // Project service interfaces
@@ -384,4 +387,44 @@ export interface ISyncHistoryService {
   getByProjectId(
     projectId: string
   ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;
+}
+
+export interface IProjectMembersService {
+  // Member management
+  getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]>;
+  addProjectMember(
+    projectId: string,
+    userId: string,
+    role: UserRole
+  ): Promise<void>;
+  updateMemberRole(
+    projectId: string,
+    userId: string,
+    newRole: UserRole
+  ): Promise<void>;
+  removeMember(projectId: string, userId: string): Promise<void>;
+
+  // Invitation management
+  createInvitation(
+    projectId: string,
+    inviterId: string,
+    inviteeEmail: string,
+    role: UserRole,
+    expiresAt: string
+  ): Promise<string>;
+  getProjectInvitations(projectId: string): Promise<ProjectInvitation[]>;
+  acceptInvitation(token: string, userId: string): Promise<void>;
+  rejectInvitation(token: string): Promise<void>;
+  cancelInvitation(invitationId: string): Promise<void>;
+
+  // Permission checks
+  getUserProjectRole(
+    projectId: string,
+    userId: string
+  ): Promise<UserRole | null>;
+  hasPermission(
+    projectId: string,
+    userId: string,
+    permission: string
+  ): Promise<boolean>;
 }
