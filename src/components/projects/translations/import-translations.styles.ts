@@ -156,3 +156,18 @@ export const ImportDialogError = styled(Typography)(({ theme }) => ({
 export const ImportDialogSuccessIcon = styled(Box)({
   fontSize: 56,
 });
+
+export const HiddenFileInput = styled("input")({
+  display: "none",
+});
+
+export const PreviewPre = styled(Box)({
+  margin: 0,
+  whiteSpace: "pre-wrap",
+});
+
+export const ImportModeLabel = styled(Typography)(({ theme }) => ({
+  ...theme.typography.body2,
+  color: theme.palette.text.secondary,
+  marginBottom: theme.spacing(0.5),
+}));

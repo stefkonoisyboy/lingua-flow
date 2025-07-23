@@ -29,6 +29,9 @@ import {
   ImportDialogCloseIcon,
   ImportDialogError,
   ImportDialogSuccessIcon,
+  HiddenFileInput,
+  PreviewPre,
+  ImportModeLabel,
 } from "./import-translations.styles";
 import { Typography, Box } from "@mui/material";
 
@@ -214,11 +217,10 @@ const ImportTranslationsDialog: React.FC<ImportTranslationsDialogProps> = ({
               <br />
               Supports: .json (max 5MB)
             </DropzoneText>
-            <input
+            <HiddenFileInput
               ref={fileInputRef}
               type="file"
               accept=".json"
-              style={{ display: "none" }}
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
                   handleFile(e.target.files[0]);
@@ -254,13 +256,7 @@ const ImportTranslationsDialog: React.FC<ImportTranslationsDialogProps> = ({
                 ))}
               </ImportDialogSelect>
               <Box display="flex" flexDirection="column">
-                <Typography
-                  variant="body2"
-                  color="textSecondary"
-                  sx={{ mb: 0.5 }}
-                >
-                  Import Mode
-                </Typography>
+                <ImportModeLabel>Import Mode</ImportModeLabel>
                 <ImportDialogRadioGroup
                   value={importMode}
                   onChange={(e) =>
@@ -284,10 +280,10 @@ const ImportTranslationsDialog: React.FC<ImportTranslationsDialogProps> = ({
               <Typography variant="body2" color="textSecondary" gutterBottom>
                 Preview ({previewKeys.length} keys detected)
               </Typography>
-              <Box component="pre" sx={{ m: 0, whiteSpace: "pre-wrap" }}>
+              <PreviewPre as="pre">
                 {previewKeys.slice(0, 20).join("\n")}
                 {previewKeys.length > 20 && "\n..."}
-              </Box>
+              </PreviewPre>
             </PreviewBox>
             <ImportDialogActions>
               <Button
