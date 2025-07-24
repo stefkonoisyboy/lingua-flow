@@ -34,6 +34,7 @@ import {
 } from "@/store/slices/selected-language.slice";
 import { selectActiveTab } from "@/store/slices/project-tabs.slice";
 import { useEffect, useState } from "react";
+import { hasPermission } from "@/utils/permissions";
 
 // Validation schema matching tRPC input
 const newTranslationSchema = z.object({
@@ -62,8 +63,23 @@ export function ProjectTranslations() {
 
   const [page, setPage] = useState(1);
 
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId,
+  });
+
+  const memberRole = role?.role ?? "viewer";
+
+  const hasProjectViewPermission = hasPermission(memberRole, "viewProject");
+  const hasTranslationViewPermission = hasPermission(
+    memberRole,
+    "viewTranslations"
+  );
+
   const { data: projectLanguages, isLoading: isProjectLanguagesLoading } =
-    trpc.projects.getProjectLanguages.useQuery({ projectId });
+    trpc.projects.getProjectLanguages.useQuery(
+      { projectId },
+      { enabled: hasProjectViewPermission }
+    );
 
   const defaultLanguage = projectLanguages?.find((lang) => lang.is_default);
 
@@ -80,7 +96,8 @@ export function ProjectTranslations() {
         enabled:
           !!selectedLanguageId &&
           !!defaultLanguage?.language_id &&
-          activeTab === "translations",
+          activeTab === "translations" &&
+          hasTranslationViewPermission,
       }
     );
 

@@ -27,6 +27,7 @@ import {
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useParams } from "next/navigation";
+import { hasPermission } from "@/utils/permissions";
 
 interface CommentsDialogProps {
   open: boolean;
@@ -53,6 +54,14 @@ export const CommentsDialog: FC<CommentsDialogProps> = ({
 }) => {
   const { projectId } = useParams<{ projectId: string }>();
   const utils = trpc.useUtils();
+
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId,
+  });
+
+  const memberRole = role?.role ?? "viewer";
+
+  const hasCommentsAddPermission = hasPermission(memberRole, "addComment");
 
   const { data: comments, isLoading } = trpc.comments.getComments.useQuery(
     { translationId, projectId },
@@ -153,37 +162,41 @@ export const CommentsDialog: FC<CommentsDialogProps> = ({
             ))
           )}
 
-          <Box component="form" onSubmit={formik.handleSubmit} noValidate>
-            <CommentForm>
-              <TextField
-                fullWidth
-                multiline
-                rows={2}
-                name="content"
-                placeholder="Add a comment..."
-                value={formik.values.content}
-                onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
-                error={formik.touched.content && Boolean(formik.errors.content)}
-                helperText={formik.touched.content && formik.errors.content}
-                disabled={addCommentMutation.isPending}
-              />
-              <Box display="flex" justifyContent="flex-end">
-                <Button
-                  variant="contained"
-                  endIcon={<SendIcon />}
-                  type="submit"
-                  disabled={
-                    addCommentMutation.isPending ||
-                    !formik.isValid ||
-                    !formik.dirty
+          {hasCommentsAddPermission && (
+            <Box component="form" onSubmit={formik.handleSubmit} noValidate>
+              <CommentForm>
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={2}
+                  name="content"
+                  placeholder="Add a comment..."
+                  value={formik.values.content}
+                  onChange={formik.handleChange}
+                  onBlur={formik.handleBlur}
+                  error={
+                    formik.touched.content && Boolean(formik.errors.content)
                   }
-                >
-                  Post Comment
-                </Button>
-              </Box>
-            </CommentForm>
-          </Box>
+                  helperText={formik.touched.content && formik.errors.content}
+                  disabled={addCommentMutation.isPending}
+                />
+                <Box display="flex" justifyContent="flex-end">
+                  <Button
+                    variant="contained"
+                    endIcon={<SendIcon />}
+                    type="submit"
+                    disabled={
+                      addCommentMutation.isPending ||
+                      !formik.isValid ||
+                      !formik.dirty
+                    }
+                  >
+                    Post Comment
+                  </Button>
+                </Box>
+              </CommentForm>
+            </Box>
+          )}
         </DialogContentWrapper>
       </DialogContent>
     </StyledDialog>

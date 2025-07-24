@@ -420,9 +420,4 @@ export interface IProjectMembersService {
     projectId: string,
     userId: string
   ): Promise<UserRole | null>;
-  hasPermission(
-    projectId: string,
-    userId: string,
-    permission: string
-  ): Promise<boolean>;
 }

@@ -9,6 +9,7 @@ import {
 } from "@/styles/projects/project-details.styles";
 import { Container, Typography, Button, Box } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { hasPermission } from "@/utils/permissions";
 
 export default function ProjectLayout({
   children,
@@ -20,9 +21,20 @@ export default function ProjectLayout({
   const pathname = usePathname();
   const router = useRouter();
 
-  const { data: project } = trpc.projects.getProjectById.useQuery({
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
     projectId,
   });
+
+  const memberRole = role?.role ?? "viewer";
+
+  const hasProjectViewPermission = hasPermission(memberRole, "viewProject");
+
+  const { data: project } = trpc.projects.getProjectById.useQuery(
+    {
+      projectId,
+    },
+    { enabled: hasProjectViewPermission }
+  );
 
   const isConflictResolutionPage = pathname.includes("/conflict-resolution");
 

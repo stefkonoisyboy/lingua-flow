@@ -165,27 +165,4 @@ export class ProjectMembersService implements IProjectMembersService {
     const member = members.find((m) => m.user_id === userId);
     return member ? member.role : null;
   }
-
-  async hasPermission(projectId: string, userId: string, permission: string) {
-    // Simple RBAC logic, can be extended
-    const role = await this.getUserProjectRole(projectId, userId);
-
-    if (!role) {
-      return false;
-    }
-
-    if (role === "owner") {
-      return true;
-    }
-
-    if (role === "translator") {
-      return ["read", "translate", "comment"].includes(permission);
-    }
-
-    if (role === "viewer") {
-      return ["read", "comment"].includes(permission);
-    }
-
-    return false;
-  }
 }

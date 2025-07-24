@@ -35,6 +35,7 @@ import {
 } from "@/styles/projects/projects-table-row.styles";
 import { useAppDispatch } from "@/store/hooks";
 import { setActiveTab } from "@/store/slices/project-tabs.slice";
+import { hasPermission } from "@/utils/permissions";
 
 interface ProjectsTableRowProps {
   project: {
@@ -57,6 +58,19 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const utils = trpc.useUtils();
+
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId: project.id,
+  });
+
+  const memberRole = role?.role ?? "viewer";
+
+  const hasProjectViewPermission = hasPermission(memberRole, "viewProject");
+  const hasProjectSettingsPermission = hasPermission(
+    memberRole,
+    "viewSettings"
+  );
+  const hasProjectDeletePermission = hasPermission(memberRole, "deleteProject");
 
   const deleteProject = trpc.projects.deleteProject.useMutation({
     onSuccess: () => {
@@ -140,9 +154,11 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
         <TableCell>{formatDate(project.updatedAt)}</TableCell>
 
         <TableCell align="right">
-          <IconButton onClick={handleMenuOpen}>
-            <MoreVertIcon />
-          </IconButton>
+          {hasProjectViewPermission && (
+            <IconButton onClick={handleMenuOpen}>
+              <MoreVertIcon />
+            </IconButton>
+          )}
 
           <Menu
             anchorEl={anchorEl}
@@ -156,18 +172,24 @@ export function ProjectsTableRow({ project }: ProjectsTableRowProps) {
               </ListItemIcon>
               <ListItemText>View Details</ListItemText>
             </MenuItem>
-            <MenuItem onClick={handleSettings}>
-              <ListItemIcon>
-                <SettingsIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Settings</ListItemText>
-            </MenuItem>
-            <DeleteMenuItem onClick={handleDeleteClick}>
-              <ListItemIcon>
-                <DeleteMenuIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText>Delete Project</ListItemText>
-            </DeleteMenuItem>
+
+            {hasProjectSettingsPermission && (
+              <MenuItem onClick={handleSettings}>
+                <ListItemIcon>
+                  <SettingsIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Settings</ListItemText>
+              </MenuItem>
+            )}
+
+            {hasProjectDeletePermission && (
+              <DeleteMenuItem onClick={handleDeleteClick}>
+                <ListItemIcon>
+                  <DeleteMenuIcon fontSize="small" />
+                </ListItemIcon>
+                <ListItemText>Delete Project</ListItemText>
+              </DeleteMenuItem>
+            )}
           </Menu>
         </TableCell>
       </StyledTableRow>

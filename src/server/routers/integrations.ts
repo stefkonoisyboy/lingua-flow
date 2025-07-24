@@ -13,7 +13,7 @@ const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
 export const integrationsRouter = router({
   getProjectIntegration: protectedProcedure
     .input(z.object({ projectId: z.string() }))
-    .use(requireProjectPermission(["owner", "translator", "viewer"]))
+    .use(requireProjectPermission(["owner"]))
     .query(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE

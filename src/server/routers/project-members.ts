@@ -12,6 +12,7 @@ export const projectMembersRouter = router({
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
       );
+
       return await service.getProjectMembers(input.projectId);
     }),
 
@@ -28,10 +29,12 @@ export const projectMembersRouter = router({
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
       );
+
       // 7 days from now
       const expiresAt = new Date(
         Date.now() + 7 * 24 * 60 * 60 * 1000
       ).toISOString();
+
       return await service.createInvitation(
         input.projectId,
         ctx.user.id,
@@ -54,6 +57,7 @@ export const projectMembersRouter = router({
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
       );
+
       return await service.updateMemberRole(
         input.projectId,
         input.userId,
@@ -73,6 +77,7 @@ export const projectMembersRouter = router({
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
       );
+
       return await service.removeMember(input.projectId, input.userId);
     }),
 
@@ -83,6 +88,7 @@ export const projectMembersRouter = router({
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
       );
+
       return await service.getProjectInvitations(input.projectId);
     }),
 
@@ -102,6 +108,7 @@ export const projectMembersRouter = router({
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
       );
+
       return await service.rejectInvitation(input.token);
     }),
 
@@ -112,6 +119,22 @@ export const projectMembersRouter = router({
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
       );
+
       return await service.cancelInvitation(input.invitationId);
+    }),
+
+  getUserProjectRole: protectedProcedure
+    .input(z.object({ projectId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const service = ctx.container.resolve<IProjectMembersService>(
+        DI_TOKENS.PROJECT_MEMBERS_SERVICE
+      );
+
+      const role = await service.getUserProjectRole(
+        input.projectId,
+        ctx.user.id
+      );
+
+      return { role };
     }),
 });
