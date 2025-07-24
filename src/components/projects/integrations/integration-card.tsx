@@ -101,6 +101,7 @@ export function IntegrationCard({
       setIsDisconnectDialogOpen(true);
     } else {
       await updateIntegrationStatus.mutateAsync({
+        projectId,
         integrationId: integration.id,
         isConnected: true,
       });
@@ -109,6 +110,7 @@ export function IntegrationCard({
 
   const handleDisconnect = async () => {
     await updateIntegrationStatus.mutateAsync({
+      projectId,
       integrationId: integration.id,
       isConnected: false,
     });

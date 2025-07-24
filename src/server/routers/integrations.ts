@@ -6,12 +6,14 @@ import {
 } from "@/lib/di/interfaces/service.interfaces";
 import { DI_TOKENS } from "@/lib/di/registry";
 import { GitHubService } from "@/lib/services/github.service";
+import { requireProjectPermission } from "../middleware/requireProjectPermission";
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID!;
 
 export const integrationsRouter = router({
   getProjectIntegration: protectedProcedure
     .input(z.object({ projectId: z.string() }))
+    .use(requireProjectPermission(["owner", "translator", "viewer"]))
     .query(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
@@ -25,8 +27,10 @@ export const integrationsRouter = router({
       z.object({
         integrationId: z.string(),
         isConnected: z.boolean(),
+        projectId: z.string(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
@@ -147,6 +151,7 @@ export const integrationsRouter = router({
         ),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
@@ -184,6 +189,7 @@ export const integrationsRouter = router({
         }),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
@@ -204,6 +210,7 @@ export const integrationsRouter = router({
         languageId: z.string().optional(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
@@ -238,6 +245,7 @@ export const integrationsRouter = router({
         branch: z.string(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE
@@ -279,6 +287,7 @@ export const integrationsRouter = router({
         ),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const integrationsService = ctx.container.resolve<IIntegrationsService>(
         DI_TOKENS.INTEGRATIONS_SERVICE

@@ -55,16 +55,18 @@ export const CommentsDialog: FC<CommentsDialogProps> = ({
   const utils = trpc.useUtils();
 
   const { data: comments, isLoading } = trpc.comments.getComments.useQuery(
-    { translationId },
+    { translationId, projectId },
     { enabled: open }
   );
 
   const addCommentMutation = trpc.comments.addComment.useMutation({
     onSuccess: () => {
-      utils.comments.getComments.invalidate({ translationId });
+      utils.comments.getComments.invalidate({ translationId, projectId });
+
       utils.translations.getTranslationKeys.invalidate({
         projectId,
       });
+
       formik.resetForm();
     },
   });
@@ -78,6 +80,7 @@ export const CommentsDialog: FC<CommentsDialogProps> = ({
       try {
         await addCommentMutation.mutateAsync({
           translationId,
+          projectId,
           content: values.content,
         });
       } catch (error) {

@@ -172,8 +172,6 @@ export interface ITranslationsService {
     translations: Translation[];
   }>;
 
-  getLatestVersionNumber(translationId: string): Promise<number>;
-
   updateTranslationKey(keyId: string, newKey: string): Promise<TranslationKey>;
 
   updateTranslation(

@@ -58,14 +58,18 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
 
   const { data: versions, isLoading } =
     trpc.versionHistory.getVersionHistory.useQuery(
-      { translationId },
+      { translationId, projectId },
       { enabled: open }
     );
 
   const revertMutation =
     trpc.versionHistory.revertTranslationToVersion.useMutation({
       onSuccess: () => {
-        utils.versionHistory.getVersionHistory.invalidate({ translationId });
+        utils.versionHistory.getVersionHistory.invalidate({
+          translationId,
+          projectId,
+        });
+
         utils.translations.getTranslationKeys.invalidate({ projectId });
 
         setSnackbar({
@@ -107,6 +111,7 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
       await revertMutation.mutateAsync({
         translationId,
         versionId: pendingVersionId,
+        projectId,
       });
       setConfirmOpen(false);
     } finally {

@@ -79,6 +79,7 @@ export function TranslationEditForm({
         // Update key name if changed
         if (values.keyName !== translationKey.key) {
           await updateTranslationKeyMutation.mutateAsync({
+            projectId,
             keyId: translationKey.id,
             newKey: values.keyName,
           });
@@ -89,6 +90,7 @@ export function TranslationEditForm({
           // Update existing translation if content changed
           if (values.translationContent !== translation.content) {
             await updateTranslationMutation.mutateAsync({
+              projectId,
               translationId: translation.id,
               content: values.translationContent,
             });
@@ -96,6 +98,7 @@ export function TranslationEditForm({
         } else {
           // Create new translation
           await createTranslationMutation.mutateAsync({
+            projectId,
             keyId: translationKey.id,
             languageId: selectedLanguageId,
             content: values.translationContent,

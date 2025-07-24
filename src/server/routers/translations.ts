@@ -2,6 +2,7 @@ import { z } from "zod";
 import { router, protectedProcedure } from "../trpc";
 import { DI_TOKENS } from "../../lib/di/registry";
 import { ITranslationsService } from "../../lib/di/interfaces/service.interfaces";
+import { requireProjectPermission } from "../middleware/requireProjectPermission";
 
 export const translationsRouter = router({
   getTranslationKeys: protectedProcedure
@@ -14,6 +15,7 @@ export const translationsRouter = router({
         defaultLanguageId: z.string().optional(),
       })
     )
+    .use(requireProjectPermission(["owner", "translator", "viewer"]))
     .query(async ({ input, ctx }) => {
       const translationsService = ctx.container.resolve<ITranslationsService>(
         DI_TOKENS.TRANSLATIONS_SERVICE
@@ -42,6 +44,7 @@ export const translationsRouter = router({
         description: z.string().optional(),
       })
     )
+    .use(requireProjectPermission(["owner", "translator"]))
     .mutation(async ({ input, ctx }) => {
       const translationsService = ctx.container.resolve<ITranslationsService>(
         DI_TOKENS.TRANSLATIONS_SERVICE
@@ -58,29 +61,15 @@ export const translationsRouter = router({
       );
     }),
 
-  getLatestVersionNumber: protectedProcedure
-    .input(
-      z.object({
-        translationId: z.string(),
-      })
-    )
-    .query(async ({ input, ctx }) => {
-      const translationsService = ctx.container.resolve<ITranslationsService>(
-        DI_TOKENS.TRANSLATIONS_SERVICE
-      );
-
-      return await translationsService.getLatestVersionNumber(
-        input.translationId
-      );
-    }),
-
   updateTranslationKey: protectedProcedure
     .input(
       z.object({
         keyId: z.string(),
         newKey: z.string(),
+        projectId: z.string(),
       })
     )
+    .use(requireProjectPermission(["owner", "translator"]))
     .mutation(async ({ input, ctx }) => {
       const translationsService = ctx.container.resolve<ITranslationsService>(
         DI_TOKENS.TRANSLATIONS_SERVICE
@@ -97,8 +86,10 @@ export const translationsRouter = router({
       z.object({
         translationId: z.string(),
         content: z.string(),
+        projectId: z.string(),
       })
     )
+    .use(requireProjectPermission(["owner", "translator"]))
     .mutation(async ({ input, ctx }) => {
       const translationsService = ctx.container.resolve<ITranslationsService>(
         DI_TOKENS.TRANSLATIONS_SERVICE
@@ -117,8 +108,10 @@ export const translationsRouter = router({
         keyId: z.string(),
         languageId: z.string(),
         content: z.string(),
+        projectId: z.string(),
       })
     )
+    .use(requireProjectPermission(["owner", "translator"]))
     .mutation(async ({ input, ctx }) => {
       const translationsService = ctx.container.resolve<ITranslationsService>(
         DI_TOKENS.TRANSLATIONS_SERVICE
@@ -139,6 +132,7 @@ export const translationsRouter = router({
         languageIds: z.array(z.string()),
       })
     )
+    .use(requireProjectPermission(["owner"]))
     .mutation(async ({ input, ctx }) => {
       const translationsService = ctx.container.resolve<ITranslationsService>(
         DI_TOKENS.TRANSLATIONS_SERVICE
@@ -160,6 +154,7 @@ export const translationsRouter = router({
         importMode: z.enum(["merge", "replace"]),
       })
     )
+    .use(requireProjectPermission(["owner"]))
     .mutation(async ({ input, ctx }) => {
       const translationsService = ctx.container.resolve<ITranslationsService>(
         DI_TOKENS.TRANSLATIONS_SERVICE

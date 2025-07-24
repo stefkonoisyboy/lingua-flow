@@ -6,8 +6,8 @@ import { requireProjectPermission } from "../middleware/requireProjectPermission
 
 export const projectMembersRouter = router({
   getMembers: protectedProcedure
-    .use(requireProjectPermission(["owner", "translator", "viewer"]))
     .input(z.object({ projectId: z.string() }))
+    .use(requireProjectPermission(["owner", "translator", "viewer"]))
     .query(async ({ ctx, input }) => {
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
@@ -16,7 +16,6 @@ export const projectMembersRouter = router({
     }),
 
   inviteMember: protectedProcedure
-    .use(requireProjectPermission("owner"))
     .input(
       z.object({
         projectId: z.string(),
@@ -24,6 +23,7 @@ export const projectMembersRouter = router({
         role: z.enum(["owner", "translator", "viewer"]),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
@@ -42,7 +42,6 @@ export const projectMembersRouter = router({
     }),
 
   updateMemberRole: protectedProcedure
-    .use(requireProjectPermission("owner"))
     .input(
       z.object({
         projectId: z.string(),
@@ -50,6 +49,7 @@ export const projectMembersRouter = router({
         newRole: z.enum(["owner", "translator", "viewer"]),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
@@ -62,13 +62,13 @@ export const projectMembersRouter = router({
     }),
 
   removeMember: protectedProcedure
-    .use(requireProjectPermission("owner"))
     .input(
       z.object({
         projectId: z.string(),
         userId: z.string(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
@@ -77,8 +77,8 @@ export const projectMembersRouter = router({
     }),
 
   getInvitations: protectedProcedure
-    .use(requireProjectPermission(["owner", "translator", "viewer"]))
     .input(z.object({ projectId: z.string() }))
+    .use(requireProjectPermission(["owner", "translator", "viewer"]))
     .query(async ({ ctx, input }) => {
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
@@ -106,8 +106,8 @@ export const projectMembersRouter = router({
     }),
 
   cancelInvitation: protectedProcedure
-    .use(requireProjectPermission("owner"))
     .input(z.object({ invitationId: z.string(), projectId: z.string() }))
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE

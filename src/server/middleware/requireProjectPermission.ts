@@ -17,7 +17,7 @@ export function requireProjectPermission(
     }
 
     // Expect input to have projectId or project_id
-    const { projectId, project_id } = input as {
+    const { projectId, project_id } = (input ?? {}) as {
       projectId?: string;
       project_id?: string;
     };
