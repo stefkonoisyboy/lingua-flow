@@ -37,6 +37,8 @@ const t = initTRPC.context<typeof createTRPCContext>().create({
   },
 });
 
+export { t };
+
 export const createCallerFactory = t.createCallerFactory;
 
 // Base router and procedure helpers
