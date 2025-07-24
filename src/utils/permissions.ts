@@ -14,7 +14,7 @@ const PERMISSIONS = {
   inviteMember: ["owner"],
   updateMemberRole: ["owner"],
   removeMember: ["owner"],
-  viewInvitations: ["owner", "translator", "viewer"],
+  viewInvitations: ["owner"],
   cancelInvitation: ["owner"],
 
   // Translations

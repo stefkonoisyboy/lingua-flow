@@ -83,7 +83,7 @@ export const projectMembersRouter = router({
 
   getInvitations: protectedProcedure
     .input(z.object({ projectId: z.string() }))
-    .use(requireProjectPermission(["owner", "translator", "viewer"]))
+    .use(requireProjectPermission(["owner"]))
     .query(async ({ ctx, input }) => {
       const service = ctx.container.resolve<IProjectMembersService>(
         DI_TOKENS.PROJECT_MEMBERS_SERVICE

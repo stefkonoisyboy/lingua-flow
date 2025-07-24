@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { TRPCProvider } from "@/providers/trpc-provider";
 import { ReduxProvider } from "@/providers/redux-provider";
+import { ToastContainer } from "react-toastify";
 
 const geist = Geist({
   subsets: ["latin"],
@@ -24,7 +25,17 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <TRPCProvider>
           <ReduxProvider>
-            <ThemeProvider>{children}</ThemeProvider>
+            <ThemeProvider>
+              {children}
+
+              <ToastContainer
+                position="bottom-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+              />
+            </ThemeProvider>
           </ReduxProvider>
         </TRPCProvider>
       </body>
