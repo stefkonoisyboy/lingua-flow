@@ -123,6 +123,7 @@ export const PendingInvitationsList = ({
             : invitations.map((invite) => {
                 const isCanceling = cancelingId === invite.id;
                 const isExpired = new Date(invite.expires_at) < new Date();
+
                 // Determine status for display
                 let displayStatus = invite.status;
 
@@ -173,6 +174,7 @@ export const PendingInvitationsList = ({
                               id: invite.id,
                               email: invite.invitee_email,
                             });
+
                             setConfirmOpen(true);
                           }}
                         >
