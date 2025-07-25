@@ -6,6 +6,9 @@ import Logo from "@/components/logo";
 import { useAuth } from "@/hooks/use-auth";
 import { Alert } from "@mui/material";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { trpc } from "@/utils/trpc";
+import { useState } from "react";
 import {
   SignUpContainer,
   SignUpBox,
@@ -37,10 +40,16 @@ interface SignUpValues {
 }
 
 export default function SignUp() {
-  const { signUp, loading, error } = useAuth();
+  const { signIn, signUp, loading, error } = useAuth();
+  const searchParams = useSearchParams();
+  const invitationToken = searchParams.get("invitationToken");
+  const emailFromQuery = searchParams.get("email") || "";
+  const [formError, setFormError] = useState<string | null>(null);
+  const createUserAndAcceptInvitation =
+    trpc.projectMembers.createUserAndAcceptInvitation.useMutation();
 
   const initialValues: SignUpValues = {
-    email: "",
+    email: emailFromQuery,
     password: "",
     confirmPassword: "",
   };
@@ -49,11 +58,28 @@ export default function SignUp() {
     values: SignUpValues,
     { setStatus, resetForm }: FormikHelpers<SignUpValues>
   ) => {
-    const result = await signUp(values.email, values.password);
+    setFormError(null);
 
-    if (result) {
-      setStatus({ success: result });
-      resetForm();
+    if (invitationToken) {
+      try {
+        await createUserAndAcceptInvitation.mutateAsync({
+          email: values.email,
+          password: values.password,
+          token: invitationToken,
+        });
+
+        await signIn(values.email, values.password);
+      } catch (err: unknown) {
+        const error = err as Error;
+        setFormError(error.message || "Failed to accept invitation.");
+      }
+    } else {
+      const result = await signUp(values.email, values.password);
+
+      if (result) {
+        setStatus({ success: result });
+        resetForm();
+      }
     }
   };
 
@@ -68,8 +94,9 @@ export default function SignUp() {
           initialValues={initialValues}
           validationSchema={SignUpSchema}
           onSubmit={handleSubmit}
+          enableReinitialize
         >
-          {({ isSubmitting, status, errors, touched }) => (
+          {({ isSubmitting, status, errors, touched, values }) => (
             <Form>
               <Field
                 name="email"
@@ -77,7 +104,8 @@ export default function SignUp() {
                 label="Email"
                 variant="outlined"
                 fullWidth
-                disabled={loading}
+                disabled={!!emailFromQuery || loading}
+                value={emailFromQuery || values.email}
                 error={touched.email && Boolean(errors.email)}
                 helperText={touched.email && errors.email}
               />
@@ -117,6 +145,12 @@ export default function SignUp() {
                   <Alert severity={status.success.type}>
                     {status.success.message}
                   </Alert>
+                </AlertWrapper>
+              )}
+
+              {formError && (
+                <AlertWrapper>
+                  <Alert severity="error">{formError}</Alert>
                 </AlertWrapper>
               )}
 

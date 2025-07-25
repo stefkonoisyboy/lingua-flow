@@ -14,7 +14,7 @@ function isAuthPage(pathname: string): boolean {
 
 // Helper function to check if the current path requires authentication
 function isProtectedRoute(pathname: string): boolean {
-  return pathname.startsWith("/dashboard");
+  return pathname.startsWith("/dashboard") || pathname.startsWith("/projects");
 }
 
 export async function middleware(request: NextRequest) {

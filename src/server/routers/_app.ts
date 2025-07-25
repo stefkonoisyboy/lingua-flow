@@ -7,6 +7,7 @@ import { versionHistoryRouter } from "./version-history";
 import { commentsRouter } from "./comments";
 import { syncHistoryRouter } from "./sync-history";
 import { projectMembersRouter } from "./project-members";
+import { usersRouter } from "./users";
 import { router } from "../trpc";
 
 export const appRouter = router({
@@ -19,6 +20,7 @@ export const appRouter = router({
   comments: commentsRouter,
   syncHistory: syncHistoryRouter,
   projectMembers: projectMembersRouter,
+  users: usersRouter,
 });
 
 export type AppRouter = typeof appRouter;

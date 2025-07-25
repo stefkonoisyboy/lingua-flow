@@ -13,6 +13,8 @@ import { GitHubTokensDAL } from "../dal/github-tokens";
 import { VersionHistoryDAL } from "../dal/version-history";
 import { CommentsDAL } from "../dal/comments";
 import { SyncHistoryDAL } from "../dal/sync-history";
+import { ProjectMembersDAL } from "../dal/project-members";
+import { UsersDAL } from "../dal/users";
 
 // Service imports
 import { ProjectsService } from "../services/projects.service";
@@ -38,6 +40,7 @@ import {
   ICommentsDAL,
   ISyncHistoryDAL,
   IProjectMembersDAL,
+  IUsersDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
@@ -50,7 +53,6 @@ import {
   ISyncHistoryService,
   IProjectMembersService,
 } from "./interfaces/service.interfaces";
-import { ProjectMembersDAL } from "../dal/project-members";
 
 // Token constants for dependency injection
 export const DI_TOKENS = {
@@ -66,6 +68,7 @@ export const DI_TOKENS = {
   COMMENTS_DAL: "COMMENTS_DAL",
   SYNC_HISTORY_DAL: "SYNC_HISTORY_DAL",
   PROJECT_MEMBERS_DAL: "PROJECT_MEMBERS_DAL",
+  USERS_DAL: "USERS_DAL",
 
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
@@ -165,6 +168,11 @@ export function registerServices(
     (c) => new ProjectMembersDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
+  container.register<IUsersDAL>(
+    DI_TOKENS.USERS_DAL,
+    (c) => new UsersDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
   // Register services
   container.register<ILanguagesService>(
     DI_TOKENS.LANGUAGES_SERVICE,
@@ -232,6 +240,10 @@ export function registerServices(
 
   container.register<IProjectMembersService>(
     DI_TOKENS.PROJECT_MEMBERS_SERVICE,
-    (c) => new ProjectMembersService(c.resolve(DI_TOKENS.PROJECT_MEMBERS_DAL))
+    (c) =>
+      new ProjectMembersService(
+        c.resolve(DI_TOKENS.PROJECT_MEMBERS_DAL),
+        c.resolve(DI_TOKENS.USERS_DAL)
+      )
   );
 }

@@ -137,4 +137,36 @@ export const projectMembersRouter = router({
 
       return { role };
     }),
+
+  getInvitationByToken: publicProcedure
+    .input(z.object({ token: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const service = ctx.container.resolve<IProjectMembersService>(
+        DI_TOKENS.PROJECT_MEMBERS_SERVICE
+      );
+
+      return await service.getInvitationByToken(input.token);
+    }),
+
+  createUserAndAcceptInvitation: publicProcedure
+    .input(
+      z.object({
+        email: z.string().email(),
+        password: z.string().min(8),
+        token: z.string(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const service = ctx.container.resolve<IProjectMembersService>(
+        DI_TOKENS.PROJECT_MEMBERS_SERVICE
+      );
+
+      const result = await service.createUserAndAcceptInvitation(
+        input.email,
+        input.password,
+        input.token
+      );
+
+      return result;
+    }),
 });

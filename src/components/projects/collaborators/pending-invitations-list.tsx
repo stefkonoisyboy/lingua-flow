@@ -150,9 +150,9 @@ export const PendingInvitationsList = ({
                             : displayStatus === "accepted"
                             ? "success"
                             : displayStatus === "rejected"
-                            ? "default"
+                            ? "error"
                             : displayStatus === "expired"
-                            ? "default"
+                            ? "error"
                             : "default"
                         }
                         size="small"

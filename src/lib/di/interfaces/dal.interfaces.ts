@@ -475,3 +475,7 @@ export interface IProjectMembersDAL {
   getProfileById(userId: string): Promise<Profile | null>;
   getProjectById(projectId: string): Promise<{ name: string } | null>;
 }
+
+export interface IUsersDAL {
+  getUserByEmail(email: string): Promise<Profile | null>;
+}

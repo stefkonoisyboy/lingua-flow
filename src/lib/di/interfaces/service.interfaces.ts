@@ -12,6 +12,7 @@ import {
   UserRole,
   ProjectMemberWithProfile,
   ProjectInvitation,
+  Profile,
 } from "./dal.interfaces";
 
 // Project service interfaces
@@ -420,4 +421,14 @@ export interface IProjectMembersService {
     projectId: string,
     userId: string
   ): Promise<UserRole | null>;
+
+  getInvitationByToken(token: string): Promise<ProjectInvitation | null>;
+
+  findByEmail(email: string): Promise<Profile | null>;
+
+  createUserAndAcceptInvitation(
+    email: string,
+    password: string,
+    token: string
+  ): Promise<{ user: Profile }>; // session type can be refined
 }

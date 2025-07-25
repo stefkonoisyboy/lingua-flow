@@ -54,7 +54,7 @@ export const InviteCollaboratorDialog = ({
   });
 
   const formik = useFormik({
-    initialValues: { email: "", role: "" },
+    initialValues: { email: "", role: "viewer" },
     validationSchema: Yup.object({
       email: Yup.string().email("Invalid email").required("Required"),
       role: Yup.string()
@@ -123,7 +123,13 @@ export const InviteCollaboratorDialog = ({
       </DialogContent>
 
       <DialogActions>
-        <Button onClick={onClose} disabled={formik.isSubmitting}>
+        <Button
+          onClick={() => {
+            onClose();
+            formik.resetForm();
+          }}
+          disabled={formik.isSubmitting}
+        >
           Cancel
         </Button>
 

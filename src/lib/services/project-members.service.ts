@@ -1,7 +1,13 @@
 import { IProjectMembersService } from "../di/interfaces/service.interfaces";
-import { IProjectMembersDAL, UserRole } from "../di/interfaces/dal.interfaces";
+import {
+  IProjectMembersDAL,
+  UserRole,
+  IUsersDAL,
+  Profile,
+} from "../di/interfaces/dal.interfaces";
 import { randomUUID } from "crypto";
 import fetch from "node-fetch";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 const SUPABASE_EDGE_FUNCTION_URL = `https://${process.env.SUPABASE_PROJECT_ID}.functions.supabase.co/functions/v1/send-invitation-email`;
 
@@ -42,7 +48,10 @@ async function sendInvitationEmail({
 }
 
 export class ProjectMembersService implements IProjectMembersService {
-  constructor(private projectMembersDal: IProjectMembersDAL) {}
+  constructor(
+    private projectMembersDal: IProjectMembersDAL,
+    private usersDal: IUsersDAL
+  ) {}
 
   // Member management
   async getProjectMembers(projectId: string) {
@@ -187,10 +196,68 @@ export class ProjectMembersService implements IProjectMembersService {
     await this.projectMembersDal.deleteInvitation(invitationId);
   }
 
+  async createUserAndAcceptInvitation(
+    email: string,
+    password: string,
+    token: string
+  ) {
+    // 1. Validate invitation
+    const invitation = await this.getInvitationByToken(token);
+
+    if (!invitation) {
+      throw new Error("Invitation not found");
+    }
+
+    if (invitation.status !== "pending") {
+      throw new Error("Invitation is not pending");
+    }
+
+    if (new Date(invitation.expires_at) < new Date()) {
+      throw new Error("Invitation has expired");
+    }
+
+    if (invitation.invitee_email.toLowerCase() !== email.toLowerCase()) {
+      throw new Error("Email does not match invitation");
+    }
+
+    // 2. Create user via Admin API
+    const admin = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { data: userData, error: createError } =
+      await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+      });
+
+    if (createError || !userData || !userData.user) {
+      throw createError || new Error("Failed to create user");
+    }
+
+    // 3. Accept invitation
+    await this.acceptInvitation(token, userData.user.id);
+
+    // 4. Return user profile
+    return {
+      user: userData.user as unknown as Profile,
+    };
+  }
+
   // Permission checks
   async getUserProjectRole(projectId: string, userId: string) {
     const members = await this.projectMembersDal.getProjectMembers(projectId);
     const member = members.find((m) => m.user_id === userId);
     return member ? member.role : null;
+  }
+
+  async getInvitationByToken(token: string) {
+    return await this.projectMembersDal.getInvitationByToken(token);
+  }
+
+  async findByEmail(email: string) {
+    return await this.usersDal.getUserByEmail(email);
   }
 }

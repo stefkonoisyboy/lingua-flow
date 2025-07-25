@@ -33,7 +33,7 @@ export const CollaboratorsSection = () => {
   const { data: invitationsData, isLoading: invitationsLoading } =
     trpc.projectMembers.getInvitations.useQuery(
       { projectId },
-      { enabled: !!projectId }
+      { enabled: !!projectId && canViewInvitations }
     );
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -46,14 +46,20 @@ export const CollaboratorsSection = () => {
         alignItems="center"
         mb={2}
       >
-        <Box>
+        {canViewInvitations ? (
+          <Box>
+            <Typography variant="h5" fontWeight={700} gutterBottom>
+              Manage Collaborators
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Invite and manage roles for team members.
+            </Typography>
+          </Box>
+        ) : (
           <Typography variant="h5" fontWeight={700} gutterBottom>
-            Manage Collaborators
+            Collaborators
           </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Invite and manage roles for team members.
-          </Typography>
-        </Box>
+        )}
 
         {canInvite && (
           <Button
