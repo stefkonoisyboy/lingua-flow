@@ -9,6 +9,16 @@ import Skeleton from "@mui/material/Skeleton";
 import Chip from "@mui/material/Chip";
 import { Database } from "@/lib/types/database.types";
 import { CollaboratorsListTableContainer } from "@/styles/projects/collaborators.styles";
+import { trpc } from "@/utils/trpc";
+import { useParams } from "next/navigation";
+import { useState } from "react";
+import { toast } from "react-toastify";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import Button from "@mui/material/Button";
+import { hasPermission } from "@/utils/permissions";
 
 export const PendingInvitationsList = ({
   invitations,
@@ -29,6 +39,54 @@ export const PendingInvitationsList = ({
   }[];
   loading: boolean;
 }) => {
+  const params = useParams();
+  const projectId = params.projectId as string;
+  const utils = trpc.useUtils();
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const [selectedInvite, setSelectedInvite] = useState<{
+    id: string;
+    email: string;
+  } | null>(null);
+
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId,
+  });
+
+  const userRole = role?.role ?? "viewer";
+  const canCancel = hasPermission(userRole, "cancelInvitation");
+
+  const cancelMutation = trpc.projectMembers.cancelInvitation.useMutation({
+    onSuccess: () => {
+      toast.success("Invitation canceled");
+
+      utils.projectMembers.getInvitations.invalidate({ projectId });
+
+      setCancelingId(null);
+    },
+    onError: (err) => {
+      toast.error(err.message);
+      setCancelingId(null);
+    },
+  });
+
+  const handleCancelInvitation = async () => {
+    if (!selectedInvite) {
+      return;
+    }
+
+    setCancelingId(selectedInvite.id);
+    setConfirmOpen(false);
+
+    await cancelMutation.mutateAsync({
+      invitationId: selectedInvite.id,
+      projectId,
+    });
+
+    setSelectedInvite(null);
+  };
+
   if (!loading && (!invitations || invitations.length === 0)) return null;
 
   return (
@@ -39,7 +97,7 @@ export const PendingInvitationsList = ({
             <TableCell>Email</TableCell>
             <TableCell>Role</TableCell>
             <TableCell>Status</TableCell>
-            <TableCell align="right">Actions</TableCell>
+            {canCancel && <TableCell align="right">Actions</TableCell>}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -55,42 +113,102 @@ export const PendingInvitationsList = ({
                   <TableCell>
                     <Skeleton width={60} />
                   </TableCell>
-                  <TableCell align="right">
-                    <Skeleton width={60} />
-                  </TableCell>
+                  {canCancel && (
+                    <TableCell align="right">
+                      <Skeleton width={60} />
+                    </TableCell>
+                  )}
                 </TableRow>
               ))
-            : invitations.map((invite) => (
-                <TableRow key={invite.id}>
-                  <TableCell>{invite.invitee_email}</TableCell>
-                  <TableCell>
-                    {invite.role.charAt(0).toUpperCase() + invite.role.slice(1)}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={
-                        invite.status.charAt(0).toUpperCase() +
-                        invite.status.slice(1)
-                      }
-                      color={
-                        invite.status === "pending"
-                          ? "warning"
-                          : invite.status === "accepted"
-                          ? "success"
-                          : "default"
-                      }
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell align="right">
-                    <IconButton size="small" aria-label="cancel" color="error">
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+            : invitations.map((invite) => {
+                const isCanceling = cancelingId === invite.id;
+                const isExpired = new Date(invite.expires_at) < new Date();
+                // Determine status for display
+                let displayStatus = invite.status;
+
+                if (invite.status === "pending" && isExpired) {
+                  displayStatus = "expired";
+                }
+
+                return (
+                  <TableRow key={invite.id}>
+                    <TableCell>{invite.invitee_email}</TableCell>
+                    <TableCell>
+                      {invite.role.charAt(0).toUpperCase() +
+                        invite.role.slice(1)}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={
+                          displayStatus.charAt(0).toUpperCase() +
+                          displayStatus.slice(1)
+                        }
+                        color={
+                          displayStatus === "pending"
+                            ? "warning"
+                            : displayStatus === "accepted"
+                            ? "success"
+                            : displayStatus === "rejected"
+                            ? "default"
+                            : displayStatus === "expired"
+                            ? "default"
+                            : "default"
+                        }
+                        size="small"
+                      />
+                    </TableCell>
+                    {canCancel && (
+                      <TableCell align="right">
+                        <IconButton
+                          size="small"
+                          aria-label="cancel"
+                          color="error"
+                          disabled={
+                            isCanceling ||
+                            displayStatus !== "pending" ||
+                            isExpired
+                          }
+                          onClick={() => {
+                            setSelectedInvite({
+                              id: invite.id,
+                              email: invite.invitee_email,
+                            });
+                            setConfirmOpen(true);
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    )}
+                  </TableRow>
+                );
+              })}
         </TableBody>
       </Table>
+
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>Cancel Invitation</DialogTitle>
+        <DialogContent>
+          Are you sure you want to cancel the invitation to{" "}
+          <b>{selectedInvite?.email}</b>?
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setConfirmOpen(false)}
+            disabled={cancelMutation.isPending}
+          >
+            No
+          </Button>
+          <Button
+            onClick={handleCancelInvitation}
+            color="error"
+            variant="contained"
+            disabled={cancelMutation.isPending}
+          >
+            Yes, Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
     </CollaboratorsListTableContainer>
   );
 };

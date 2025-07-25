@@ -74,6 +74,34 @@ export class ProjectMembersService implements IProjectMembersService {
     role: UserRole,
     expiresAt: string
   ) {
+    // 1. Check if invitee is already a team member
+    const members = await this.projectMembersDal.getProjectMembers(projectId);
+
+    const memberWithEmail = members.find(
+      (m) => m.profiles?.email?.toLowerCase() === inviteeEmail.toLowerCase()
+    );
+
+    if (memberWithEmail) {
+      throw new Error("This user is already a team member.");
+    }
+
+    // 2. Check for existing non-expired, pending invitation
+    const existingInvitations =
+      await this.projectMembersDal.getInvitationsByProject(projectId);
+
+    const now = new Date();
+
+    const duplicate = existingInvitations.find(
+      (inv) =>
+        inv.invitee_email.toLowerCase() === inviteeEmail.toLowerCase() &&
+        inv.status === "pending" &&
+        new Date(inv.expires_at) > now
+    );
+
+    if (duplicate) {
+      throw new Error("A pending invitation for this email already exists.");
+    }
+
     // Generate a secure token
     const token = randomUUID();
 
