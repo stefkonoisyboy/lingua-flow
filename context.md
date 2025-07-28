@@ -230,16 +230,55 @@ Key Features:
 
 ### 5. Collaboration Flow
 
-- Invite team members
-- Role-based access control
-- Comment and feedback system
-  - Real-time discussion thread for each translation string.
-  - Users can add, view, and delete their own comments.
-  - Comments are displayed in a modal dialog with user avatars, names, and timestamps.
-  - Seamless integration with the translations table.
-- Translation review process
-- Activity tracking
-- Real-time updates
+- **Team Member Management**
+  - Invite team members with different roles (owner, translator, viewer)
+  - Role-based access control with project-specific permissions
+  - Member role editing with ownership transfer support
+  - Member removal with confirmation dialogs
+  - Self-removal protection and warnings
+
+- **Invitation System**
+  - Email-based invitation system for both existing and new users
+  - Secure invitation tokens with 7-day expiration
+  - Public invitation acceptance/decline pages
+  - Automatic user creation for non-existing invited users
+  - Email confirmation bypass for invited users
+  - Invitation cancellation by project owners
+
+- **Role-Based Access Control (RBAC)**
+  - **Owner Permissions**: Full project access, member management, settings, integrations
+  - **Translator Permissions**: Translation editing, comments, version history
+  - **Viewer Permissions**: Read-only access, comments only
+  - Permission middleware for backend endpoint protection
+  - Frontend permission utilities for UI element hiding/showing
+
+- **Ownership Transfer**
+  - Special confirmation dialog for ownership transfers
+  - Automatic demotion of old owner to translator role
+  - Clear warnings about irreversible ownership changes
+  - Protection against self-demotion
+
+- **Activity Logging**
+  - Comprehensive audit trail for all member management actions
+  - Logs role changes, member removals, invitation lifecycle events
+  - Detailed activity information with user context
+  - Integration with existing activity feed system
+
+- **Comment and Feedback System**
+  - Real-time discussion thread for each translation string
+  - Users can add, view, and delete their own comments
+  - Comments displayed in modal dialog with user avatars, names, and timestamps
+  - Seamless integration with the translations table
+
+- **Translation Review Process**
+  - Role-based translation editing permissions
+  - Version history tracking for all changes
+  - Activity logging for translation modifications
+
+- **Real-time Updates**
+  - Automatic UI updates after member changes
+  - Real-time permission updates across the application
+  - Cache invalidation for immediate data refresh
 
 ### 6. Analytics and Reporting Flow
 
@@ -320,10 +359,12 @@ The application uses a custom DI system for better maintainability and testabili
    - GitHubTokensService: depends on GitHubTokensDAL
    - LanguagesService: depends on LanguagesDAL
    - CommentsService: depends on ICommentsDAL, IActivitiesDAL
+   - ProjectMembersService: depends on ProjectMembersDAL, UsersDAL, ActivitiesDAL
 
 6. DAL Dependencies
    - TranslationsDAL: depends on PaginationDAL, VersionHistoryDAL
    - VersionHistoryDAL: depends on PaginationDAL
+   - ProjectMembersDAL: depends only on Supabase client
    - Other DALs: depend only on Supabase client
 
 ### Frontend Architecture
@@ -344,6 +385,7 @@ The application uses a custom DI system for better maintainability and testabili
     - project-tabs.styles.ts: Tab navigation components
     - translations-header.styles.ts: Translation management header
     - version-history.styles.ts: Version history dialog
+    - collaborators.styles.ts: Collaboration components styling
 - Redux Toolkit for global state management
 - Responsive UI with dark theme support
 - Component structure:
@@ -351,6 +393,105 @@ The application uses a custom DI system for better maintainability and testabili
   - Variables/state
   - Handlers
   - useEffects
+
+#### Collaboration Frontend Implementation
+
+**Core Components:**
+
+1. **CollaboratorsSection** (`src/components/projects/collaborators/collaborators-section.tsx`)
+   - Main orchestrator for collaboration features
+   - Manages member list and invitation display
+   - Permission-based UI rendering
+   - Integration with invitation dialog
+
+2. **CollaboratorsList** (`src/components/projects/collaborators/collaborators-list.tsx`)
+   - Displays current project members with avatars and roles
+   - Permission-based action buttons (edit, delete)
+   - Loading states and skeleton components
+   - Integration with role editing and removal dialogs
+
+3. **PendingInvitationsList** (`src/components/projects/collaborators/pending-invitations-list.tsx`)
+   - Shows pending invitations with status chips
+   - Cancel invitation functionality with confirmation
+   - Dynamic status display (pending, expired, accepted, rejected)
+   - Permission-based visibility
+
+4. **InviteCollaboratorDialog** (`src/components/projects/integrations/invite-collaborator-dialog.tsx`)
+   - Formik-based invitation form
+   - Email validation and role selection
+   - Permission checking and error handling
+   - Success/error feedback with toast notifications
+
+5. **EditMemberRoleDialog** (`src/components/projects/collaborators/edit-member-role-dialog.tsx`)
+   - Role editing with ownership transfer warnings
+   - Confirmation dialog for ownership transfers
+   - Permission-based access control
+   - Activity logging integration
+
+6. **RemoveMemberDialog** (`src/components/projects/collaborators/remove-member-dialog.tsx`)
+   - Member removal with confirmation
+   - Self-removal warnings and protection
+   - Owner removal special warnings
+   - Activity logging integration
+
+7. **AcceptInvitationPage** (`src/app/accept-invitation/page.tsx`)
+   - Public page for invitation acceptance/decline
+   - Support for both existing and new users
+   - Automatic user creation for non-existing users
+   - Email confirmation bypass for invited users
+
+**Permission System:**
+
+1. **Permission Utilities** (`src/utils/permissions.ts`)
+   - `hasPermission` function for role-based UI control
+   - Comprehensive permission matrix for all features
+   - Type-safe permission checking
+   - Scalable permission system
+
+2. **Permission Middleware Integration**
+   - Frontend permission checks mirror backend middleware
+   - Consistent permission enforcement across UI
+   - Dynamic UI updates based on user role
+
+**User Experience Features:**
+
+1. **Role-Based UI**
+   - Dynamic tab visibility based on permissions
+   - Action button visibility based on user role
+   - Form field accessibility based on permissions
+   - Consistent permission enforcement
+
+2. **Invitation Flow**
+   - Seamless invitation creation and management
+   - Email-based invitation system
+   - Public invitation acceptance pages
+   - Automatic user onboarding for new users
+
+3. **Ownership Transfer**
+   - Special confirmation dialogs for ownership changes
+   - Clear warnings about irreversible actions
+   - Automatic UI updates after ownership transfer
+   - Protection against accidental transfers
+
+4. **Activity Integration**
+   - Real-time activity updates
+   - Comprehensive audit trail display
+   - Activity logging for all member actions
+   - Integration with existing activity feed
+
+**State Management:**
+
+1. **Redux Integration**
+   - Permission-based state updates
+   - Real-time UI updates after member changes
+   - Cache invalidation for immediate data refresh
+   - Optimistic updates for better UX
+
+2. **tRPC Integration**
+   - Type-safe API calls for all collaboration features
+   - Real-time data synchronization
+   - Error handling and retry mechanisms
+   - Permission-based endpoint access
 
 ### Project Settings Implementation
 
@@ -444,6 +585,66 @@ The application uses a custom DI system for better maintainability and testabili
 - MUI icons used throughout the app
 
 ### Backend & Data Model
+
+#### Collaboration System
+
+**Database Schema:**
+- **project_members table**: Stores project membership with roles
+  - project_id (foreign key to projects)
+  - user_id (foreign key to profiles)
+  - role (enum: owner, translator, viewer)
+  - created_at, updated_at timestamps
+
+- **project_invitations table**: Manages invitation lifecycle
+  - id (primary key)
+  - project_id (foreign key to projects)
+  - inviter_id (foreign key to profiles)
+  - invitee_email (VARCHAR)
+  - invitee_id (foreign key to profiles, nullable for non-existing users)
+  - role (enum: owner, translator, viewer)
+  - token (unique invitation token)
+  - status (enum: pending, accepted, rejected, expired)
+  - expires_at (timestamp)
+  - created_at, updated_at timestamps
+
+**Backend Implementation:**
+
+1. **ProjectMembersDAL**
+   - `getProjectMembers`: Fetches members with profile information
+   - `addProjectMember`: Adds new member to project
+   - `updateProjectMemberRole`: Updates member role
+   - `removeProjectMember`: Removes member from project
+   - `createInvitation`: Creates invitation with secure token
+   - `getInvitationsByProject`: Fetches project invitations
+   - `getInvitationByToken`: Retrieves invitation by token
+   - `updateInvitationStatus`: Updates invitation status
+   - `setInvitationInviteeId`: Links invitation to user after acceptance
+   - `deleteInvitation`: Removes invitation
+
+2. **ProjectMembersService**
+   - **Member Management**: CRUD operations for project members
+   - **Invitation Management**: Complete invitation lifecycle handling
+   - **Ownership Transfer**: Automatic demotion of old owner during transfers
+   - **Activity Logging**: Comprehensive audit trail for all actions
+   - **Email Integration**: Supabase Edge Function for invitation emails
+   - **User Creation**: Admin API integration for new user creation
+
+3. **Permission System**
+   - **requireProjectPermission Middleware**: tRPC middleware for endpoint protection
+   - **Role-based Access**: Owner, translator, viewer permissions
+   - **Project-specific Permissions**: All permissions tied to specific projects
+   - **Frontend Permission Utilities**: hasPermission function for UI control
+
+4. **Activity Logging Integration**
+   - **Activity Types**: member_added, member_removed, member_updated, invitation_sent, invitation_accepted, invitation_rejected, invitation_cancelled
+   - **Detailed Logging**: Captures user context, role changes, invitation details
+   - **Audit Trail**: Complete history of all member management actions
+
+5. **Email System**
+   - **Supabase Edge Function**: send-invitation-email for transactional emails
+   - **Email Templates**: HTML templates with project and role information
+   - **Token Security**: Cryptographically secure invitation tokens
+   - **Expiration Handling**: 7-day invitation expiration with automatic status updates
 
 #### Data Access Layer (DAL)
 
@@ -544,6 +745,20 @@ The application uses a custom DI system for better maintainability and testabili
    - created_at
    - updated_at
 
+10. project_invitations
+
+    - id (primary key)
+    - project_id (foreign key to projects)
+    - inviter_id (foreign key to profiles)
+    - invitee_email (VARCHAR)
+    - invitee_id (foreign key to profiles, nullable for non-existing users)
+    - role (enum: owner, translator, viewer)
+    - token (unique invitation token)
+    - status (enum: pending, accepted, rejected, expired)
+    - expires_at (timestamp)
+    - created_at
+    - updated_at
+
 10. project_integrations
 
     - id (primary key)
@@ -586,8 +801,9 @@ The application uses a custom DI system for better maintainability and testabili
 
 #### Enums
 
-- activity_type: translation_updated, language_added, comment_added, member_added, member_removed, integration_connected, integration_disconnected, sync_completed
+- activity_type: translation_updated, language_added, comment_added, member_added, member_removed, member_updated, invitation_sent, invitation_accepted, invitation_rejected, invitation_cancelled, integration_connected, integration_disconnected, sync_completed
 - integration_type: github, gitlab, api, file
+- invitation_status: pending, accepted, rejected, expired
 - project_status: active, archived
 - sync_status: success, failed
 - translation_status: pending, in_progress, reviewed, approved

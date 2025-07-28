@@ -7,14 +7,14 @@ import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
 import CircularProgress from "@mui/material/CircularProgress";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import CancelIcon from "@mui/icons-material/Cancel";
-import MailOutlineIcon from "@mui/icons-material/MailOutline";
 import {
   CenteredContainer,
   Card,
   LogoRow,
   Footer,
+  StyledCheckCircleIcon,
+  StyledCancelIcon,
+  StyledMailOutlineIcon,
 } from "@/styles/accept-invitation/accept-invitation.styles";
 import Logo from "@/components/logo";
 
@@ -80,6 +80,7 @@ export default function AcceptInvitationPage() {
       setResult("error");
       setErrorMsg("Invalid or missing invitation token.");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoading, data]);
 
   const handleAccept = async () => {
@@ -133,7 +134,7 @@ export default function AcceptInvitationPage() {
   } else if (result === "accepted") {
     content = (
       <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-        <CheckCircleIcon color="success" sx={{ fontSize: 56 }} />
+        <StyledCheckCircleIcon color="success" />
         <Typography variant="h5" fontWeight={600} mt={2}>
           Invitation Accepted!
         </Typography>
@@ -145,7 +146,7 @@ export default function AcceptInvitationPage() {
   } else if (result === "declined") {
     content = (
       <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-        <CancelIcon color="error" sx={{ fontSize: 56 }} />
+        <StyledCancelIcon color="error" />
         <Typography variant="h5" fontWeight={600} mt={2}>
           Invitation Declined
         </Typography>
@@ -157,7 +158,7 @@ export default function AcceptInvitationPage() {
   } else if (result === "error") {
     content = (
       <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-        <CancelIcon color="error" sx={{ fontSize: 56 }} />
+        <StyledCancelIcon color="error" />
         <Typography variant="h5" fontWeight={600} mt={2}>
           {errorMsg || "Something went wrong"}
         </Typography>
@@ -166,7 +167,7 @@ export default function AcceptInvitationPage() {
   } else if (data) {
     content = (
       <Box display="flex" flexDirection="column" alignItems="center" gap={2}>
-        <MailOutlineIcon color="primary" sx={{ fontSize: 56 }} />
+        <StyledMailOutlineIcon color="primary" />
         <Typography variant="h5" fontWeight={600} mt={2}>
           You&apos;re Invited!
         </Typography>
@@ -180,7 +181,7 @@ export default function AcceptInvitationPage() {
             color="inherit"
             onClick={handleDecline}
             disabled={acceptInvitation.isPending || rejectInvitation.isPending}
-            startIcon={<CancelIcon />}
+            startIcon={<StyledCancelIcon />}
           >
             Decline
           </Button>
@@ -189,7 +190,7 @@ export default function AcceptInvitationPage() {
             color="primary"
             onClick={handleAccept}
             disabled={acceptInvitation.isPending || rejectInvitation.isPending}
-            startIcon={<CheckCircleIcon />}
+            startIcon={<StyledCheckCircleIcon />}
           >
             Accept Invitation
           </Button>

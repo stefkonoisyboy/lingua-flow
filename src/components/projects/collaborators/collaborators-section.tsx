@@ -5,11 +5,11 @@ import { hasPermission } from "@/utils/permissions";
 import { InviteCollaboratorDialog } from "../integrations/invite-collaborator-dialog";
 import { CollaboratorsList } from "./collaborators-list";
 import { PendingInvitationsList } from "./pending-invitations-list";
-import Button from "@mui/material/Button";
 import AddIcon from "@mui/icons-material/Add";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
 import { SettingsSection } from "@/styles/projects/project-settings.styles";
+import { InviteCollaboratorButton } from "@/styles/projects/collaborators.styles";
 
 export const CollaboratorsSection = () => {
   const params = useParams();
@@ -62,15 +62,14 @@ export const CollaboratorsSection = () => {
         )}
 
         {canInvite && (
-          <Button
+          <InviteCollaboratorButton
             variant="contained"
             color="primary"
             startIcon={<AddIcon />}
             onClick={() => setDialogOpen(true)}
-            sx={{ minWidth: 180 }}
           >
             Invite Collaborator
-          </Button>
+          </InviteCollaboratorButton>
         )}
       </Box>
 

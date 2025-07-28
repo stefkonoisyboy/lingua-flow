@@ -12,6 +12,7 @@ import { trpc } from "@/utils/trpc";
 import { hasPermission } from "@/utils/permissions";
 import CircularProgress from "@mui/material/CircularProgress";
 import { toast } from "react-toastify";
+import { InviteEmailContainer } from "@/styles/projects/collaborators.styles";
 
 const ROLES = [
   { value: "owner", label: "Owner" },
@@ -80,10 +81,10 @@ export const InviteCollaboratorDialog = ({
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle>Invite a new member</DialogTitle>
       <DialogContent>
-        <div style={{ marginBottom: 16 }}>
+        <InviteEmailContainer>
           Enter the email address of the person you want to invite and assign
           them a role.
-        </div>
+        </InviteEmailContainer>
 
         <form onSubmit={formik.handleSubmit} id="invite-collaborator-form">
           <TextField

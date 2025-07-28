@@ -5,10 +5,8 @@ import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import MenuItem from "@mui/material/MenuItem";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Alert from "@mui/material/Alert";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useParams } from "next/navigation";
@@ -19,6 +17,13 @@ import { toast } from "react-toastify";
 import { ProjectMemberWithProfile } from "@/lib/di/interfaces/dal.interfaces";
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  EditMemberRoleAvatar,
+  OwnershipTransferWarning,
+  ConfirmOwnershipWarning,
+  ConfirmOwnershipWarningContent,
+  ActionCannotBeUndone,
+} from "@/styles/projects/collaborators.styles";
 
 const ROLES = [
   { value: "owner", label: "Owner" },
@@ -136,7 +141,7 @@ export const EditMemberRoleDialog = ({
         <form onSubmit={formik.handleSubmit}>
           <DialogContent>
             <Box display="flex" alignItems="center" mb={3}>
-              <Avatar sx={{ mr: 2 }}>
+              <EditMemberRoleAvatar>
                 {member.profiles?.full_name
                   ? member.profiles.full_name
                       .split(" ")
@@ -144,7 +149,7 @@ export const EditMemberRoleDialog = ({
                       .join("")
                       .toUpperCase()
                   : member.profiles?.email?.[0]?.toUpperCase() || "?"}
-              </Avatar>
+              </EditMemberRoleAvatar>
               <Box>
                 <Typography variant="h6">
                   {member.profiles?.full_name || "Unknown User"}
@@ -175,7 +180,7 @@ export const EditMemberRoleDialog = ({
             </TextField>
 
             {isOwnershipTransfer && (
-              <Alert severity="warning" sx={{ mt: 2 }}>
+              <OwnershipTransferWarning severity="warning">
                 <Typography variant="body2">
                   <strong>Ownership Transfer Warning:</strong>
                   <br />
@@ -184,7 +189,7 @@ export const EditMemberRoleDialog = ({
                   <br />
                   <strong>This action cannot be undone.</strong>
                 </Typography>
-              </Alert>
+              </OwnershipTransferWarning>
             )}
 
             <Typography variant="body2" color="text.secondary" mt={2}>
@@ -226,7 +231,7 @@ export const EditMemberRoleDialog = ({
       >
         <DialogTitle>Confirm Ownership Transfer</DialogTitle>
         <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
+          <ConfirmOwnershipWarning severity="warning">
             <Typography variant="body2">
               <strong>Warning:</strong> You are about to transfer project
               ownership to{" "}
@@ -235,13 +240,13 @@ export const EditMemberRoleDialog = ({
               </strong>
               .
             </Typography>
-          </Alert>
+          </ConfirmOwnershipWarning>
 
           <Typography variant="body2" paragraph>
             This action will:
           </Typography>
 
-          <Typography variant="body2" component="ul" sx={{ pl: 2 }}>
+          <ConfirmOwnershipWarningContent variant="body2" as="ul">
             <li>
               Make{" "}
               <strong>
@@ -254,11 +259,11 @@ export const EditMemberRoleDialog = ({
             </li>
             <li>Remove your ability to manage project settings and members</li>
             <li>Transfer all owner permissions to the new owner</li>
-          </Typography>
+          </ConfirmOwnershipWarningContent>
 
-          <Typography variant="body2" color="error" sx={{ mt: 2 }}>
+          <ActionCannotBeUndone variant="body2" color="error">
             <strong>This action cannot be undone.</strong>
-          </Typography>
+          </ActionCannotBeUndone>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleOwnershipTransferCancel} color="primary">

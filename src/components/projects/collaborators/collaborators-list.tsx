@@ -3,7 +3,6 @@ import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Avatar from "@mui/material/Avatar";
 import IconButton from "@mui/material/IconButton";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -11,7 +10,10 @@ import Skeleton from "@mui/material/Skeleton";
 import Box from "@mui/material/Box";
 import { useState } from "react";
 import { ProjectMemberWithProfile } from "@/lib/di/interfaces/dal.interfaces";
-import { CollaboratorsListTableContainer } from "@/styles/projects/collaborators.styles";
+import {
+  CollaboratorsListTableContainer,
+  StyledAvatar,
+} from "@/styles/projects/collaborators.styles";
 import { useAuth } from "@/hooks/use-auth";
 import { hasPermission, UserRole } from "@/utils/permissions";
 import { EditMemberRoleDialog } from "./edit-member-role-dialog";
@@ -92,7 +94,7 @@ export const CollaboratorsList = ({
                 <TableRow key={member.user_id}>
                   <TableCell>
                     <Box display="flex" alignItems="center">
-                      <Avatar sx={{ mr: 1 }}>
+                      <StyledAvatar>
                         {member.profiles?.full_name
                           ? member.profiles.full_name
                               .split(" ")
@@ -100,7 +102,7 @@ export const CollaboratorsList = ({
                               .join("")
                               .toUpperCase()
                           : member.profiles?.email?.[0]?.toUpperCase() || "?"}
-                      </Avatar>
+                      </StyledAvatar>
                       <span>{member.profiles?.full_name || "-"}</span>
                     </Box>
                   </TableCell>

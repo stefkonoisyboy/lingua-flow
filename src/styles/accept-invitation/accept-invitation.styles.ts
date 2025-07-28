@@ -1,6 +1,9 @@
 import { styled } from "@mui/material/styles";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CancelIcon from "@mui/icons-material/Cancel";
+import MailOutlineIcon from "@mui/icons-material/MailOutline";
 
 export const CenteredContainer = styled(Box)(({ theme }) => ({
   minHeight: "100vh",
@@ -38,3 +41,15 @@ export const Footer = styled(Box)(({ theme }) => ({
   color: theme.palette.text.secondary,
   fontSize: 14,
 }));
+
+export const StyledCheckCircleIcon = styled(CheckCircleIcon)({
+  fontSize: 56,
+});
+
+export const StyledCancelIcon = styled(CancelIcon)({
+  fontSize: 56,
+});
+
+export const StyledMailOutlineIcon = styled(MailOutlineIcon)({
+  fontSize: 56,
+});

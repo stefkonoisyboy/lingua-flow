@@ -3,10 +3,8 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import Button from "@mui/material/Button";
-import Avatar from "@mui/material/Avatar";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import Alert from "@mui/material/Alert";
 import { useParams } from "next/navigation";
 import { trpc } from "@/utils/trpc";
 import { hasPermission } from "@/utils/permissions";
@@ -14,6 +12,12 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { toast } from "react-toastify";
 import { ProjectMemberWithProfile } from "@/lib/di/interfaces/dal.interfaces";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  ConfirmOwnershipWarning,
+  EditMemberRoleAvatar,
+  ConfirmOwnershipWarningContent,
+  OwnershipTransferWarning,
+} from "@/styles/projects/collaborators.styles";
 
 interface RemoveMemberDialogProps {
   open: boolean;
@@ -78,7 +82,7 @@ export const RemoveMemberDialog = ({
       <DialogTitle>Remove Member</DialogTitle>
       <DialogContent>
         <Box display="flex" alignItems="center" mb={3}>
-          <Avatar sx={{ mr: 2 }}>
+          <EditMemberRoleAvatar>
             {member.profiles?.full_name
               ? member.profiles.full_name
                   .split(" ")
@@ -86,7 +90,7 @@ export const RemoveMemberDialog = ({
                   .join("")
                   .toUpperCase()
               : member.profiles?.email?.[0]?.toUpperCase() || "?"}
-          </Avatar>
+          </EditMemberRoleAvatar>
           <Box>
             <Typography variant="h6">
               {member.profiles?.full_name || "Unknown User"}
@@ -101,7 +105,7 @@ export const RemoveMemberDialog = ({
         </Box>
 
         {isRemovingSelf && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+          <ConfirmOwnershipWarning severity="error">
             <Typography variant="body2">
               <strong>Warning:</strong> You are about to remove yourself from
               this project.
@@ -109,18 +113,18 @@ export const RemoveMemberDialog = ({
               You will lose access to all project features and will need to be
               re-invited to regain access.
             </Typography>
-          </Alert>
+          </ConfirmOwnershipWarning>
         )}
 
         {isRemovingOwner && !isRemovingSelf && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
+          <ConfirmOwnershipWarning severity="warning">
             <Typography variant="body2">
               <strong>Warning:</strong> You are about to remove the project
               owner.
               <br />
               This action will remove the owner&apos;s access to the project.
             </Typography>
-          </Alert>
+          </ConfirmOwnershipWarning>
         )}
 
         <Typography variant="body2" paragraph>
@@ -131,25 +135,24 @@ export const RemoveMemberDialog = ({
           from this project?
         </Typography>
 
-        <Typography
+        <ConfirmOwnershipWarningContent
           variant="body2"
           color="text.secondary"
-          component="ul"
-          sx={{ pl: 2 }}
+          as="ul"
         >
           <li>They will lose access to all project features</li>
           <li>They will no longer be able to view or edit translations</li>
           <li>They will need to be re-invited to regain access</li>
           <li>This action cannot be undone</li>
-        </Typography>
+        </ConfirmOwnershipWarningContent>
 
         {isRemovingSelf && (
-          <Alert severity="info" sx={{ mt: 2 }}>
+          <OwnershipTransferWarning severity="info">
             <Typography variant="body2">
               <strong>Note:</strong> After removing yourself, you will be
               redirected to the dashboard.
             </Typography>
-          </Alert>
+          </OwnershipTransferWarning>
         )}
       </DialogContent>
 
