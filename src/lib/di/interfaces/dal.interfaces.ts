@@ -430,3 +430,52 @@ export interface ISyncHistoryDAL {
     integrationId: string
   ): Promise<Database["public"]["Tables"]["sync_history"]["Row"] | null>;
 }
+
+export type UserRole = Database["public"]["Enums"]["user_role"];
+export type ProjectMember =
+  Database["public"]["Tables"]["project_members"]["Row"];
+export type ProjectInvitation =
+  Database["public"]["Tables"]["project_invitations"]["Row"];
+export type Profile = Database["public"]["Tables"]["profiles"]["Row"];
+
+export type ProjectMemberWithProfile = ProjectMember & { profiles: Profile };
+
+export interface IProjectMembersDAL {
+  // Project Members
+  getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]>;
+  addProjectMember(
+    projectId: string,
+    userId: string,
+    role: UserRole
+  ): Promise<void>;
+  updateProjectMemberRole(
+    projectId: string,
+    userId: string,
+    role: UserRole
+  ): Promise<void>;
+  removeProjectMember(projectId: string, userId: string): Promise<void>;
+
+  // Project Invitations
+  createInvitation(
+    projectId: string,
+    inviterId: string,
+    inviteeEmail: string,
+    role: UserRole,
+    token: string,
+    expiresAt: string
+  ): Promise<void>;
+  getInvitationsByProject(projectId: string): Promise<ProjectInvitation[]>;
+  getInvitationByToken(token: string): Promise<ProjectInvitation | null>;
+  updateInvitationStatus(invitationId: string, status: string): Promise<void>;
+  setInvitationInviteeId(
+    invitationId: string,
+    inviteeId: string
+  ): Promise<void>;
+  deleteInvitation(invitationId: string): Promise<void>;
+  getProfileById(userId: string): Promise<Profile | null>;
+  getProjectById(projectId: string): Promise<{ name: string } | null>;
+}
+
+export interface IUsersDAL {
+  getUserByEmail(email: string): Promise<Profile | null>;
+}

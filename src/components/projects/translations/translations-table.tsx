@@ -34,6 +34,9 @@ import {
 import { VersionHistoryDialog } from "./version-history-dialog";
 import { CommentsDialog } from "./comments-dialog";
 import { selectSelectedLanguageId } from "@/store/slices/selected-language.slice";
+import { useParams } from "next/navigation";
+import { hasPermission } from "@/utils/permissions";
+import { trpc } from "@/utils/trpc";
 
 export type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
@@ -66,6 +69,9 @@ export function TranslationsTable({
   formik,
   onUpdateTranslation,
 }: TranslationsTableProps) {
+  const params = useParams();
+  const projectId = params.projectId as string;
+
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [commentsDialogOpen, setCommentsDialogOpen] = useState(false);
@@ -76,6 +82,29 @@ export function TranslationsTable({
   const dispatch = useAppDispatch();
   const isAddingKey = useAppSelector(selectIsAddingKey);
   const selectedLanguageId = useAppSelector(selectSelectedLanguageId);
+
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId,
+  });
+
+  const memberRole = role?.role ?? "viewer";
+
+  const hasTranslationKeyUpdatePermission = hasPermission(
+    memberRole,
+    "updateTranslationKey"
+  );
+
+  const hasTranslationUpdatePermission = hasPermission(
+    memberRole,
+    "updateTranslation"
+  );
+
+  const hasCommentsViewPermission = hasPermission(memberRole, "viewComments");
+
+  const hasVersionHistoryViewPermission = hasPermission(
+    memberRole,
+    "viewVersionHistory"
+  );
 
   const handleEditClick = (key: TranslationKey) => {
     setEditingKey(key.id);
@@ -171,10 +200,14 @@ export function TranslationsTable({
                   </TableCell>
                   <TableCell align="center">
                     <ActionButtons>
-                      <IconButton onClick={() => handleEditClick(key)}>
-                        <EditIcon />
-                      </IconButton>
-                      {translation && (
+                      {hasTranslationKeyUpdatePermission &&
+                        hasTranslationUpdatePermission && (
+                          <IconButton onClick={() => handleEditClick(key)}>
+                            <EditIcon />
+                          </IconButton>
+                        )}
+
+                      {translation && hasCommentsViewPermission && (
                         <IconButton
                           onClick={() =>
                             handleCommentsClick(translation.id, key.key)
@@ -189,7 +222,8 @@ export function TranslationsTable({
                           </Badge>
                         </IconButton>
                       )}
-                      {translation && (
+
+                      {translation && hasVersionHistoryViewPermission && (
                         <Tooltip title="View version history">
                           <IconButton
                             onClick={() =>
@@ -218,6 +252,7 @@ export function TranslationsTable({
             keyName={selectedKeyName}
             languageName={languageName}
           />
+
           <CommentsDialog
             open={commentsDialogOpen}
             onClose={() => setCommentsDialogOpen(false)}

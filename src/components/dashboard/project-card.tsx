@@ -10,8 +10,11 @@ import {
   ViewButton,
   LastUpdate,
 } from "@/styles/dashboard/project-card.styles";
+import { trpc } from "@/utils/trpc";
+import { hasPermission } from "@/utils/permissions";
 
 interface ProjectCardProps {
+  projectId: string;
   title: string;
   languages: number;
   missingTranslations: number;
@@ -21,6 +24,7 @@ interface ProjectCardProps {
 }
 
 const ProjectCard = ({
+  projectId,
   title,
   languages,
   missingTranslations,
@@ -28,6 +32,12 @@ const ProjectCard = ({
   lastUpdate,
   onView,
 }: ProjectCardProps) => {
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId,
+  });
+
+  const memberRole = role?.role ?? "viewer";
+
   return (
     <ProjectCardContainer>
       <ProjectCardContent>
@@ -47,9 +57,11 @@ const ProjectCard = ({
 
         <LastUpdate variant="caption">Last update: {lastUpdate}</LastUpdate>
 
-        <ViewButton onClick={onView} endIcon={<ArrowForward />}>
-          View
-        </ViewButton>
+        {hasPermission(memberRole, "viewProject") && (
+          <ViewButton onClick={onView} endIcon={<ArrowForward />}>
+            View
+          </ViewButton>
+        )}
       </ProjectCardContent>
     </ProjectCardContainer>
   );

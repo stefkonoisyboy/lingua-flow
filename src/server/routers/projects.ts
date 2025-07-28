@@ -2,6 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "../trpc";
 import { DI_TOKENS } from "../../lib/di/registry";
 import { IProjectsService } from "../../lib/di/interfaces/service.interfaces";
+import { requireProjectPermission } from "../middleware/requireProjectPermission";
 
 const githubConfigSchema = z.object({
   repository: z.string().min(1, "Repository is required"),
@@ -13,6 +14,7 @@ const githubConfigSchema = z.object({
 export const projectsRouter = router({
   getProjectById: protectedProcedure
     .input(z.object({ projectId: z.string() }))
+    .use(requireProjectPermission(["owner", "translator", "viewer"]))
     .query(async ({ ctx, input }) => {
       const projectsService = ctx.container.resolve<IProjectsService>(
         DI_TOKENS.PROJECTS_SERVICE
@@ -23,6 +25,7 @@ export const projectsRouter = router({
 
   getProjectLanguages: protectedProcedure
     .input(z.object({ projectId: z.string() }))
+    .use(requireProjectPermission(["owner", "translator", "viewer"]))
     .query(async ({ ctx, input }) => {
       const projectsService = ctx.container.resolve<IProjectsService>(
         DI_TOKENS.PROJECTS_SERVICE
@@ -86,6 +89,7 @@ export const projectsRouter = router({
         projectId: z.string(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const projectsService = ctx.container.resolve<IProjectsService>(
         DI_TOKENS.PROJECTS_SERVICE
@@ -102,6 +106,7 @@ export const projectsRouter = router({
         description: z.string().optional(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const projectsService = ctx.container.resolve<IProjectsService>(
         DI_TOKENS.PROJECTS_SERVICE
@@ -122,6 +127,7 @@ export const projectsRouter = router({
         languageId: z.string(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const projectsService = ctx.container.resolve<IProjectsService>(
         DI_TOKENS.PROJECTS_SERVICE
@@ -141,6 +147,7 @@ export const projectsRouter = router({
         languageId: z.string(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const projectsService = ctx.container.resolve<IProjectsService>(
         DI_TOKENS.PROJECTS_SERVICE
@@ -160,6 +167,7 @@ export const projectsRouter = router({
         languageId: z.string(),
       })
     )
+    .use(requireProjectPermission("owner"))
     .mutation(async ({ ctx, input }) => {
       const projectsService = ctx.container.resolve<IProjectsService>(
         DI_TOKENS.PROJECTS_SERVICE

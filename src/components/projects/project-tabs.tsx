@@ -16,10 +16,22 @@ import {
   TabsContainer,
   StyledTabs,
 } from "@/styles/projects/project-tabs.styles";
+import { useParams } from "next/navigation";
+import { trpc } from "@/utils/trpc";
+import { hasPermission } from "@/utils/permissions";
 
 export function ProjectTabs() {
+  const params = useParams();
+  const projectId = params.projectId as string;
+
   const dispatch = useAppDispatch();
   const activeTab = useAppSelector(selectActiveTab);
+
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId,
+  });
+
+  const memberRole = role?.role ?? "viewer";
 
   const handleTabChange = (
     _event: React.SyntheticEvent,
@@ -35,24 +47,32 @@ export function ProjectTabs() {
         onChange={handleTabChange}
         indicatorColor="primary"
       >
-        <Tab
-          label="Translations"
-          value="translations"
-          icon={<TranslateIcon />}
-          iconPosition="start"
-        />
-        <Tab
-          label="Settings"
-          value="settings"
-          icon={<SettingsIcon />}
-          iconPosition="start"
-        />
-        <Tab
-          label="Collaborators"
-          value="collaborators"
-          icon={<GroupIcon />}
-          iconPosition="start"
-        />
+        {hasPermission(memberRole, "viewTranslations") && (
+          <Tab
+            label="Translations"
+            value="translations"
+            icon={<TranslateIcon />}
+            iconPosition="start"
+          />
+        )}
+
+        {hasPermission(memberRole, "viewSettings") && (
+          <Tab
+            label="Settings"
+            value="settings"
+            icon={<SettingsIcon />}
+            iconPosition="start"
+          />
+        )}
+
+        {hasPermission(memberRole, "viewMembers") && (
+          <Tab
+            label="Collaborators"
+            value="collaborators"
+            icon={<GroupIcon />}
+            iconPosition="start"
+          />
+        )}
       </StyledTabs>
     </TabsContainer>
   );

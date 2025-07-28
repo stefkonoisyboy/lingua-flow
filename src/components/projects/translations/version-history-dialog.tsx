@@ -36,6 +36,7 @@ import {
 } from "@/styles/projects/version-history.styles";
 import { useParams } from "next/navigation";
 import { FullWidthAlert } from "./version-history-dialog.styles";
+import { hasPermission } from "@/utils/permissions";
 
 interface VersionHistoryDialogProps {
   open: boolean;
@@ -56,16 +57,31 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
   const params = useParams();
   const projectId = params.projectId as string;
 
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId,
+  });
+
+  const memberRole = role?.role ?? "viewer";
+
+  const hasVersionHistoryRevertPermission = hasPermission(
+    memberRole,
+    "revertTranslationVersion"
+  );
+
   const { data: versions, isLoading } =
     trpc.versionHistory.getVersionHistory.useQuery(
-      { translationId },
+      { translationId, projectId },
       { enabled: open }
     );
 
   const revertMutation =
     trpc.versionHistory.revertTranslationToVersion.useMutation({
       onSuccess: () => {
-        utils.versionHistory.getVersionHistory.invalidate({ translationId });
+        utils.versionHistory.getVersionHistory.invalidate({
+          translationId,
+          projectId,
+        });
+
         utils.translations.getTranslationKeys.invalidate({ projectId });
 
         setSnackbar({
@@ -107,6 +123,7 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
       await revertMutation.mutateAsync({
         translationId,
         versionId: pendingVersionId,
+        projectId,
       });
       setConfirmOpen(false);
     } finally {
@@ -175,7 +192,7 @@ export const VersionHistoryDialog: FC<VersionHistoryDialogProps> = ({
                       variant="outlined"
                     />
                   )}
-                  {versions.length > 1 && (
+                  {versions.length > 1 && hasVersionHistoryRevertPermission && (
                     <Tooltip title="Revert to this version">
                       <span>
                         <IconButton

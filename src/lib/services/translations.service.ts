@@ -69,10 +69,6 @@ export class TranslationsService implements ITranslationsService {
     );
   }
 
-  async getLatestVersionNumber(translationId: string) {
-    return await this.translationsDAL.getLatestVersionNumber(translationId);
-  }
-
   async updateTranslationKey(keyId: string, newKey: string) {
     return await this.translationsDAL.updateTranslationKey(keyId, newKey);
   }

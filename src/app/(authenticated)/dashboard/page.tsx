@@ -99,6 +99,7 @@ export default function DashboardPage() {
               projects.data?.map((project) => (
                 <Grid size={{ xs: 12, sm: 6, lg: 4 }} key={project?.id}>
                   <ProjectCard
+                    projectId={project?.id ?? ""}
                     title={project?.name ?? ""}
                     languages={project?.languageCount || 0}
                     missingTranslations={Math.round(

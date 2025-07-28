@@ -9,6 +9,10 @@ import {
   CreateSyncHistoryParamsDAL,
   Translation,
   TranslationKey,
+  UserRole,
+  ProjectMemberWithProfile,
+  ProjectInvitation,
+  Profile,
 } from "./dal.interfaces";
 
 // Project service interfaces
@@ -168,8 +172,6 @@ export interface ITranslationsService {
     translationKey: TranslationKey;
     translations: Translation[];
   }>;
-
-  getLatestVersionNumber(translationId: string): Promise<number>;
 
   updateTranslationKey(keyId: string, newKey: string): Promise<TranslationKey>;
 
@@ -384,4 +386,49 @@ export interface ISyncHistoryService {
   getByProjectId(
     projectId: string
   ): Promise<Database["public"]["Tables"]["sync_history"]["Row"][]>;
+}
+
+export interface IProjectMembersService {
+  // Member management
+  getProjectMembers(projectId: string): Promise<ProjectMemberWithProfile[]>;
+  addProjectMember(
+    projectId: string,
+    userId: string,
+    role: UserRole
+  ): Promise<void>;
+  updateMemberRole(
+    projectId: string,
+    userId: string,
+    newRole: UserRole
+  ): Promise<void>;
+  removeMember(projectId: string, userId: string): Promise<void>;
+
+  // Invitation management
+  createInvitation(
+    projectId: string,
+    inviterId: string,
+    inviteeEmail: string,
+    role: UserRole,
+    expiresAt: string
+  ): Promise<string>;
+  getProjectInvitations(projectId: string): Promise<ProjectInvitation[]>;
+  acceptInvitation(token: string, userId: string): Promise<void>;
+  rejectInvitation(token: string): Promise<void>;
+  cancelInvitation(invitationId: string, projectId: string): Promise<void>;
+
+  // Permission checks
+  getUserProjectRole(
+    projectId: string,
+    userId: string
+  ): Promise<UserRole | null>;
+
+  getInvitationByToken(token: string): Promise<ProjectInvitation | null>;
+
+  findByEmail(email: string): Promise<Profile | null>;
+
+  createUserAndAcceptInvitation(
+    email: string,
+    password: string,
+    token: string
+  ): Promise<{ user: Profile }>; // session type can be refined
 }

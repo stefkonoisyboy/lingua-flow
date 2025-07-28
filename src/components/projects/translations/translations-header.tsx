@@ -31,6 +31,7 @@ import {
 } from "@/styles/projects/translations-header.styles";
 import { trpc } from "@/utils/trpc";
 import { useParams } from "next/navigation";
+import { hasPermission } from "@/utils/permissions";
 
 interface TranslationsHeaderProps {
   onStartAddingKey: () => void;
@@ -54,10 +55,29 @@ export function TranslationsHeader({
   const params = useParams();
   const projectId = params.projectId as string;
 
+  const { data: role } = trpc.projectMembers.getUserProjectRole.useQuery({
+    projectId,
+  });
+
+  const memberRole = role?.role ?? "viewer";
+
+  const hasProjectViewPermission = hasPermission(memberRole, "viewProject");
+
+  const hasTranslationKeyCreatePermission = hasPermission(
+    memberRole,
+    "createTranslationKey"
+  );
+
+  const hasTranslationCreatePermission = hasPermission(
+    memberRole,
+    "createTranslation"
+  );
+
   const { data: projectLanguages } = trpc.projects.getProjectLanguages.useQuery(
     {
       projectId,
-    }
+    },
+    { enabled: hasProjectViewPermission }
   );
 
   const languages = projectLanguages || [];
@@ -88,36 +108,45 @@ export function TranslationsHeader({
           </Select>
         </LanguageSelectControl>
 
-        {isAddingKey ? (
-          <>
-            <Button
-              variant="contained"
-              startIcon={<SaveIcon />}
-              onClick={onSave}
-              disabled={isSaveDisabled || isSubmitting}
-            >
-              {isSubmitting ? <CircularProgress size={24} /> : "Save Changes"}
-            </Button>
-            <Button
-              variant="outlined"
-              color="secondary"
-              startIcon={<CancelIcon />}
-              onClick={onCancelAddingKey}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={onStartAddingKey}
-            disabled={!selectedLanguageId || isEditing}
-          >
-            Add Translation Key
-          </Button>
-        )}
+        {hasTranslationKeyCreatePermission &&
+          hasTranslationCreatePermission && (
+            <>
+              {isAddingKey ? (
+                <>
+                  <Button
+                    variant="contained"
+                    startIcon={<SaveIcon />}
+                    onClick={onSave}
+                    disabled={isSaveDisabled || isSubmitting}
+                  >
+                    {isSubmitting ? (
+                      <CircularProgress size={24} />
+                    ) : (
+                      "Save Changes"
+                    )}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    startIcon={<CancelIcon />}
+                    onClick={onCancelAddingKey}
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={onStartAddingKey}
+                  disabled={!selectedLanguageId || isEditing}
+                >
+                  Add Translation Key
+                </Button>
+              )}
+            </>
+          )}
       </HeaderActions>
     </HeaderContainer>
   );

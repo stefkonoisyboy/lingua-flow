@@ -5,6 +5,7 @@
   "cSpell.words": [
     "evenodd",
     "fkey",
+    "ilike",
     "linguaflow",
     "pgcrypto",
     "PGRST",
@@ -31,5 +32,6 @@
     "fs",
     "http",
     "net"
-  ]
+  ],
+  "deno.enable": true
 }
