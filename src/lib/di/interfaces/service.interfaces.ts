@@ -414,7 +414,7 @@ export interface IProjectMembersService {
   getProjectInvitations(projectId: string): Promise<ProjectInvitation[]>;
   acceptInvitation(token: string, userId: string): Promise<void>;
   rejectInvitation(token: string): Promise<void>;
-  cancelInvitation(invitationId: string): Promise<void>;
+  cancelInvitation(invitationId: string, projectId: string): Promise<void>;
 
   // Permission checks
   getUserProjectRole(

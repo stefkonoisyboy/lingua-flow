@@ -8,6 +8,11 @@ export type ActivityType =
   | "comment_added"
   | "member_added"
   | "member_removed"
+  | "member_updated"
+  | "invitation_sent"
+  | "invitation_accepted"
+  | "invitation_rejected"
+  | "invitation_cancelled"
   | "integration_connected"
   | "integration_disconnected"
   | "sync_completed";

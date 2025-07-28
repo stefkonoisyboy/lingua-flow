@@ -4,6 +4,7 @@ import {
   UserRole,
   IUsersDAL,
   Profile,
+  IActivitiesDAL,
 } from "../di/interfaces/dal.interfaces";
 import { randomUUID } from "crypto";
 import fetch from "node-fetch";
@@ -50,7 +51,8 @@ async function sendInvitationEmail({
 export class ProjectMembersService implements IProjectMembersService {
   constructor(
     private projectMembersDal: IProjectMembersDAL,
-    private usersDal: IUsersDAL
+    private usersDal: IUsersDAL,
+    private activitiesDal: IActivitiesDAL
   ) {}
 
   // Member management
@@ -96,10 +98,40 @@ export class ProjectMembersService implements IProjectMembersService {
       userId,
       newRole
     );
+
+    // Log activity for role change
+    await this.activitiesDal.logActivity(projectId, userId, "member_updated", {
+      action: "role_changed",
+      memberName:
+        targetMember.profiles?.full_name ||
+        targetMember.profiles?.email ||
+        "Unknown",
+      oldRole: targetMember.role,
+      newRole: newRole,
+      isOwnershipTransfer: isOwnershipTransfer,
+    });
   }
 
   async removeMember(projectId: string, userId: string) {
+    // Get member details before removal for activity logging
+    const members = await this.projectMembersDal.getProjectMembers(projectId);
+    const memberToRemove = members.find((m) => m.user_id === userId);
+
+    if (!memberToRemove) {
+      throw new Error("Member not found");
+    }
+
     await this.projectMembersDal.removeProjectMember(projectId, userId);
+
+    // Log activity for member removal
+    await this.activitiesDal.logActivity(projectId, userId, "member_removed", {
+      action: "member_removed",
+      memberName:
+        memberToRemove.profiles?.full_name ||
+        memberToRemove.profiles?.email ||
+        "Unknown",
+      memberRole: memberToRemove.role,
+    });
   }
 
   // Invitation management
@@ -167,6 +199,19 @@ export class ProjectMembersService implements IProjectMembersService {
       expiresAt,
     });
 
+    // Log activity for invitation sent
+    await this.activitiesDal.logActivity(
+      projectId,
+      inviterId,
+      "invitation_sent",
+      {
+        action: "invitation_sent",
+        inviteeEmail: inviteeEmail,
+        role: role,
+        projectName: project?.name || "Project",
+      }
+    );
+
     return token;
   }
 
@@ -200,6 +245,18 @@ export class ProjectMembersService implements IProjectMembersService {
       invitation.id,
       "accepted"
     );
+
+    // Log activity for invitation accepted
+    await this.activitiesDal.logActivity(
+      invitation.project_id,
+      userId,
+      "invitation_accepted",
+      {
+        action: "invitation_accepted",
+        inviteeEmail: invitation.invitee_email,
+        role: invitation.role,
+      }
+    );
   }
 
   async rejectInvitation(token: string) {
@@ -217,9 +274,41 @@ export class ProjectMembersService implements IProjectMembersService {
       invitation.id,
       "rejected"
     );
+
+    // Log activity for invitation rejected
+    await this.activitiesDal.logActivity(
+      invitation.project_id,
+      invitation.inviter_id,
+      "invitation_rejected",
+      {
+        action: "invitation_rejected",
+        inviteeEmail: invitation.invitee_email,
+        role: invitation.role,
+      }
+    );
   }
 
-  async cancelInvitation(invitationId: string) {
+  async cancelInvitation(invitationId: string, projectId: string) {
+    // Get invitation details before deletion for activity logging
+    const invitations = await this.projectMembersDal.getInvitationsByProject(
+      projectId
+    );
+    const invitation = invitations.find((inv) => inv.id === invitationId);
+
+    if (invitation) {
+      // Log activity for invitation cancelled
+      await this.activitiesDal.logActivity(
+        projectId,
+        invitation.inviter_id,
+        "invitation_cancelled",
+        {
+          action: "invitation_cancelled",
+          inviteeEmail: invitation.invitee_email,
+          role: invitation.role,
+        }
+      );
+    }
+
     await this.projectMembersDal.deleteInvitation(invitationId);
   }
 

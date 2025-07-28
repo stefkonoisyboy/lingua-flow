@@ -243,7 +243,8 @@ export function registerServices(
     (c) =>
       new ProjectMembersService(
         c.resolve(DI_TOKENS.PROJECT_MEMBERS_DAL),
-        c.resolve(DI_TOKENS.USERS_DAL)
+        c.resolve(DI_TOKENS.USERS_DAL),
+        c.resolve(DI_TOKENS.ACTIVITIES_DAL)
       )
   );
 }

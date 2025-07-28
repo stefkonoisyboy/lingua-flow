@@ -120,7 +120,10 @@ export const projectMembersRouter = router({
         DI_TOKENS.PROJECT_MEMBERS_SERVICE
       );
 
-      return await service.cancelInvitation(input.invitationId);
+      return await service.cancelInvitation(
+        input.invitationId,
+        input.projectId
+      );
     }),
 
   getUserProjectRole: protectedProcedure
