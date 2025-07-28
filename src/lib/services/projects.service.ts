@@ -23,6 +23,7 @@ export class ProjectsService implements IProjectsService {
     const projectLanguages = await this.projectsDal.getProjectLanguages(
       projectIds
     );
+
     const uniqueLanguages = new Set(
       projectLanguages?.map((pl) => pl.language_id)
     );

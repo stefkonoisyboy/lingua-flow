@@ -85,22 +85,55 @@ export class TranslationsDAL implements ITranslationsDAL {
   }
 
   async getProjectTranslations(projectIds: string[]) {
-    const query = this.supabase
-      .from("translations")
-      .select(
-        `
-        *,
-        translation_keys (
-          project_id
-        )
-      `
-      )
-      .in("translation_keys.project_id", projectIds);
+    if (projectIds.length === 0) {
+      return [];
+    }
 
-    return await this.paginationDal.fetchAllPages<Translation>(
+    // First, get all translation key IDs for the given projects
+    const query = this.supabase
+      .from("translation_keys")
+      .select("id")
+      .in("project_id", projectIds);
+
+    const keyIds = await this.paginationDal.fetchAllPages<{ id: string }>(
       query,
       DEFAULT_PAGE_SIZE
     );
+
+    if (keyIds.length === 0) {
+      return [];
+    }
+
+    // Batch keyIds to avoid URI too large errors
+    const BATCH_SIZE = 100;
+    let allTranslations: Translation[] = [];
+
+    for (let i = 0; i < keyIds.length; i += BATCH_SIZE) {
+      const chunk = keyIds.slice(i, i + BATCH_SIZE);
+
+      const { data, error } = await this.supabase
+        .from("translations")
+        .select(
+          `
+          *,
+          translation_keys (
+            project_id
+          )
+        `
+        )
+        .in(
+          "key_id",
+          chunk.map((k) => k.id)
+        );
+
+      if (error) {
+        throw new Error(`Failed to fetch translations: ${error.message}`);
+      }
+
+      allTranslations = allTranslations.concat(data || []);
+    }
+
+    return allTranslations;
   }
 
   /**
