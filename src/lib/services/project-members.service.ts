@@ -64,6 +64,33 @@ export class ProjectMembersService implements IProjectMembersService {
   }
 
   async updateMemberRole(projectId: string, userId: string, newRole: UserRole) {
+    // Get current members to check for ownership transfer
+    const members = await this.projectMembersDal.getProjectMembers(projectId);
+    const targetMember = members.find((m) => m.user_id === userId);
+
+    if (!targetMember) {
+      throw new Error("Member not found");
+    }
+
+    // Check if this is an ownership transfer
+    const isOwnershipTransfer =
+      targetMember.role !== "owner" && newRole === "owner";
+
+    if (isOwnershipTransfer) {
+      // Find the current owner
+      const currentOwner = members.find((m) => m.role === "owner");
+
+      if (currentOwner) {
+        // Demote the current owner to translator
+        await this.projectMembersDal.updateProjectMemberRole(
+          projectId,
+          currentOwner.user_id,
+          "translator"
+        );
+      }
+    }
+
+    // Update the target member's role
     await this.projectMembersDal.updateProjectMemberRole(
       projectId,
       userId,

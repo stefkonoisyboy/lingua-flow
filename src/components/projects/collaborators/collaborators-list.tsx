@@ -9,10 +9,12 @@ import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import Skeleton from "@mui/material/Skeleton";
 import Box from "@mui/material/Box";
+import { useState } from "react";
 import { ProjectMemberWithProfile } from "@/lib/di/interfaces/dal.interfaces";
 import { CollaboratorsListTableContainer } from "@/styles/projects/collaborators.styles";
 import { useAuth } from "@/hooks/use-auth";
 import { hasPermission, UserRole } from "@/utils/permissions";
+import { EditMemberRoleDialog } from "./edit-member-role-dialog";
 
 export const CollaboratorsList = ({
   members,
@@ -24,9 +26,22 @@ export const CollaboratorsList = ({
   userRole: UserRole;
 }) => {
   const { user } = useAuth();
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [selectedMember, setSelectedMember] =
+    useState<ProjectMemberWithProfile | null>(null);
 
   const canEdit = hasPermission(userRole, "updateMemberRole");
   const canDelete = hasPermission(userRole, "removeMember");
+
+  const handleEditClick = (member: ProjectMemberWithProfile) => {
+    setSelectedMember(member);
+    setEditDialogOpen(true);
+  };
+
+  const handleEditDialogClose = () => {
+    setEditDialogOpen(false);
+    setSelectedMember(null);
+  };
 
   return (
     <CollaboratorsListTableContainer>
@@ -88,6 +103,7 @@ export const CollaboratorsList = ({
                           size="small"
                           aria-label="edit"
                           disabled={user?.id === member.user_id}
+                          onClick={() => handleEditClick(member)}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -109,6 +125,12 @@ export const CollaboratorsList = ({
               ))}
         </TableBody>
       </Table>
+
+      <EditMemberRoleDialog
+        open={editDialogOpen}
+        onClose={handleEditDialogClose}
+        member={selectedMember}
+      />
     </CollaboratorsListTableContainer>
   );
 };
