@@ -1,0 +1,1503 @@
+# AI-Powered Translation Suggestions Feature Plan
+
+## Executive Summary
+
+This document outlines the implementation plan for integrating AI-powered translation suggestions into LinguaFlow. The feature will leverage transformer-based models (MarianMT, M2M100, or GPT) through HuggingFace Transformers to provide real-time translation suggestions to human translators, enhancing productivity while maintaining quality through human oversight.
+
+## Table of Contents
+
+1. [Feature Overview](#feature-overview)
+2. [Architecture Design](#architecture-design)
+3. [Model Selection Strategy](#model-selection-strategy)
+4. [Backend Implementation](#backend-implementation)
+5. [Frontend Implementation](#frontend-implementation)
+6. [API Design](#api-design)
+7. [Performance Optimization](#performance-optimization)
+8. [Security Considerations](#security-considerations)
+9. [User Experience](#user-experience)
+10. [Deployment Strategy](#deployment-strategy)
+11. [Monitoring and Analytics](#monitoring-and-analytics)
+12. [Future Enhancements](#future-enhancements)
+
+## Feature Overview
+
+### Core Functionality
+
+- **On-Demand Suggestions**: Translators can request AI suggestions for any translation string
+- **Context-Aware Translation**: Utilizes project description and translation memory for better accuracy
+- **Multiple Model Support**: Flexible architecture supporting various transformer models
+- **Real-Time Inference**: Fast response times with intelligent caching
+- **Human-in-the-Loop**: AI suggestions require human approval before being saved
+
+### User Workflow
+
+1. Translator encounters a missing or incomplete translation
+2. Clicks "Get AI Suggestion" button
+3. System generates suggestion using context-aware AI model
+4. Suggestion appears inline with "Apply" button
+5. Translator reviews and optionally edits before applying
+6. Applied suggestion is saved with version history
+
+## Architecture Design
+
+### High-Level Architecture
+
+```
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│                 │     │                  │     │                 │
+│  Next.js        │────▶│  tRPC Backend    │────▶│  Python AI      │
+│  Frontend       │     │  (Node.js)       │     │  Service        │
+│                 │     │                  │     │  (FastAPI)      │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+         │                       │                         │
+         │                       │                         │
+         ▼                       ▼                         ▼
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  Redux Store    │     │  Supabase DB     │     │  Redis Cache    │
+│  (UI State)     │     │  (Translations)  │     │  (Suggestions)  │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+### Component Breakdown
+
+1. **Frontend Layer**
+   - React components for suggestion UI
+   - Redux slice for suggestion state management
+   - tRPC hooks for API calls
+
+2. **Backend Services**
+   - tRPC router for suggestion endpoints
+   - Translation suggestion service
+   - Context builder service
+   - Cache management
+
+3. **AI Service (Python)**
+   - FastAPI server for model inference
+   - Model manager for loading/switching models
+   - Inference pipeline with batching
+   - Response caching layer
+
+## Model Selection Strategy
+
+### Primary Models
+
+1. **MarianMT (Facebook)**
+   - Pros: Fast, lightweight, 1200+ language pairs
+   - Cons: Lower quality for complex translations
+   - Use case: Default for common language pairs
+
+2. **M2M100 (Facebook)**
+   - Pros: Multilingual, no English pivot needed
+   - Cons: Larger model size, slower inference
+   - Use case: Direct translation between non-English pairs
+
+3. **mBART (Facebook)**
+   - Pros: High quality, context-aware
+   - Cons: Resource intensive
+   - Use case: Premium translations
+
+4. **GPT-3.5/4 (OpenAI)**
+   - Pros: Excellent quality, understands context
+   - Cons: API costs, latency
+   - Use case: Fallback for complex translations
+
+### Model Selection Logic
+
+```python
+def select_model(source_lang: str, target_lang: str, context_length: int):
+    # Check if direct MarianMT model exists
+    if has_marian_model(source_lang, target_lang):
+        return MarianMTModel(source_lang, target_lang)
+    
+    # For non-English pairs without direct model
+    if source_lang != "en" and target_lang != "en":
+        return M2M100Model()
+    
+    # For long context or specific domains
+    if context_length > 100 or requires_domain_knowledge():
+        return GPTModel()
+    
+    # Default fallback
+    return mBARTModel()
+```
+
+## Backend Implementation
+
+### 1. Database Schema Updates
+
+```sql
+-- New table for caching suggestions
+CREATE TABLE ai_translation_suggestions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    translation_key_id UUID REFERENCES translation_keys(id),
+    source_language_id UUID REFERENCES languages(id),
+    target_language_id UUID REFERENCES languages(id),
+    source_text TEXT NOT NULL,
+    suggested_text TEXT NOT NULL,
+    model_name VARCHAR(255) NOT NULL,
+    confidence_score FLOAT,
+    context_used JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP + INTERVAL '7 days'
+);
+
+-- Index for efficient lookups
+CREATE INDEX idx_suggestions_lookup ON ai_translation_suggestions(
+    translation_key_id, 
+    source_language_id, 
+    target_language_id,
+    expires_at
+);
+
+-- Activity log entry for AI suggestions
+ALTER TYPE activity_type ADD VALUE 'ai_suggestion_generated';
+ALTER TYPE activity_type ADD VALUE 'ai_suggestion_applied';
+```
+
+### 2. Python AI Service
+
+#### Service Structure
+```
+ai-service/
+├── app/
+│   ├── __init__.py
+│   ├── main.py              # FastAPI app
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── base.py          # Abstract model interface
+│   │   ├── marian.py        # MarianMT implementation
+│   │   ├── m2m100.py        # M2M100 implementation
+│   │   └── openai.py        # OpenAI implementation
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── inference.py     # Main inference service
+│   │   ├── model_manager.py # Model loading/caching
+│   │   └── context.py       # Context builder
+│   └── utils/
+│       ├── __init__.py
+│       ├── cache.py         # Redis caching
+│       └── monitoring.py    # Metrics/logging
+├── requirements.txt
+├── Dockerfile
+└── docker-compose.yml
+```
+
+#### Core Implementation
+
+```python
+# app/main.py
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional, List
+import redis
+import json
+
+app = FastAPI()
+redis_client = redis.Redis(decode_responses=True)
+
+class TranslationRequest(BaseModel):
+    source_text: str
+    source_language: str
+    target_language: str
+    context: Optional[str] = None
+    translation_memory: Optional[List[dict]] = None
+    model_preference: Optional[str] = None
+
+class TranslationResponse(BaseModel):
+    suggested_text: str
+    confidence_score: float
+    model_used: str
+    cached: bool = False
+
+@app.post("/translate", response_model=TranslationResponse)
+async def translate(request: TranslationRequest):
+    # Check cache first
+    cache_key = f"{request.source_language}:{request.target_language}:{hash(request.source_text)}"
+    cached = redis_client.get(cache_key)
+    if cached:
+        result = json.loads(cached)
+        result['cached'] = True
+        return TranslationResponse(**result)
+    
+    # Select and run model
+    model = model_manager.get_model(
+        request.source_language,
+        request.target_language,
+        request.model_preference
+    )
+    
+    # Build context
+    context = context_builder.build(
+        request.source_text,
+        request.context,
+        request.translation_memory
+    )
+    
+    # Generate translation
+    result = await model.translate(
+        request.source_text,
+        context
+    )
+    
+    # Cache result
+    redis_client.setex(
+        cache_key,
+        86400,  # 24 hours
+        json.dumps(result.dict())
+    )
+    
+    return result
+```
+
+### 3. Node.js Integration
+
+#### DAL Layer
+
+```typescript
+// src/lib/dal/ai-suggestions.ts
+export class AISuggestionsDAL {
+  constructor(private supabase: SupabaseClient) {}
+
+  async cacheSuggestion(data: {
+    translationKeyId: string;
+    sourceLanguageId: string;
+    targetLanguageId: string;
+    sourceText: string;
+    suggestedText: string;
+    modelName: string;
+    confidenceScore: number;
+    contextUsed: any;
+  }) {
+    const { data: suggestion, error } = await this.supabase
+      .from('ai_translation_suggestions')
+      .insert(data)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return suggestion;
+  }
+
+  async getCachedSuggestion(
+    translationKeyId: string,
+    sourceLanguageId: string,
+    targetLanguageId: string
+  ) {
+    const { data, error } = await this.supabase
+      .from('ai_translation_suggestions')
+      .select('*')
+      .eq('translation_key_id', translationKeyId)
+      .eq('source_language_id', sourceLanguageId)
+      .eq('target_language_id', targetLanguageId)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+    return data;
+  }
+}
+```
+
+#### Service Layer
+
+```typescript
+// src/lib/services/ai-suggestions.service.ts
+export class AISuggestionsService {
+  private aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+
+  constructor(
+    private suggestionsDAL: IAISuggestionsDAL,
+    private translationsDAL: ITranslationsDAL,
+    private projectsDAL: IProjectsDAL,
+    private activitiesDAL: IActivitiesDAL
+  ) {}
+
+  async getSuggestion(
+    userId: string,
+    projectId: string,
+    translationKeyId: string,
+    targetLanguageId: string
+  ): Promise<TranslationSuggestion> {
+    // Get translation key and source text
+    const translationKey = await this.translationsDAL.getTranslationKey(translationKeyId);
+    const sourceLanguageId = await this.projectsDAL.getDefaultLanguageId(projectId);
+    
+    // Check cache first
+    const cached = await this.suggestionsDAL.getCachedSuggestion(
+      translationKeyId,
+      sourceLanguageId,
+      targetLanguageId
+    );
+    
+    if (cached) {
+      return {
+        suggestedText: cached.suggested_text,
+        confidenceScore: cached.confidence_score,
+        modelUsed: cached.model_name,
+        cached: true
+      };
+    }
+
+    // Get context
+    const project = await this.projectsDAL.getProject(projectId);
+    const translationMemory = await this.getTranslationMemory(
+      projectId,
+      targetLanguageId,
+      translationKey.key
+    );
+
+    // Call AI service
+    const response = await fetch(`${this.aiServiceUrl}/translate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        source_text: translationKey.source_text,
+        source_language: sourceLanguage.code,
+        target_language: targetLanguage.code,
+        context: project.description,
+        translation_memory: translationMemory
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('AI service error');
+    }
+
+    const suggestion = await response.json();
+
+    // Cache the suggestion
+    await this.suggestionsDAL.cacheSuggestion({
+      translationKeyId,
+      sourceLanguageId,
+      targetLanguageId,
+      sourceText: translationKey.source_text,
+      suggestedText: suggestion.suggested_text,
+      modelName: suggestion.model_used,
+      confidenceScore: suggestion.confidence_score,
+      contextUsed: { project_description: project.description }
+    });
+
+    // Log activity
+    await this.activitiesDAL.logActivity({
+      projectId,
+      userId,
+      activityType: 'ai_suggestion_generated',
+      resourceType: 'translation',
+      resourceId: translationKeyId,
+      details: { model: suggestion.model_used }
+    });
+
+    return suggestion;
+  }
+
+  private async getTranslationMemory(
+    projectId: string,
+    languageId: string,
+    currentKey: string
+  ): Promise<TranslationMemoryEntry[]> {
+    // Get similar translations from the project
+    const similar = await this.translationsDAL.getSimilarTranslations(
+      projectId,
+      languageId,
+      currentKey,
+      5 // limit
+    );
+
+    return similar.map(t => ({
+      source: t.source_text,
+      target: t.content,
+      similarity: t.similarity_score
+    }));
+  }
+}
+```
+
+#### tRPC Router
+
+```typescript
+// src/server/routers/ai-suggestions.ts
+export const aiSuggestionsRouter = router({
+  getSuggestion: protectedProcedure
+    .input(z.object({
+      projectId: z.string(),
+      translationKeyId: z.string(),
+      targetLanguageId: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      // Check permissions
+      await requireProjectPermission(ctx, input.projectId, ['owner', 'translator']);
+
+      const container = ctx.container;
+      const suggestionsService = container.resolve<IAISuggestionsService>('AISuggestionsService');
+
+      return await suggestionsService.getSuggestion(
+        ctx.user.id,
+        input.projectId,
+        input.translationKeyId,
+        input.targetLanguageId
+      );
+    }),
+
+  applySuggestion: protectedProcedure
+    .input(z.object({
+      projectId: z.string(),
+      translationId: z.string(),
+      suggestedText: z.string(),
+      modelUsed: z.string()
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await requireProjectPermission(ctx, input.projectId, ['owner', 'translator']);
+
+      const container = ctx.container;
+      const translationsService = container.resolve<ITranslationsService>('TranslationsService');
+      const activitiesService = container.resolve<IActivitiesService>('ActivitiesService');
+
+      // Apply the suggestion
+      await translationsService.updateTranslation(
+        input.translationId,
+        input.suggestedText,
+        ctx.user.id
+      );
+
+      // Log activity
+      await activitiesService.logActivity({
+        projectId: input.projectId,
+        userId: ctx.user.id,
+        activityType: 'ai_suggestion_applied',
+        resourceType: 'translation',
+        resourceId: input.translationId,
+        details: { model: input.modelUsed }
+      });
+
+      return { success: true };
+    })
+});
+```
+
+## Frontend Implementation
+
+### 1. Redux Slice
+
+```typescript
+// src/store/slices/ai-suggestions.slice.ts
+interface AISuggestion {
+  translationKeyId: string;
+  suggestedText: string;
+  confidenceScore: number;
+  modelUsed: string;
+  loading: boolean;
+  error: string | null;
+}
+
+interface AISuggestionsState {
+  suggestions: Record<string, AISuggestion>;
+  globalLoading: boolean;
+}
+
+const aiSuggestionsSlice = createSlice({
+  name: 'aiSuggestions',
+  initialState: {
+    suggestions: {},
+    globalLoading: false
+  } as AISuggestionsState,
+  reducers: {
+    setSuggestionLoading: (state, action) => {
+      const { translationKeyId } = action.payload;
+      state.suggestions[translationKeyId] = {
+        ...state.suggestions[translationKeyId],
+        loading: true,
+        error: null
+      };
+    },
+    setSuggestion: (state, action) => {
+      const { translationKeyId, ...suggestion } = action.payload;
+      state.suggestions[translationKeyId] = {
+        translationKeyId,
+        ...suggestion,
+        loading: false,
+        error: null
+      };
+    },
+    setSuggestionError: (state, action) => {
+      const { translationKeyId, error } = action.payload;
+      state.suggestions[translationKeyId] = {
+        ...state.suggestions[translationKeyId],
+        loading: false,
+        error
+      };
+    },
+    clearSuggestion: (state, action) => {
+      delete state.suggestions[action.payload.translationKeyId];
+    }
+  }
+});
+```
+
+### 2. UI Components
+
+#### Translation Table Integration
+
+```typescript
+// Update src/components/projects/translations/translations-table.tsx
+const TranslationsTable = () => {
+  const { mutate: getSuggestion } = trpc.aiSuggestions.getSuggestion.useMutation();
+  const { mutate: applySuggestion } = trpc.aiSuggestions.applySuggestion.useMutation();
+  const suggestions = useSelector((state: RootState) => state.aiSuggestions.suggestions);
+  const dispatch = useDispatch();
+
+  const handleGetSuggestion = async (translationKey: TranslationKey) => {
+    dispatch(setSuggestionLoading({ translationKeyId: translationKey.id }));
+    
+    try {
+      const result = await getSuggestion({
+        projectId,
+        translationKeyId: translationKey.id,
+        targetLanguageId: selectedLanguage.id
+      });
+      
+      dispatch(setSuggestion({
+        translationKeyId: translationKey.id,
+        ...result
+      }));
+    } catch (error) {
+      dispatch(setSuggestionError({
+        translationKeyId: translationKey.id,
+        error: error.message
+      }));
+    }
+  };
+
+  const handleApplySuggestion = async (translationKey: TranslationKey) => {
+    const suggestion = suggestions[translationKey.id];
+    if (!suggestion) return;
+
+    // Update the form field
+    formik.setFieldValue(
+      `translations.${translationKey.id}`,
+      suggestion.suggestedText
+    );
+
+    // Clear the suggestion
+    dispatch(clearSuggestion({ translationKeyId: translationKey.id }));
+
+    // Track usage
+    await applySuggestion({
+      projectId,
+      translationId: translationKey.translation_id,
+      suggestedText: suggestion.suggestedText,
+      modelUsed: suggestion.modelUsed
+    });
+  };
+
+  // In the render method, for missing translations:
+  {!translation.content && (
+    <Box>
+      <EmptyTranslationInput
+        // ... existing props
+      />
+      <MissingTranslationWarning>
+        <WarningIcon /> Missing translation
+      </MissingTranslationWarning>
+      
+      {/* AI Suggestion UI */}
+      {!suggestions[translationKey.id] && (
+        <SuggestionButton
+          startIcon={<AutoAwesomeIcon />}
+          onClick={() => handleGetSuggestion(translationKey)}
+          size="small"
+        >
+          Get AI Suggestion
+        </SuggestionButton>
+      )}
+      
+      {suggestions[translationKey.id]?.loading && (
+        <SuggestionLoading>
+          <CircularProgress size={16} />
+          <Typography variant="body2">Generating...</Typography>
+        </SuggestionLoading>
+      )}
+      
+      {suggestions[translationKey.id]?.suggestedText && (
+        <SuggestionContainer>
+          <SuggestionHeader>
+            <AutoAwesomeIcon />
+            <Typography variant="body2">
+              Suggestion: {suggestions[translationKey.id].suggestedText}
+            </Typography>
+          </SuggestionHeader>
+          <Button
+            variant="contained"
+            size="small"
+            onClick={() => handleApplySuggestion(translationKey)}
+          >
+            Apply
+          </Button>
+        </SuggestionContainer>
+      )}
+    </Box>
+  )}
+```
+
+#### Styled Components
+
+```typescript
+// src/styles/projects/ai-suggestions.styles.ts
+import { styled } from '@mui/material/styles';
+import { Box, Button, Paper } from '@mui/material';
+
+export const SuggestionButton = styled(Button)(({ theme }) => ({
+  marginTop: theme.spacing(1),
+  color: theme.palette.info.main,
+  borderColor: theme.palette.info.main,
+  '&:hover': {
+    backgroundColor: theme.palette.info.light,
+    borderColor: theme.palette.info.dark,
+  }
+}));
+
+export const SuggestionContainer = styled(Paper)(({ theme }) => ({
+  marginTop: theme.spacing(1),
+  padding: theme.spacing(1.5),
+  backgroundColor: theme.palette.mode === 'dark' 
+    ? theme.palette.grey[900] 
+    : theme.palette.grey[50],
+  border: `1px solid ${theme.palette.info.light}`,
+  borderRadius: theme.shape.borderRadius,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between'
+}));
+
+export const SuggestionHeader = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(1),
+  flex: 1,
+  '& .MuiSvgIcon-root': {
+    color: theme.palette.info.main,
+    fontSize: '1.2rem'
+  }
+}));
+
+export const SuggestionLoading = styled(Box)(({ theme }) => ({
+  marginTop: theme.spacing(1),
+  display: 'flex',
+  alignItems: 'center',
+  gap: theme.spacing(1),
+  color: theme.palette.info.main
+}));
+```
+
+## API Design
+
+### REST API Endpoints (Python Service)
+
+```yaml
+openapi: 3.0.0
+info:
+  title: AI Translation Service
+  version: 1.0.0
+
+paths:
+  /translate:
+    post:
+      summary: Generate translation suggestion
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - source_text
+                - source_language
+                - target_language
+              properties:
+                source_text:
+                  type: string
+                source_language:
+                  type: string
+                  pattern: '^[a-z]{2}(-[A-Z]{2})?$'
+                target_language:
+                  type: string
+                  pattern: '^[a-z]{2}(-[A-Z]{2})?$'
+                context:
+                  type: string
+                translation_memory:
+                  type: array
+                  items:
+                    type: object
+                model_preference:
+                  type: string
+                  enum: [marian, m2m100, mbart, gpt]
+      responses:
+        200:
+          description: Translation suggestion
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggested_text:
+                    type: string
+                  confidence_score:
+                    type: number
+                  model_used:
+                    type: string
+                  cached:
+                    type: boolean
+
+  /health:
+    get:
+      summary: Health check
+      responses:
+        200:
+          description: Service is healthy
+
+  /models:
+    get:
+      summary: List available models
+      responses:
+        200:
+          description: Available models
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    supported_languages:
+                      type: array
+                      items:
+                        type: string
+                    loaded:
+                      type: boolean
+```
+
+### tRPC Endpoints
+
+```typescript
+// API Schema
+export const aiSuggestionsRouter = {
+  // Get AI suggestion for a translation
+  getSuggestion: {
+    input: {
+      projectId: string,
+      translationKeyId: string,
+      targetLanguageId: string
+    },
+    output: {
+      suggestedText: string,
+      confidenceScore: number,
+      modelUsed: string,
+      cached: boolean
+    }
+  },
+
+  // Apply suggestion and track usage
+  applySuggestion: {
+    input: {
+      projectId: string,
+      translationId: string,
+      suggestedText: string,
+      modelUsed: string
+    },
+    output: {
+      success: boolean
+    }
+  },
+
+  // Get suggestion history
+  getSuggestionHistory: {
+    input: {
+      projectId: string,
+      limit?: number,
+      offset?: number
+    },
+    output: {
+      suggestions: Array<{
+        id: string,
+        translationKey: string,
+        suggestedText: string,
+        applied: boolean,
+        modelUsed: string,
+        createdAt: Date
+      }>,
+      total: number
+    }
+  }
+};
+```
+
+## Performance Optimization
+
+### 1. Caching Strategy
+
+```python
+# Multi-level caching
+class CacheManager:
+    def __init__(self):
+        self.memory_cache = LRUCache(maxsize=1000)
+        self.redis_cache = redis.Redis()
+        
+    async def get_or_compute(self, key: str, compute_fn):
+        # L1: Memory cache
+        if key in self.memory_cache:
+            return self.memory_cache[key]
+        
+        # L2: Redis cache
+        cached = self.redis_cache.get(key)
+        if cached:
+            result = json.loads(cached)
+            self.memory_cache[key] = result
+            return result
+        
+        # Compute and cache
+        result = await compute_fn()
+        self.memory_cache[key] = result
+        self.redis_cache.setex(key, 86400, json.dumps(result))
+        return result
+```
+
+### 2. Model Loading Optimization
+
+```python
+# Lazy loading with warmup
+class ModelManager:
+    def __init__(self):
+        self.models = {}
+        self.loading_locks = {}
+        
+    async def get_model(self, model_name: str):
+        if model_name in self.models:
+            return self.models[model_name]
+        
+        # Prevent duplicate loading
+        if model_name not in self.loading_locks:
+            self.loading_locks[model_name] = asyncio.Lock()
+        
+        async with self.loading_locks[model_name]:
+            # Double-check after acquiring lock
+            if model_name in self.models:
+                return self.models[model_name]
+            
+            # Load model
+            model = await self._load_model(model_name)
+            self.models[model_name] = model
+            return model
+    
+    async def warmup_popular_models(self):
+        # Pre-load frequently used models
+        popular_pairs = [
+            ('en', 'es'), ('en', 'fr'), ('en', 'de'),
+            ('en', 'zh'), ('en', 'ja'), ('en', 'ar')
+        ]
+        for source, target in popular_pairs:
+            asyncio.create_task(
+                self.get_model(f"marian-{source}-{target}")
+            )
+```
+
+### 3. Batch Processing
+
+```python
+# Batch similar requests
+class BatchProcessor:
+    def __init__(self, batch_size=10, wait_time=0.1):
+        self.batch_size = batch_size
+        self.wait_time = wait_time
+        self.pending = []
+        self.results = {}
+        
+    async def process(self, request_id: str, request: TranslationRequest):
+        # Add to batch
+        future = asyncio.Future()
+        self.pending.append((request_id, request, future))
+        
+        # Process if batch is full
+        if len(self.pending) >= self.batch_size:
+            await self._process_batch()
+        else:
+            # Schedule batch processing
+            asyncio.create_task(self._delayed_process())
+        
+        return await future
+    
+    async def _process_batch(self):
+        if not self.pending:
+            return
+        
+        batch = self.pending
+        self.pending = []
+        
+        # Group by model
+        model_groups = defaultdict(list)
+        for req_id, req, future in batch:
+            model = self._select_model(req)
+            model_groups[model].append((req_id, req, future))
+        
+        # Process each group
+        for model, group in model_groups.items():
+            texts = [req.source_text for _, req, _ in group]
+            results = await model.batch_translate(texts)
+            
+            for (req_id, req, future), result in zip(group, results):
+                future.set_result(result)
+```
+
+## Security Considerations
+
+### 1. Input Validation
+
+```python
+# Strict input validation
+class InputValidator:
+    MAX_TEXT_LENGTH = 5000
+    ALLOWED_LANGUAGES = set(['en', 'es', 'fr', 'de', 'zh', 'ja', 'ar', ...])
+    
+    @staticmethod
+    def validate_translation_request(request: TranslationRequest):
+        # Text length
+        if len(request.source_text) > InputValidator.MAX_TEXT_LENGTH:
+            raise ValueError("Text too long")
+        
+        # Language codes
+        if request.source_language not in InputValidator.ALLOWED_LANGUAGES:
+            raise ValueError(f"Unsupported source language: {request.source_language}")
+        
+        if request.target_language not in InputValidator.ALLOWED_LANGUAGES:
+            raise ValueError(f"Unsupported target language: {request.target_language}")
+        
+        # Sanitize text
+        request.source_text = bleach.clean(request.source_text)
+        
+        return request
+```
+
+### 2. Rate Limiting
+
+```python
+# Per-user rate limiting
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+
+limiter = Limiter(key_func=get_remote_address)
+
+@app.post("/translate")
+@limiter.limit("100/hour")
+async def translate(request: TranslationRequest):
+    # ... translation logic
+```
+
+### 3. Authentication
+
+```typescript
+// Verify user permissions
+const aiSuggestionsRouter = router({
+  getSuggestion: protectedProcedure
+    .use(requireProjectPermission(['owner', 'translator']))
+    .input(getSuggestionSchema)
+    .mutation(async ({ ctx, input }) => {
+      // Additional project access verification
+      const hasAccess = await verifyProjectAccess(
+        ctx.user.id,
+        input.projectId
+      );
+      
+      if (!hasAccess) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'No access to project'
+        });
+      }
+      
+      // ... rest of implementation
+    })
+});
+```
+
+## User Experience
+
+### 1. Loading States
+
+```typescript
+// Progressive loading feedback
+const LoadingStates = {
+  INITIALIZING: "Initializing AI model...",
+  ANALYZING: "Analyzing context...",
+  TRANSLATING: "Generating translation...",
+  FINALIZING: "Finalizing suggestion..."
+};
+
+// Update loading message based on progress
+useEffect(() => {
+  if (loading) {
+    const stages = Object.values(LoadingStates);
+    let currentStage = 0;
+    
+    const interval = setInterval(() => {
+      setLoadingMessage(stages[currentStage]);
+      currentStage = (currentStage + 1) % stages.length;
+    }, 1500);
+    
+    return () => clearInterval(interval);
+  }
+}, [loading]);
+```
+
+### 2. Confidence Indicators
+
+```typescript
+// Visual confidence feedback
+const ConfidenceIndicator = ({ score }: { score: number }) => {
+  const getColor = () => {
+    if (score >= 0.8) return 'success';
+    if (score >= 0.6) return 'warning';
+    return 'error';
+  };
+  
+  return (
+    <Box display="flex" alignItems="center" gap={1}>
+      <LinearProgress
+        variant="determinate"
+        value={score * 100}
+        color={getColor()}
+        sx={{ width: 100, height: 8, borderRadius: 4 }}
+      />
+      <Typography variant="caption">
+        {Math.round(score * 100)}% confidence
+      </Typography>
+    </Box>
+  );
+};
+```
+
+### 3. Keyboard Shortcuts
+
+```typescript
+// Keyboard shortcuts for efficiency
+useKeyboardShortcut('cmd+g', () => {
+  const currentRow = getActiveTranslationRow();
+  if (currentRow && !currentRow.translation) {
+    handleGetSuggestion(currentRow.key);
+  }
+});
+
+useKeyboardShortcut('cmd+enter', () => {
+  const currentSuggestion = getCurrentSuggestion();
+  if (currentSuggestion) {
+    handleApplySuggestion(currentSuggestion);
+  }
+});
+```
+
+## Deployment Strategy
+
+### 1. Infrastructure
+
+```yaml
+# docker-compose.yml
+version: '3.8'
+
+services:
+  ai-service:
+    build: ./ai-service
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - MODEL_CACHE_DIR=/models
+      - CUDA_VISIBLE_DEVICES=0
+    volumes:
+      - model-cache:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+volumes:
+  model-cache:
+  redis-data:
+```
+
+### 2. Scaling Strategy
+
+```yaml
+# kubernetes/ai-service-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-translation-service
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ai-translation
+  template:
+    metadata:
+      labels:
+        app: ai-translation
+    spec:
+      containers:
+      - name: ai-service
+        image: linguaflow/ai-service:latest
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "2"
+            nvidia.com/gpu: "1"
+          limits:
+            memory: "8Gi"
+            cpu: "4"
+            nvidia.com/gpu: "1"
+        env:
+        - name: MODEL_CACHE_DIR
+          value: "/models"
+        volumeMounts:
+        - name: model-cache
+          mountPath: /models
+      volumes:
+      - name: model-cache
+        persistentVolumeClaim:
+          claimName: model-cache-pvc
+```
+
+### 3. Model Deployment Options
+
+```python
+# Model serving options
+class ModelServingStrategy:
+    @staticmethod
+    def get_strategy(environment: str):
+        if environment == "development":
+            return LocalModelServing()
+        elif environment == "production":
+            return TorchServeServing()
+        elif environment == "enterprise":
+            return TritonServing()
+        else:
+            return HuggingFaceInference()
+```
+
+## Monitoring and Analytics
+
+### 1. Metrics Collection
+
+```python
+# Prometheus metrics
+from prometheus_client import Counter, Histogram, Gauge
+
+translation_requests = Counter(
+    'ai_translation_requests_total',
+    'Total translation requests',
+    ['source_lang', 'target_lang', 'model']
+)
+
+translation_latency = Histogram(
+    'ai_translation_duration_seconds',
+    'Translation request duration',
+    ['model']
+)
+
+model_load_time = Histogram(
+    'ai_model_load_duration_seconds',
+    'Model loading duration',
+    ['model']
+)
+
+active_models = Gauge(
+    'ai_active_models',
+    'Number of loaded models'
+)
+
+@translation_latency.time()
+async def translate_with_metrics(request: TranslationRequest):
+    translation_requests.labels(
+        source_lang=request.source_language,
+        target_lang=request.target_language,
+        model=selected_model
+    ).inc()
+    
+    return await translate(request)
+```
+
+### 2. Usage Analytics
+
+```sql
+-- Analytics queries
+-- Most requested language pairs
+SELECT 
+    source_language_id,
+    target_language_id,
+    COUNT(*) as request_count
+FROM ai_translation_suggestions
+WHERE created_at > NOW() - INTERVAL '30 days'
+GROUP BY source_language_id, target_language_id
+ORDER BY request_count DESC;
+
+-- Model performance comparison
+SELECT 
+    model_name,
+    AVG(confidence_score) as avg_confidence,
+    COUNT(*) as usage_count,
+    SUM(CASE WHEN applied THEN 1 ELSE 0 END)::float / COUNT(*) as apply_rate
+FROM ai_translation_suggestions s
+JOIN ai_suggestion_applications a ON s.id = a.suggestion_id
+GROUP BY model_name;
+
+-- User adoption metrics
+SELECT 
+    DATE_TRUNC('day', created_at) as day,
+    COUNT(DISTINCT user_id) as unique_users,
+    COUNT(*) as total_suggestions,
+    SUM(CASE WHEN applied THEN 1 ELSE 0 END) as applied_count
+FROM ai_translation_suggestions
+GROUP BY day
+ORDER BY day;
+```
+
+### 3. Error Tracking
+
+```python
+# Sentry integration
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
+
+sentry_sdk.init(
+    dsn="your-sentry-dsn",
+    integrations=[FastApiIntegration()],
+    traces_sample_rate=0.1,
+    profiles_sample_rate=0.1,
+)
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    # Log to Sentry with context
+    with sentry_sdk.push_scope() as scope:
+        scope.set_context("translation_request", {
+            "source_text": request.source_text[:100],
+            "source_lang": request.source_language,
+            "target_lang": request.target_language,
+            "model": getattr(exc, 'model', 'unknown')
+        })
+        sentry_sdk.capture_exception(exc)
+    
+    return JSONResponse(
+        status_code=500,
+        content={"error": "Translation service error"}
+    )
+```
+
+## Future Enhancements
+
+### 1. Custom Model Training
+
+```python
+# Fine-tuning pipeline
+class CustomModelTrainer:
+    async def fine_tune_model(
+        self,
+        project_id: str,
+        base_model: str,
+        training_data: List[TranslationPair]
+    ):
+        # Prepare dataset
+        dataset = self.prepare_dataset(training_data)
+        
+        # Configure training
+        training_args = TrainingArguments(
+            output_dir=f"./models/custom/{project_id}",
+            num_train_epochs=3,
+            per_device_train_batch_size=16,
+            per_device_eval_batch_size=16,
+            warmup_steps=500,
+            weight_decay=0.01,
+            logging_dir='./logs',
+        )
+        
+        # Fine-tune
+        trainer = Trainer(
+            model=base_model,
+            args=training_args,
+            train_dataset=dataset["train"],
+            eval_dataset=dataset["validation"]
+        )
+        
+        trainer.train()
+        
+        # Save and register
+        trainer.save_model()
+        await self.register_custom_model(project_id, trainer.model)
+```
+
+### 2. Translation Memory Integration
+
+```typescript
+// Enhanced translation memory
+interface TranslationMemoryEntry {
+  id: string;
+  sourceText: string;
+  targetText: string;
+  context: string;
+  quality: number;
+  usageCount: number;
+  lastUsed: Date;
+}
+
+class TranslationMemoryService {
+  async findSimilarTranslations(
+    text: string,
+    sourceLang: string,
+    targetLang: string,
+    threshold: number = 0.7
+  ): Promise<TranslationMemoryEntry[]> {
+    // Use vector similarity search
+    const embedding = await this.getEmbedding(text);
+    
+    const results = await this.vectorDB.search({
+      vector: embedding,
+      filter: {
+        sourceLang,
+        targetLang
+      },
+      limit: 5,
+      minSimilarity: threshold
+    });
+    
+    return results.map(r => ({
+      ...r,
+      similarity: r.score
+    }));
+  }
+}
+```
+
+### 3. Quality Estimation
+
+```python
+# Translation quality estimation
+class QualityEstimator:
+    def __init__(self):
+        self.bert_score = load_metric("bertscore")
+        self.bleu = load_metric("bleu")
+        
+    async def estimate_quality(
+        self,
+        source: str,
+        translation: str,
+        reference: Optional[str] = None
+    ) -> QualityMetrics:
+        metrics = {}
+        
+        # Fluency check using language model
+        fluency_score = await self.check_fluency(translation)
+        metrics['fluency'] = fluency_score
+        
+        # If reference available, calculate similarity
+        if reference:
+            bert_scores = self.bert_score.compute(
+                predictions=[translation],
+                references=[reference],
+                lang=target_lang
+            )
+            metrics['bert_score'] = bert_scores['f1'][0]
+            
+            bleu_score = self.bleu.compute(
+                predictions=[translation],
+                references=[[reference]]
+            )
+            metrics['bleu'] = bleu_score['bleu']
+        
+        # Consistency check
+        back_translation = await self.back_translate(translation)
+        consistency = self.calculate_similarity(source, back_translation)
+        metrics['consistency'] = consistency
+        
+        return QualityMetrics(**metrics)
+```
+
+### 4. Glossary Support
+
+```typescript
+// Project-specific glossaries
+interface GlossaryEntry {
+  id: string;
+  projectId: string;
+  sourceterm: string;
+  targetTerm: string;
+  context?: string;
+  caseSensitive: boolean;
+}
+
+class GlossaryService {
+  async applyGlossary(
+    text: string,
+    glossary: GlossaryEntry[],
+    language: string
+  ): Promise<string> {
+    let processed = text;
+    
+    for (const entry of glossary) {
+      const regex = new RegExp(
+        entry.caseSensitive ? entry.sourceterm : entry.sourceterm,
+        entry.caseSensitive ? 'g' : 'gi'
+      );
+      
+      processed = processed.replace(regex, entry.targetTerm);
+    }
+    
+    return processed;
+  }
+}
+```
+
+### 5. Collaborative Learning
+
+```python
+# Learn from user corrections
+class CollaborativeLearner:
+    async def learn_from_correction(
+        self,
+        original_suggestion: str,
+        user_correction: str,
+        context: TranslationContext
+    ):
+        # Store correction
+        await self.store_correction({
+            'original': original_suggestion,
+            'corrected': user_correction,
+            'context': context,
+            'timestamp': datetime.now()
+        })
+        
+        # Update model preferences
+        if self.should_update_preferences(original_suggestion, user_correction):
+            await self.update_model_preferences(
+                context.source_lang,
+                context.target_lang,
+                context.domain
+            )
+        
+        # Schedule fine-tuning if threshold reached
+        correction_count = await self.get_correction_count(context.project_id)
+        if correction_count >= self.FINE_TUNE_THRESHOLD:
+            await self.schedule_fine_tuning(context.project_id)
+```
+
+## Conclusion
+
+This AI-powered translation suggestion feature will significantly enhance translator productivity while maintaining quality through human oversight. The architecture is designed to be scalable, performant, and extensible for future enhancements. The implementation prioritizes user experience with real-time suggestions, confidence scoring, and seamless integration into the existing translation workflow. 
