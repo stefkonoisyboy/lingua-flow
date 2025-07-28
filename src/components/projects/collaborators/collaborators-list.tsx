@@ -15,6 +15,7 @@ import { CollaboratorsListTableContainer } from "@/styles/projects/collaborators
 import { useAuth } from "@/hooks/use-auth";
 import { hasPermission, UserRole } from "@/utils/permissions";
 import { EditMemberRoleDialog } from "./edit-member-role-dialog";
+import { RemoveMemberDialog } from "./remove-member-dialog";
 
 export const CollaboratorsList = ({
   members,
@@ -27,6 +28,7 @@ export const CollaboratorsList = ({
 }) => {
   const { user } = useAuth();
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false);
   const [selectedMember, setSelectedMember] =
     useState<ProjectMemberWithProfile | null>(null);
 
@@ -40,6 +42,16 @@ export const CollaboratorsList = ({
 
   const handleEditDialogClose = () => {
     setEditDialogOpen(false);
+    setSelectedMember(null);
+  };
+
+  const handleRemoveClick = (member: ProjectMemberWithProfile) => {
+    setSelectedMember(member);
+    setRemoveDialogOpen(true);
+  };
+
+  const handleRemoveDialogClose = () => {
+    setRemoveDialogOpen(false);
     setSelectedMember(null);
   };
 
@@ -115,6 +127,7 @@ export const CollaboratorsList = ({
                           aria-label="delete"
                           color="error"
                           disabled={user?.id === member.user_id}
+                          onClick={() => handleRemoveClick(member)}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
@@ -129,6 +142,12 @@ export const CollaboratorsList = ({
       <EditMemberRoleDialog
         open={editDialogOpen}
         onClose={handleEditDialogClose}
+        member={selectedMember}
+      />
+
+      <RemoveMemberDialog
+        open={removeDialogOpen}
+        onClose={handleRemoveDialogClose}
         member={selectedMember}
       />
     </CollaboratorsListTableContainer>
