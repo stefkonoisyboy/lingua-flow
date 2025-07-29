@@ -23,11 +23,11 @@ class ModelRegistry:
             "en-fr": "Helsinki-NLP/opus-mt-en-fr", 
             "en-de": "Helsinki-NLP/opus-mt-en-de",
             "en-it": "Helsinki-NLP/opus-mt-en-it",
-            "en-pt": "Helsinki-NLP/opus-mt-en-pt",
+            "en-pt": "Helsinki-NLP/opus-mt-tc-big-en-pt",
             "en-ru": "Helsinki-NLP/opus-mt-en-ru",
             "en-zh": "Helsinki-NLP/opus-mt-en-zh",
-            "en-ja": "Helsinki-NLP/opus-mt-en-ja",
-            "en-ko": "Helsinki-NLP/opus-mt-en-ko",
+            "en-ja": "Helsinki-NLP/opus-mt-en-jap",
+            "en-ko": "Helsinki-NLP/opus-mt-tc-big-en-ko",
             "en-ar": "Helsinki-NLP/opus-mt-en-ar",
         }
         
