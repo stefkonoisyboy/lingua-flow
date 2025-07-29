@@ -102,28 +102,34 @@ class ErrorHandler:
                 raise ValidationError(f"Text contains potentially harmful content: {pattern}", "source_text")
     
     def validate_translation_request(self, source_text: str, source_lang: str, target_lang: str, context: str = "") -> None:
-        """Validate complete translation request"""
-        try:
-            # Validate text
-            self.validate_text(source_text)
-            
-            # Validate language codes
-            self.validate_language_code(source_lang, "source_language")
-            self.validate_language_code(target_lang, "target_language")
-            
-            # Check if source and target are different
-            if source_lang == target_lang:
-                raise ValidationError("Source and target languages cannot be the same")
-            
-            # Validate context length
-            if context and len(context) > 2000:
-                raise ValidationError("Context too long (max 2000 characters)", "context")
-                
-        except ValidationError:
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected validation error: {str(e)}")
-            raise ValidationError("Invalid request format")
+        """Validate translation request parameters"""
+        # Validate source text
+        self.validate_text(source_text)
+        
+        # Validate source language (must be English)
+        if source_lang != "en":
+            raise ValidationError(
+                f"Source language must be 'en' (English), got '{source_lang}'",
+                "source_language"
+            )
+        
+        # Validate target language
+        self.validate_language_code(target_lang, "target_language")
+        
+        # Check if target language is supported
+        supported_languages = ["es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar"]
+        if target_lang not in supported_languages:
+            raise ValidationError(
+                f"Target language '{target_lang}' is not supported. Supported languages: {', '.join(supported_languages)}",
+                "target_language"
+            )
+        
+        # Validate context length
+        if len(context) > 1000:
+            raise ValidationError(
+                "Context too long (max 1000 characters)",
+                "context"
+            )
     
     def handle_model_load_error(self, model_name: str, error: Exception) -> ModelLoadError:
         """Handle model loading errors"""

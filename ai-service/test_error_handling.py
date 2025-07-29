@@ -26,15 +26,16 @@ async def test_error_handling():
     test_cases = [
         # Valid cases
         ("Hello", "en", "es", "Valid request"),
-        ("Bonjour", "fr", "en", "Valid request"),
+        ("Bonjour", "en", "fr", "Valid request"),
         
         # Invalid cases
         ("", "en", "es", "Empty text"),
         ("A" * 6000, "en", "es", "Text too long"),
-        ("Hello", "invalid", "es", "Invalid source language"),
+        ("Hello", "es", "en", "Invalid source language (not English)"),
         ("Hello", "en", "invalid", "Invalid target language"),
         ("Hello", "en", "en", "Same source and target"),
         ("<script>alert('xss')</script>", "en", "es", "Harmful content"),
+        ("Hello", "en", "xx", "Unsupported target language"),
     ]
     
     for text, source, target, description in test_cases:
@@ -51,16 +52,23 @@ async def test_error_handling():
     print("\n🤖 Testing Model Loading Error Handling:")
     
     # Test non-existent model
-    model = await model_registry.get_model("xx", "yy")
+    model = await model_registry.get_model("en", "xx")
     if model is None:
-        print("    ✅ PASS: Model loading error handled - Model returned None for non-existent model")
+        print("    ✅ PASS: Model loading error handled - Model returned None for unsupported target")
     else:
-        print("    ❌ FAIL: Should have returned None for non-existent model")
+        print("    ❌ FAIL: Should have returned None for unsupported target")
+    
+    # Test invalid source language
+    model = await model_registry.get_model("es", "en")
+    if model is None:
+        print("    ✅ PASS: Model loading error handled - Model returned None for invalid source")
+    else:
+        print("    ❌ FAIL: Should have returned None for invalid source")
     
     # Test invalid model name (this should raise an exception)
     try:
         # This should fail because the model name doesn't exist
-        model_name = "Helsinki-NLP/opus-mt-xx-yy"
+        model_name = "Helsinki-NLP/opus-mt-en-xx"
         from transformers import MarianTokenizer
         MarianTokenizer.from_pretrained(model_name)
         print("    ❌ FAIL: Should have failed for invalid model name")
@@ -71,17 +79,16 @@ async def test_error_handling():
     print("\n🌐 Testing Translation Error Handling:")
     
     try:
-        # Try translation with unsupported language pair
-        result = await model_registry.translate_with_fallback(
+        # Try translation with unsupported target language
+        result = await model_registry.translate(
             text="Hello",
-            source_lang="xx",
-            target_lang="yy"
+            target_lang="xx"
         )
         
         if result["translation"] is None:
-            print("    ✅ PASS: Translation error handled - No translation path available")
+            print("    ✅ PASS: Translation error handled - Unsupported target language")
         else:
-            print("    ❌ FAIL: Should have failed for unsupported language pair")
+            print("    ❌ FAIL: Should have failed for unsupported target language")
             
     except Exception as e:
         print(f"    ✅ PASS: Translation error handled - {str(e)}")

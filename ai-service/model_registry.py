@@ -1,9 +1,9 @@
 """
-Model Registry for dynamic model loading and selection
+Model Registry for English-to-other-language translations
 """
 
 import asyncio
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List
 from transformers import MarianMTModel, MarianTokenizer, pipeline
 import torch
 import logging
@@ -11,15 +11,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 class ModelRegistry:
-    """Manages loading and selection of translation models"""
+    """Manages loading and selection of English-to-other-language translation models"""
     
     def __init__(self):
         self.loaded_models: Dict[str, any] = {}
         self.loading_locks: Dict[str, asyncio.Lock] = {}
         
-        # Popular MarianMT models with their language pairs
+        # English to supported languages only
         self.available_models = {
-            # English to other languages
             "en-es": "Helsinki-NLP/opus-mt-en-es",
             "en-fr": "Helsinki-NLP/opus-mt-en-fr", 
             "en-de": "Helsinki-NLP/opus-mt-en-de",
@@ -28,82 +27,25 @@ class ModelRegistry:
             "en-ru": "Helsinki-NLP/opus-mt-en-ru",
             "en-zh": "Helsinki-NLP/opus-mt-en-zh",
             "en-ja": "Helsinki-NLP/opus-mt-en-ja",
-            "en-ar": "Helsinki-NLP/opus-mt-en-ar",
             "en-ko": "Helsinki-NLP/opus-mt-en-ko",
-            "en-hi": "Helsinki-NLP/opus-mt-en-hi",
-            "en-tr": "Helsinki-NLP/opus-mt-en-tr",
-            "en-nl": "Helsinki-NLP/opus-mt-en-nl",
-            "en-pl": "Helsinki-NLP/opus-mt-en-pl",
-            "en-sv": "Helsinki-NLP/opus-mt-en-sv",
-            "en-da": "Helsinki-NLP/opus-mt-en-da",
-            "en-no": "Helsinki-NLP/opus-mt-en-no",
-            "en-fi": "Helsinki-NLP/opus-mt-en-fi",
-            "en-hu": "Helsinki-NLP/opus-mt-en-hu",
-            "en-cs": "Helsinki-NLP/opus-mt-en-cs",
-            "en-ro": "Helsinki-NLP/opus-mt-en-ro",
-            "en-bg": "Helsinki-NLP/opus-mt-en-bg",
-            "en-sk": "Helsinki-NLP/opus-mt-en-sk",
-            "en-sl": "Helsinki-NLP/opus-mt-en-sl",
-            "en-et": "Helsinki-NLP/opus-mt-en-et",
-            "en-lv": "Helsinki-NLP/opus-mt-en-lv",
-            "en-lt": "Helsinki-NLP/opus-mt-en-lt",
-            "en-mt": "Helsinki-NLP/opus-mt-en-mt",
-            
-            # Other languages to English
-            "es-en": "Helsinki-NLP/opus-mt-es-en",
-            "fr-en": "Helsinki-NLP/opus-mt-fr-en",
-            "de-en": "Helsinki-NLP/opus-mt-de-en",
-            "it-en": "Helsinki-NLP/opus-mt-it-en",
-            "pt-en": "Helsinki-NLP/opus-mt-pt-en",
-            "ru-en": "Helsinki-NLP/opus-mt-ru-en",
-            "zh-en": "Helsinki-NLP/opus-mt-zh-en",
-            "ja-en": "Helsinki-NLP/opus-mt-ja-en",
-            "ar-en": "Helsinki-NLP/opus-mt-ar-en",
-            "ko-en": "Helsinki-NLP/opus-mt-ko-en",
-            "hi-en": "Helsinki-NLP/opus-mt-hi-en",
-            "tr-en": "Helsinki-NLP/opus-mt-tr-en",
-            "nl-en": "Helsinki-NLP/opus-mt-nl-en",
-            "pl-en": "Helsinki-NLP/opus-mt-pl-en",
-            "sv-en": "Helsinki-NLP/opus-mt-sv-en",
-            "da-en": "Helsinki-NLP/opus-mt-da-en",
-            "no-en": "Helsinki-NLP/opus-mt-no-en",
-            "fi-en": "Helsinki-NLP/opus-mt-fi-en",
-            "hu-en": "Helsinki-NLP/opus-mt-hu-en",
-            "cs-en": "Helsinki-NLP/opus-mt-cs-en",
-            "ro-en": "Helsinki-NLP/opus-mt-ro-en",
-            "bg-en": "Helsinki-NLP/opus-mt-bg-en",
-            "sk-en": "Helsinki-NLP/opus-mt-sk-en",
-            "sl-en": "Helsinki-NLP/opus-mt-sl-en",
-            "et-en": "Helsinki-NLP/opus-mt-et-en",
-            "lv-en": "Helsinki-NLP/opus-mt-lv-en",
-            "lt-en": "Helsinki-NLP/opus-mt-lt-en",
-            "mt-en": "Helsinki-NLP/opus-mt-mt-en",
-            
-            # Some direct pairs (non-English)
-            "fr-de": "Helsinki-NLP/opus-mt-fr-de",
-            "de-fr": "Helsinki-NLP/opus-mt-de-fr",
-            "es-fr": "Helsinki-NLP/opus-mt-es-fr",
-            "fr-es": "Helsinki-NLP/opus-mt-fr-es",
-            "de-es": "Helsinki-NLP/opus-mt-de-es",
-            "es-de": "Helsinki-NLP/opus-mt-es-de",
-            "it-fr": "Helsinki-NLP/opus-mt-it-fr",
-            "fr-it": "Helsinki-NLP/opus-mt-fr-it",
-            "pt-es": "Helsinki-NLP/opus-mt-pt-es",
-            "es-pt": "Helsinki-NLP/opus-mt-es-pt",
+            "en-ar": "Helsinki-NLP/opus-mt-en-ar",
         }
         
-        # Fallback strategy: use English as pivot
-        self.fallback_strategy = {
-            "pivot_language": "en",
-            "max_pivot_steps": 2  # Maximum number of pivot translations
-        }
+        # Supported target languages
+        self.supported_languages = [
+            "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar"
+        ]
     
     def get_model_key(self, source_lang: str, target_lang: str) -> str:
         """Generate model key for language pair"""
         return f"{source_lang}-{target_lang}"
     
     def is_model_available(self, source_lang: str, target_lang: str) -> bool:
-        """Check if a direct model is available for the language pair"""
+        """Check if a model is available for the language pair"""
+        # Only support English to other languages
+        if source_lang != "en":
+            return False
+        
         model_key = self.get_model_key(source_lang, target_lang)
         return model_key in self.available_models
     
@@ -111,47 +53,32 @@ class ModelRegistry:
         """Get list of available language pairs"""
         return list(self.available_models.keys())
     
-    def find_translation_path(self, source_lang: str, target_lang: str) -> List[Tuple[str, str]]:
-        """
-        Find the best translation path between languages
-        Returns list of (source, target) pairs for the translation path
-        """
-        # Direct translation
-        if self.is_model_available(source_lang, target_lang):
-            return [(source_lang, target_lang)]
+    def get_supported_target_languages(self) -> List[str]:
+        """Get list of supported target languages"""
+        return self.supported_languages.copy()
+    
+    def validate_language_pair(self, source_lang: str, target_lang: str) -> bool:
+        """Validate if the language pair is supported"""
+        if source_lang != "en":
+            return False
         
-        # Try pivot through English
-        if source_lang != "en" and target_lang != "en":
-            if (self.is_model_available(source_lang, "en") and 
-                self.is_model_available("en", target_lang)):
-                return [(source_lang, "en"), ("en", target_lang)]
-        
-        # Try other common pivot languages
-        pivot_languages = ["fr", "de", "es"]
-        for pivot in pivot_languages:
-            if (pivot != source_lang and pivot != target_lang and
-                self.is_model_available(source_lang, pivot) and 
-                self.is_model_available(pivot, target_lang)):
-                return [(source_lang, pivot), (pivot, target_lang)]
-        
-        # No path found
-        return []
+        return target_lang in self.supported_languages
     
     async def get_model(self, source_lang: str, target_lang: str) -> Optional[any]:
         """
         Get or load a model for the specified language pair
         Returns the model pipeline or None if not available
         """
+        # Validate language pair
+        if not self.validate_language_pair(source_lang, target_lang):
+            logger.warning(f"Unsupported language pair: {source_lang}-{target_lang}")
+            return None
+        
         model_key = self.get_model_key(source_lang, target_lang)
         
         # Check if model is already loaded
         if model_key in self.loaded_models:
             return self.loaded_models[model_key]
-        
-        # Check if model is available
-        if not self.is_model_available(source_lang, target_lang):
-            logger.warning(f"No direct model available for {source_lang}-{target_lang}")
-            return None
         
         # Create lock for this model if it doesn't exist
         if model_key not in self.loading_locks:
@@ -190,66 +117,57 @@ class ModelRegistry:
                 logger.error(f"Failed to load model {model_name}: {str(e)}")
                 return None
     
-    async def translate_with_fallback(
+    async def translate(
         self, 
         text: str, 
-        source_lang: str, 
         target_lang: str,
         context: str = ""
     ) -> Dict[str, any]:
         """
-        Translate text with fallback strategy
+        Translate English text to target language
         Returns translation result with metadata
         """
-        # Try direct translation first
-        direct_model = await self.get_model(source_lang, target_lang)
-        if direct_model:
-            try:
-                result = direct_model(text)
-                return {
-                    "translation": result[0]["translation_text"],
-                    "model_used": f"direct-{source_lang}-{target_lang}",
-                    "confidence": 0.9,  # High confidence for direct translation
-                    "method": "direct"
-                }
-            except Exception as e:
-                logger.error(f"Direct translation failed: {str(e)}")
+        source_lang = "en"  # Always English
         
-        # Try pivot translation
-        translation_path = self.find_translation_path(source_lang, target_lang)
-        if translation_path:
-            try:
-                current_text = text
-                models_used = []
-                
-                for step_source, step_target in translation_path:
-                    step_model = await self.get_model(step_source, step_target)
-                    if not step_model:
-                        raise Exception(f"Model not available for {step_source}-{step_target}")
-                    
-                    result = step_model(current_text)
-                    current_text = result[0]["translation_text"]
-                    models_used.append(f"{step_source}-{step_target}")
-                
-                return {
-                    "translation": current_text,
-                    "model_used": " -> ".join(models_used),
-                    "confidence": 0.7,  # Lower confidence for pivot translation
-                    "method": "pivot",
-                    "steps": len(translation_path)
-                }
-                
-            except Exception as e:
-                logger.error(f"Pivot translation failed: {str(e)}")
+        # Validate target language
+        if not self.validate_language_pair(source_lang, target_lang):
+            return {
+                "translation": None,
+                "model_used": None,
+                "confidence": 0.0,
+                "method": "failed",
+                "error": f"Unsupported target language: {target_lang}"
+            }
         
-        # No translation possible
-        return {
-            "translation": None,
-            "model_used": None,
-            "confidence": 0.0,
-            "method": "failed",
-            "error": f"No translation path available for {source_lang}-{target_lang}"
-        }
+        # Get model
+        model = await self.get_model(source_lang, target_lang)
+        if not model:
+            return {
+                "translation": None,
+                "model_used": None,
+                "confidence": 0.0,
+                "method": "failed",
+                "error": f"Model not available for {source_lang}-{target_lang}"
+            }
+        
+        # Perform translation
+        try:
+            result = model(text)
+            return {
+                "translation": result[0]["translation_text"],
+                "model_used": f"en-{target_lang}",
+                "confidence": 0.9,  # High confidence for direct translation
+                "method": "direct"
+            }
+        except Exception as e:
+            logger.error(f"Translation failed: {str(e)}")
+            return {
+                "translation": None,
+                "model_used": f"en-{target_lang}",
+                "confidence": 0.0,
+                "method": "failed",
+                "error": str(e)
+            }
     
     def get_model_info(self) -> Dict[str, any]:
         """Get information about loaded models"""
@@ -257,29 +175,26 @@ class ModelRegistry:
             "loaded_models": list(self.loaded_models.keys()),
             "available_models": len(self.available_models),
             "total_loaded": len(self.loaded_models),
-            "available_pairs": self.get_available_language_pairs()
+            "available_pairs": self.get_available_language_pairs(),
+            "supported_target_languages": self.get_supported_target_languages()
         }
     
     async def preload_popular_models(self) -> None:
         """Preload popular models in background"""
-        popular_pairs = [
-            "en-es", "en-fr", "en-de", "en-it", "en-pt",
-            "es-en", "fr-en", "de-en", "it-en", "pt-en"
-        ]
+        popular_targets = ["es", "fr", "de", "it", "pt"]
         
         logger.info("Preloading popular models...")
         tasks = []
         
-        for pair in popular_pairs:
-            source, target = pair.split("-")
-            task = asyncio.create_task(self.get_model(source, target))
+        for target in popular_targets:
+            task = asyncio.create_task(self.get_model("en", target))
             tasks.append(task)
         
         # Wait for all models to load
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         successful = sum(1 for r in results if r is not None)
-        logger.info(f"Preloaded {successful}/{len(popular_pairs)} popular models")
+        logger.info(f"Preloaded {successful}/{len(popular_targets)} popular models")
     
     async def cleanup(self) -> None:
         """Clean up loaded models"""
