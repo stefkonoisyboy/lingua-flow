@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+pydantic
+transformers
+torch
+openai
+python-dotenv
+cachetools
+accelerate
+sentencepiece
+protobuf
