@@ -15,7 +15,9 @@ export type ActivityType =
   | "invitation_cancelled"
   | "integration_connected"
   | "integration_disconnected"
-  | "sync_completed";
+  | "sync_completed"
+  | "ai_suggestion_generated"
+  | "ai_suggestion_applied";
 
 export type ActivityDetails = {
   action?: string;
