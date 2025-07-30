@@ -57,12 +57,17 @@ async def shutdown_event():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint with cache info"""
+    """Health check endpoint with cache info and model status"""
     cache_stats = cache.get_stats()
+    model_info = model_registry.get_model_info()
+    
     return {
         "status": "healthy",
-        "service": "ai-translation",
+        "service": "ai-translation-hybrid",
         "models_loaded": len(model_registry.loaded_models),
+        "local_models": model_info["local_models"],
+        "api_models": model_info["api_models"],
+        "hf_token_configured": bool(model_registry.hf_token),
         "cache": {
             "size": cache_stats["cache_size"],
             "hit_rate": cache_stats["hit_rate"],
@@ -74,6 +79,25 @@ async def health_check():
 async def get_models():
     """Get information about available models"""
     return model_registry.get_model_info()
+
+@app.get("/models/local")
+async def get_local_models():
+    """Get information about local models only"""
+    model_info = model_registry.get_model_info()
+    return {
+        "local_models": model_info["local_languages"],
+        "loaded_models": model_info["loaded_models"],
+        "total_loaded": model_info["total_loaded"]
+    }
+
+@app.get("/models/api")
+async def get_api_models():
+    """Get information about API models only"""
+    model_info = model_registry.get_model_info()
+    return {
+        "api_models": model_info["api_languages"],
+        "hf_token_configured": bool(model_registry.hf_token)
+    }
 
 @app.get("/cache/stats")
 async def get_cache_stats():
@@ -139,10 +163,10 @@ async def translate(request: TranslationRequest):
             # Cache the successful result
             try:
                 cache.set(
-                    request.source_text,
+        request.source_text,
                     request.context or "",
                     "en",  # Always English
-                    request.target_language,
+        request.target_language,
                     "marian",
                     result["translation"],
                     result["confidence"],

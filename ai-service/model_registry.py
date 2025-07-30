@@ -1,28 +1,40 @@
 """
-Model Registry for English-to-other-language translations
+Model Registry for hybrid translation (local models + HuggingFace API)
 """
 
 import asyncio
+import requests
+import logging
 from typing import Dict, Optional, List
 from transformers import MarianMTModel, MarianTokenizer, pipeline
 import torch
-import logging
+import os
+from config import HUGGINGFACE_TOKEN
 
 logger = logging.getLogger(__name__)
 
 class ModelRegistry:
-    """Manages loading and selection of English-to-other-language translation models"""
+    """Manages local models and HuggingFace API for translations"""
     
     def __init__(self):
         self.loaded_models: Dict[str, any] = {}
         self.loading_locks: Dict[str, asyncio.Lock] = {}
         
-        # English to supported languages only
-        self.available_models = {
-            "en-es": "Helsinki-NLP/opus-mt-en-es",
-            "en-fr": "Helsinki-NLP/opus-mt-en-fr", 
+        # HuggingFace API token
+        self.hf_token = HUGGINGFACE_TOKEN
+        if not self.hf_token:
+            logger.warning("HUGGINGFACE_TOKEN not found in environment variables")
+        
+        # Only German and Italian use local models
+        self.local_models = {
             "en-de": "Helsinki-NLP/opus-mt-en-de",
             "en-it": "Helsinki-NLP/opus-mt-en-it",
+        }
+        
+        # API-based models (8 languages)
+        self.api_models = {
+            "en-es": "Helsinki-NLP/opus-mt-en-es",
+            "en-fr": "Helsinki-NLP/opus-mt-en-fr",
             "en-pt": "Helsinki-NLP/opus-mt-tc-big-en-pt",
             "en-ru": "Helsinki-NLP/opus-mt-en-ru",
             "en-zh": "Helsinki-NLP/opus-mt-en-zh",
@@ -31,7 +43,7 @@ class ModelRegistry:
             "en-ar": "Helsinki-NLP/opus-mt-en-ar",
         }
         
-        # Supported target languages
+        # All supported target languages
         self.supported_languages = [
             "es", "fr", "de", "it", "pt", "ru", "zh", "ja", "ko", "ar"
         ]
@@ -47,11 +59,11 @@ class ModelRegistry:
             return False
         
         model_key = self.get_model_key(source_lang, target_lang)
-        return model_key in self.available_models
+        return model_key in self.local_models or model_key in self.api_models
     
     def get_available_language_pairs(self) -> List[str]:
         """Get list of available language pairs"""
-        return list(self.available_models.keys())
+        return list(self.local_models.keys()) + list(self.api_models.keys())
     
     def get_supported_target_languages(self) -> List[str]:
         """Get list of supported target languages"""
@@ -64,14 +76,23 @@ class ModelRegistry:
         
         return target_lang in self.supported_languages
     
+    def is_local_model(self, source_lang: str, target_lang: str) -> bool:
+        """Check if this language pair uses local models"""
+        model_key = self.get_model_key(source_lang, target_lang)
+        return model_key in self.local_models
+    
+    def is_api_model(self, source_lang: str, target_lang: str) -> bool:
+        """Check if this language pair uses API models"""
+        model_key = self.get_model_key(source_lang, target_lang)
+        return model_key in self.api_models
+    
     async def get_model(self, source_lang: str, target_lang: str) -> Optional[any]:
         """
-        Get or load a model for the specified language pair
+        Get or load a local model for the specified language pair
         Returns the model pipeline or None if not available
         """
-        # Validate language pair
-        if not self.validate_language_pair(source_lang, target_lang):
-            logger.warning(f"Unsupported language pair: {source_lang}-{target_lang}")
+        # Only local models need to be loaded
+        if not self.is_local_model(source_lang, target_lang):
             return None
         
         model_key = self.get_model_key(source_lang, target_lang)
@@ -92,8 +113,8 @@ class ModelRegistry:
             
             # Load the model
             try:
-                model_name = self.available_models[model_key]
-                logger.info(f"Loading model: {model_name}")
+                model_name = self.local_models[model_key]
+                logger.info(f"Loading local model: {model_name}")
                 
                 # Load model and tokenizer
                 model = MarianMTModel.from_pretrained(model_name)
@@ -110,12 +131,82 @@ class ModelRegistry:
                 # Store loaded model
                 self.loaded_models[model_key] = pipeline_model
                 
-                logger.info(f"Successfully loaded model: {model_name}")
+                logger.info(f"Successfully loaded local model: {model_name}")
                 return pipeline_model
                 
             except Exception as e:
-                logger.error(f"Failed to load model {model_name}: {str(e)}")
+                logger.error(f"Failed to load local model {model_name}: {str(e)}")
                 return None
+    
+    async def translate_with_api(self, text: str, target_lang: str) -> Dict[str, any]:
+        """Translate using HuggingFace API"""
+        if not self.hf_token:
+            return {
+                "translation": None,
+                "model_used": None,
+                "confidence": 0.0,
+                "method": "failed",
+                "error": "HuggingFace API token not configured"
+            }
+        
+        model_key = self.get_model_key("en", target_lang)
+        model_name = self.api_models.get(model_key)
+        
+        if not model_name:
+            return {
+                "translation": None,
+                "model_used": None,
+                "confidence": 0.0,
+                "method": "failed",
+                "error": f"API model not available for en-{target_lang}"
+            }
+        
+        try:
+            logger.info(f"Translating via API: {model_name}")
+            
+            response = requests.post(
+                f"https://api-inference.huggingface.co/models/{model_name}",
+                headers={"Authorization": f"Bearer {self.hf_token}"},
+                json={"inputs": text},
+                timeout=30
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                if isinstance(result, list) and len(result) > 0:
+                    translation = result[0].get("translation_text", "")
+                    return {
+                        "translation": translation,
+                        "model_used": f"api-{model_name}",
+                        "confidence": 0.85,  # API confidence
+                        "method": "api"
+                    }
+                else:
+                    return {
+                        "translation": None,
+                        "model_used": f"api-{model_name}",
+                        "confidence": 0.0,
+                        "method": "failed",
+                        "error": "Invalid API response format"
+                    }
+            else:
+                return {
+                    "translation": None,
+                    "model_used": f"api-{model_name}",
+                    "confidence": 0.0,
+                    "method": "failed",
+                    "error": f"API request failed: {response.status_code}"
+                }
+                
+        except Exception as e:
+            logger.error(f"API translation failed: {str(e)}")
+            return {
+                "translation": None,
+                "model_used": f"api-{model_name}",
+                "confidence": 0.0,
+                "method": "failed",
+                "error": str(e)
+            }
     
     async def translate(
         self, 
@@ -124,7 +215,7 @@ class ModelRegistry:
         context: str = ""
     ) -> Dict[str, any]:
         """
-        Translate English text to target language
+        Translate English text to target language using hybrid approach
         Returns translation result with metadata
         """
         source_lang = "en"  # Always English
@@ -139,54 +230,69 @@ class ModelRegistry:
                 "error": f"Unsupported target language: {target_lang}"
             }
         
-        # Get model
-        model = await self.get_model(source_lang, target_lang)
-        if not model:
+        # Try local model first (German and Italian)
+        if self.is_local_model(source_lang, target_lang):
+            model = await self.get_model(source_lang, target_lang)
+            if model:
+                try:
+                    result = model(text)
+                    return {
+                        "translation": result[0]["translation_text"],
+                        "model_used": f"local-en-{target_lang}",
+                        "confidence": 0.9,  # High confidence for local translation
+                        "method": "local"
+                    }
+                except Exception as e:
+                    logger.error(f"Local translation failed: {str(e)}")
+                    return {
+                        "translation": None,
+                        "model_used": f"local-en-{target_lang}",
+                        "confidence": 0.0,
+                        "method": "failed",
+                        "error": str(e)
+                    }
+            else:
+                return {
+                    "translation": None,
+                    "model_used": None,
+                    "confidence": 0.0,
+                    "method": "failed",
+                    "error": f"Local model not available for {source_lang}-{target_lang}"
+                }
+        
+        # Try API for other languages
+        elif self.is_api_model(source_lang, target_lang):
+            return await self.translate_with_api(text, target_lang)
+        
+        # No translation method available
+        else:
             return {
                 "translation": None,
                 "model_used": None,
                 "confidence": 0.0,
                 "method": "failed",
-                "error": f"Model not available for {source_lang}-{target_lang}"
-            }
-        
-        # Perform translation
-        try:
-            result = model(text)
-            return {
-                "translation": result[0]["translation_text"],
-                "model_used": f"en-{target_lang}",
-                "confidence": 0.9,  # High confidence for direct translation
-                "method": "direct"
-            }
-        except Exception as e:
-            logger.error(f"Translation failed: {str(e)}")
-            return {
-                "translation": None,
-                "model_used": f"en-{target_lang}",
-                "confidence": 0.0,
-                "method": "failed",
-                "error": str(e)
+                "error": f"No translation method available for {source_lang}-{target_lang}"
             }
     
     def get_model_info(self) -> Dict[str, any]:
-        """Get information about loaded models"""
+        """Get information about models"""
         return {
             "loaded_models": list(self.loaded_models.keys()),
-            "available_models": len(self.available_models),
+            "local_models": len(self.local_models),
+            "api_models": len(self.api_models),
             "total_loaded": len(self.loaded_models),
             "available_pairs": self.get_available_language_pairs(),
-            "supported_target_languages": self.get_supported_target_languages()
+            "supported_target_languages": self.get_supported_target_languages(),
+            "local_languages": list(self.local_models.keys()),
+            "api_languages": list(self.api_models.keys())
         }
     
     async def preload_popular_models(self) -> None:
-        """Preload popular models in background"""
-        popular_targets = ["es", "fr", "de", "it", "pt"]
+        """Preload local models in background (only German and Italian)"""
+        logger.info("Preloading local models (German and Italian)...")
         
-        logger.info("Preloading popular models...")
         tasks = []
-        
-        for target in popular_targets:
+        for target in ["de", "it"]:
             task = asyncio.create_task(self.get_model("en", target))
             tasks.append(task)
         
@@ -194,7 +300,7 @@ class ModelRegistry:
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         successful = sum(1 for r in results if r is not None)
-        logger.info(f"Preloaded {successful}/{len(popular_targets)} popular models")
+        logger.info(f"Preloaded {successful}/2 local models")
     
     async def cleanup(self) -> None:
         """Clean up loaded models"""

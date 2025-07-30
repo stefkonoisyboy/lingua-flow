@@ -9,3 +9,4 @@ cachetools
 accelerate
 sentencepiece
 protobuf
+requests
