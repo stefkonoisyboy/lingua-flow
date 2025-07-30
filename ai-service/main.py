@@ -10,7 +10,7 @@ import asyncio
 
 from model_registry import ModelRegistry
 from error_handler import ErrorHandler, ValidationError, TranslationError, ErrorType
-from cache import get_cached_suggestion, cache_suggestion
+from cache import cache
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -22,7 +22,7 @@ error_handler = ErrorHandler()
 
 app = FastAPI(
     title="AI Translation Service",
-    description="Translation service using MarianMT models",
+    description="Translation service using MarianMT models with enhanced caching",
     version="1.0.0"
 )
 
@@ -37,6 +37,7 @@ class TranslationResponse(BaseModel):
     model_used: Optional[str]
     method: str
     cached: bool = False
+    cache_age: Optional[float] = None
 
 @app.on_event("startup")
 async def startup_event():
@@ -56,11 +57,17 @@ async def shutdown_event():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint"""
+    """Health check endpoint with cache info"""
+    cache_stats = cache.get_stats()
     return {
         "status": "healthy",
         "service": "ai-translation",
-        "models_loaded": len(model_registry.loaded_models)
+        "models_loaded": len(model_registry.loaded_models),
+        "cache": {
+            "size": cache_stats["cache_size"],
+            "hit_rate": cache_stats["hit_rate"],
+            "memory_mb": cache_stats["memory_usage_mb"]
+        }
     }
 
 @app.get("/models")
@@ -68,9 +75,25 @@ async def get_models():
     """Get information about available models"""
     return model_registry.get_model_info()
 
+@app.get("/cache/stats")
+async def get_cache_stats():
+    """Get detailed cache statistics"""
+    return cache.get_stats()
+
+@app.get("/cache/info")
+async def get_cache_info():
+    """Get detailed cache information including top entries"""
+    return cache.get_cache_info()
+
+@app.post("/cache/clear")
+async def clear_cache():
+    """Clear all cache entries"""
+    cache.clear()
+    return {"message": "Cache cleared successfully"}
+
 @app.post("/translate", response_model=TranslationResponse)
 async def translate(request: TranslationRequest):
-    """Translate English text to target language with comprehensive error handling"""
+    """Translate English text to target language with comprehensive error handling and enhanced caching"""
     
     try:
         # Validate input
@@ -83,7 +106,7 @@ async def translate(request: TranslationRequest):
         
         # Check cache first
         try:
-            cached_result = get_cached_suggestion(
+            cached_result = cache.get(
                 request.source_text,
                 request.context or "",
                 "en",  # Always English
@@ -98,7 +121,8 @@ async def translate(request: TranslationRequest):
                     confidence_score=cached_result["confidence"],
                     model_used=cached_result["model_used"],
                     method=cached_result["method"],
-                    cached=True
+                    cached=True,
+                    cache_age=cached_result.get("cache_age")
                 )
         except Exception as e:
             # Cache errors are non-fatal, log and continue
@@ -114,18 +138,16 @@ async def translate(request: TranslationRequest):
             
             # Cache the successful result
             try:
-                cache_suggestion(
+                cache.set(
                     request.source_text,
                     request.context or "",
                     "en",  # Always English
                     request.target_language,
+                    "marian",
+                    result["translation"],
+                    result["confidence"],
                     result["model_used"],
-                    {
-                        "translation": result["translation"],
-                        "confidence": result["confidence"],
-                        "model_used": result["model_used"],
-                        "method": result["method"]
-                    }
+                    result["method"]
                 )
             except Exception as cache_error:
                 logger.warning(f"Failed to cache result: {str(cache_error)}")
