@@ -202,6 +202,7 @@ export class AISuggestionsService {
     // Get translation key and source text
     const translationKey = await this.translationsDAL.getTranslationKey(translationKeyId);
     const sourceLanguageId = await this.projectsDAL.getDefaultLanguageId(projectId); // Always 'en'
+    const targetLanguage = await this.getLanguageById(targetLanguageId);
     
     // Check database cache first
     const cached = await this.suggestionsDAL.getCachedSuggestion(
@@ -219,9 +220,8 @@ export class AISuggestionsService {
       };
     }
 
-    // Get context
+    // Get project context
     const project = await this.projectsDAL.getProject(projectId);
-    const targetLanguage = await this.getLanguageById(targetLanguageId);
 
     // Call Gemini API directly
     const response = await this.callGeminiAPI({
@@ -367,7 +367,8 @@ export class AISuggestionsDAL {
 ```typescript
 // src/lib/services/ai-suggestions.service.ts
 export class AISuggestionsService {
-  private aiServiceUrl = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+  private geminiApiKey = process.env.GEMINI_API_KEY;
+  private geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
   constructor(
     private suggestionsDAL: IAISuggestionsDAL,
@@ -384,7 +385,8 @@ export class AISuggestionsService {
   ): Promise<TranslationSuggestion> {
     // Get translation key and source text
     const translationKey = await this.translationsDAL.getTranslationKey(translationKeyId);
-    const sourceLanguageId = await this.projectsDAL.getDefaultLanguageId(projectId);
+    const sourceLanguageId = await this.projectsDAL.getDefaultLanguageId(projectId); // Always 'en'
+    const targetLanguage = await this.getLanguageById(targetLanguageId);
     
     // Check cache first
     const cached = await this.suggestionsDAL.getCachedSuggestion(
@@ -411,7 +413,7 @@ export class AISuggestionsService {
     );
 
     // Call AI service
-    const response = await fetch(`${this.aiServiceUrl}/translate`, {
+    const response = await fetch(`${this.geminiApiUrl}?key=${this.geminiApiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -540,77 +542,22 @@ export const aiSuggestionsRouter = router({
 
 ## Frontend Implementation
 
-### 1. Redux Slice
-
-```typescript
-// src/store/slices/ai-suggestions.slice.ts
-interface AISuggestion {
-  translationKeyId: string;
-  suggestedText: string;
-  confidenceScore: number;
-  modelUsed: string;
-  loading: boolean;
-  error: string | null;
-}
-
-interface AISuggestionsState {
-  suggestions: Record<string, AISuggestion>;
-  globalLoading: boolean;
-}
-
-const aiSuggestionsSlice = createSlice({
-  name: 'aiSuggestions',
-  initialState: {
-    suggestions: {},
-    globalLoading: false
-  } as AISuggestionsState,
-  reducers: {
-    setSuggestionLoading: (state, action) => {
-      const { translationKeyId } = action.payload;
-      state.suggestions[translationKeyId] = {
-        ...state.suggestions[translationKeyId],
-        loading: true,
-        error: null
-      };
-    },
-    setSuggestion: (state, action) => {
-      const { translationKeyId, ...suggestion } = action.payload;
-      state.suggestions[translationKeyId] = {
-        translationKeyId,
-        ...suggestion,
-        loading: false,
-        error: null
-      };
-    },
-    setSuggestionError: (state, action) => {
-      const { translationKeyId, error } = action.payload;
-      state.suggestions[translationKeyId] = {
-        ...state.suggestions[translationKeyId],
-        loading: false,
-        error
-      };
-    },
-    clearSuggestion: (state, action) => {
-      delete state.suggestions[action.payload.translationKeyId];
-    }
-  }
-});
-```
-
-### 2. UI Components
+### 1. UI Components
 
 #### Translation Table Integration
 
 ```typescript
 // Update src/components/projects/translations/translations-table.tsx
 const TranslationsTable = () => {
-  const { mutate: getSuggestion } = trpc.aiSuggestions.getSuggestion.useMutation();
+  const { mutate: getSuggestion, isLoading: suggestionLoading } = trpc.aiSuggestions.getSuggestion.useMutation();
   const { mutate: applySuggestion } = trpc.aiSuggestions.applySuggestion.useMutation();
-  const suggestions = useSelector((state: RootState) => state.aiSuggestions.suggestions);
-  const dispatch = useDispatch();
+  
+  // Local state for suggestions (no Redux needed)
+  const [suggestions, setSuggestions] = useState<Record<string, TranslationSuggestion>>({});
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
 
   const handleGetSuggestion = async (translationKey: TranslationKey) => {
-    dispatch(setSuggestionLoading({ translationKeyId: translationKey.id }));
+    setLoadingStates(prev => ({ ...prev, [translationKey.id]: true }));
     
     try {
       const result = await getSuggestion({
@@ -619,15 +566,14 @@ const TranslationsTable = () => {
         targetLanguageId: selectedLanguage.id
       });
       
-      dispatch(setSuggestion({
-        translationKeyId: translationKey.id,
-        ...result
+      setSuggestions(prev => ({ 
+        ...prev, 
+        [translationKey.id]: result 
       }));
     } catch (error) {
-      dispatch(setSuggestionError({
-        translationKeyId: translationKey.id,
-        error: error.message
-      }));
+      console.error('Failed to get suggestion:', error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [translationKey.id]: false }));
     }
   };
 
@@ -642,7 +588,11 @@ const TranslationsTable = () => {
     );
 
     // Clear the suggestion
-    dispatch(clearSuggestion({ translationKeyId: translationKey.id }));
+    setSuggestions(prev => {
+      const newState = { ...prev };
+      delete newState[translationKey.id];
+      return newState;
+    });
 
     // Track usage
     await applySuggestion({
@@ -664,7 +614,7 @@ const TranslationsTable = () => {
       </MissingTranslationWarning>
       
       {/* AI Suggestion UI */}
-      {!suggestions[translationKey.id] && (
+      {!suggestions[translationKey.id] && !loadingStates[translationKey.id] && (
         <SuggestionButton
           startIcon={<AutoAwesomeIcon />}
           onClick={() => handleGetSuggestion(translationKey)}
@@ -674,7 +624,7 @@ const TranslationsTable = () => {
         </SuggestionButton>
       )}
       
-      {suggestions[translationKey.id]?.loading && (
+      {loadingStates[translationKey.id] && (
         <SuggestionLoading>
           <CircularProgress size={16} />
           <Typography variant="body2">Generating...</Typography>
@@ -753,92 +703,6 @@ export const SuggestionLoading = styled(Box)(({ theme }) => ({
 ```
 
 ## API Design
-
-### REST API Endpoints (Python Service)
-
-```yaml
-openapi: 3.0.0
-info:
-  title: AI Translation Service
-  version: 1.0.0
-
-paths:
-  /translate:
-    post:
-      summary: Generate translation suggestion
-      requestBody:
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - source_text
-                - source_language
-                - target_language
-              properties:
-                source_text:
-                  type: string
-                source_language:
-                  type: string
-                  pattern: '^[a-z]{2}(-[A-Z]{2})?$'
-                target_language:
-                  type: string
-                  pattern: '^[a-z]{2}(-[A-Z]{2})?$'
-                context:
-                  type: string
-                translation_memory:
-                  type: array
-                  items:
-                    type: object
-                model_preference:
-                  type: string
-                  enum: [marian, m2m100, mbart, gpt]
-      responses:
-        200:
-          description: Translation suggestion
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  suggested_text:
-                    type: string
-                  confidence_score:
-                    type: number
-                  model_used:
-                    type: string
-                  cached:
-                    type: boolean
-
-  /health:
-    get:
-      summary: Health check
-      responses:
-        200:
-          description: Service is healthy
-
-  /models:
-    get:
-      summary: List available models
-      responses:
-        200:
-          description: Available models
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    name:
-                      type: string
-                    supported_languages:
-                      type: array
-                      items:
-                        type: string
-                    loaded:
-                      type: boolean
-```
 
 ### tRPC Endpoints
 
@@ -1061,71 +925,128 @@ class OptimizedAIService {
 
 ### 1. Input Validation
 
-```python
-# Strict input validation
-class InputValidator:
-    MAX_TEXT_LENGTH = 5000
-    ALLOWED_LANGUAGES = set(['en', 'es', 'fr', 'de', 'zh', 'ja', 'ar', ...])
+```typescript
+// Strict input validation for Gemini API calls
+class InputValidator {
+  static readonly MAX_TEXT_LENGTH = 5000;
+  static readonly ALLOWED_LANGUAGES = new Set(['en', 'es', 'fr', 'de', 'zh', 'ja', 'ar', 'it', 'pt', 'ru', 'ko']);
+  
+  static validateTranslationRequest(input: {
+    sourceText: string;
+    targetLanguage: string;
+    projectId: string;
+  }): void {
+    // Text length validation
+    if (input.sourceText.length > InputValidator.MAX_TEXT_LENGTH) {
+      throw new Error("Text too long");
+    }
     
-    @staticmethod
-    def validate_translation_request(request: TranslationRequest):
-        # Text length
-        if len(request.source_text) > InputValidator.MAX_TEXT_LENGTH:
-            raise ValueError("Text too long")
-        
-        # Language codes
-        if request.source_language not in InputValidator.ALLOWED_LANGUAGES:
-            raise ValueError(f"Unsupported source language: {request.source_language}")
-        
-        if request.target_language not in InputValidator.ALLOWED_LANGUAGES:
-            raise ValueError(f"Unsupported target language: {request.target_language}")
-        
-        # Sanitize text
-        request.source_text = bleach.clean(request.source_text)
-        
-        return request
+    // Language validation
+    if (!InputValidator.ALLOWED_LANGUAGES.has(input.targetLanguage)) {
+      throw new Error(`Unsupported target language: ${input.targetLanguage}`);
+    }
+    
+    // Source language must always be 'en'
+    if (input.sourceText.trim().length === 0) {
+      throw new Error("Source text cannot be empty");
+    }
+    
+    // Sanitize text (basic XSS prevention)
+    const sanitizedText = input.sourceText
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/javascript:/gi, '')
+      .trim();
+    
+    if (sanitizedText !== input.sourceText) {
+      throw new Error("Invalid characters in source text");
+    }
+  }
+}
 ```
 
 ### 2. Rate Limiting
 
-```python
-# Per-user rate limiting
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-
-limiter = Limiter(key_func=get_remote_address)
-
-@app.post("/translate")
-@limiter.limit("100/hour")
-async def translate(request: TranslationRequest):
-    # ... translation logic
-```
-
-### 3. Authentication
-
 ```typescript
-// Verify user permissions
-const aiSuggestionsRouter = router({
+// Per-user rate limiting with tRPC
+import { rateLimit } from 'express-rate-limit';
+
+const aiSuggestionsLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 100, // limit each user to 100 requests per hour
+  message: 'Too many translation requests, please try again later',
+  keyGenerator: (req) => req.user?.id || req.ip,
+});
+
+// Apply to tRPC router
+export const aiSuggestionsRouter = router({
   getSuggestion: protectedProcedure
-    .use(requireProjectPermission(['owner', 'translator']))
-    .input(getSuggestionSchema)
+    .use(aiSuggestionsLimiter)
+    .input(z.object({
+      projectId: z.string(),
+      translationKeyId: z.string(),
+      targetLanguageId: z.string()
+    }))
     .mutation(async ({ ctx, input }) => {
-      // Additional project access verification
-      const hasAccess = await verifyProjectAccess(
-        ctx.user.id,
-        input.projectId
-      );
+      // Validate input
+      InputValidator.validateTranslationRequest({
+        sourceText: input.sourceText,
+        targetLanguage: input.targetLanguage,
+        projectId: input.projectId
+      });
       
-      if (!hasAccess) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'No access to project'
-        });
-      }
+      // Check permissions
+      await requireProjectPermission(ctx, input.projectId, ['owner', 'translator']);
       
       // ... rest of implementation
     })
 });
+```
+
+### 3. API Key Security
+
+```typescript
+// Secure Gemini API key handling
+class GeminiAPIService {
+  private readonly apiKey: string;
+  
+  constructor() {
+    this.apiKey = process.env.GEMINI_API_KEY;
+    if (!this.apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is required');
+    }
+  }
+  
+  async callGeminiAPI(prompt: string): Promise<string> {
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${this.apiKey}`,
+        {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'User-Agent': 'LinguaFlow/1.0'
+          },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{ text: prompt }]
+            }]
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      return result.candidates[0].content.parts[0].text.trim();
+    } catch (error) {
+      // Log error but don't expose API key
+      console.error('Gemini API call failed:', error.message);
+      throw new Error('Translation service temporarily unavailable');
+    }
+  }
+}
 ```
 
 ## User Experience
