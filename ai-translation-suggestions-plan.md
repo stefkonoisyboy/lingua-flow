@@ -45,16 +45,16 @@ This document outlines the implementation plan for integrating AI-powered transl
 ```
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
 │                 │     │                  │     │                 │
-│  Next.js        │────▶│  tRPC Backend    │────▶│  Python AI      │
-│  Frontend       │     │  (Node.js)       │     │  Service        │
-│                 │     │                  │     │  (FastAPI)      │
+│  Next.js        │────▶│  tRPC Backend    │────▶│  Google Gemini  │
+│  Frontend       │     │  (Node.js)       │     │  API            │
+│                 │     │                  │     │                 │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
          │                       │                         │
          │                       │                         │
          ▼                       ▼                         ▼
 ┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  Redux Store    │     │  Supabase DB     │     │  Redis Cache    │
-│  (UI State)     │     │  (Translations)  │     │  (Suggestions)  │
+│  Redux Store    │     │  Supabase DB     │     │  Database Cache │
+│  (UI State)     │     │  (Translations)  │     │  (24h TTL)      │
 └─────────────────┘     └──────────────────┘     └─────────────────┘
 ```
 
@@ -67,58 +67,62 @@ This document outlines the implementation plan for integrating AI-powered transl
 
 2. **Backend Services**
    - tRPC router for suggestion endpoints
-   - Translation suggestion service
+   - Direct Gemini API integration
+   - Database cache management
    - Context builder service
-   - Cache management
 
-3. **AI Service (Python)**
-   - FastAPI server for model inference
-   - Model manager for loading/switching models
-   - Inference pipeline with batching
-   - Response caching layer
+3. **AI Integration**
+   - Google Gemini 2.5 Flash API
+   - Direct API calls from backend
+   - No local model management needed
+   - Simplified deployment (no Python service)
 
 ## Model Selection Strategy
 
-### Primary Models
+### Primary Model: Google Gemini 2.5 Flash
 
-1. **MarianMT (Facebook)**
-   - Pros: Fast, lightweight, 1200+ language pairs
-   - Cons: Lower quality for complex translations
-   - Use case: Default for common language pairs
-
-2. **M2M100 (Facebook)**
-   - Pros: Multilingual, no English pivot needed
-   - Cons: Larger model size, slower inference
-   - Use case: Direct translation between non-English pairs
-
-3. **mBART (Facebook)**
-   - Pros: High quality, context-aware
-   - Cons: Resource intensive
-   - Use case: Premium translations
-
-4. **GPT-3.5/4 (OpenAI)**
-   - Pros: Excellent quality, understands context
-   - Cons: API costs, latency
-   - Use case: Fallback for complex translations
+1. **Google Gemini 2.5 Flash**
+   - Pros: Superior quality, true context awareness, all languages supported, no server resources needed
+   - Cons: API costs, network dependency
+   - Use case: Primary translation model for all language pairs
 
 ### Model Selection Logic
 
-```python
-def select_model(source_lang: str, target_lang: str, context_length: int):
-    # Check if direct MarianMT model exists
-    if has_marian_model(source_lang, target_lang):
-        return MarianMTModel(source_lang, target_lang)
+```typescript
+// Simplified model selection - always use Gemini
+class ModelSelectionService {
+  async selectModel(
+    sourceLang: string,
+    targetLang: string,
+    contextLength: number
+  ): Promise<string> {
+    // Always use Gemini 2.5 Flash for all translations
+    // Source language is always 'en' as per requirements
+    return 'gemini-2.5-flash';
+  }
+
+  async buildPrompt(
+    sourceText: string,
+    targetLang: string,
+    context?: string,
+    projectDescription?: string
+  ): Promise<string> {
+    let prompt = `You are a translation assistant. Translate the following text from English to ${targetLang}. `;
     
-    # For non-English pairs without direct model
-    if source_lang != "en" and target_lang != "en":
-        return M2M100Model()
+    if (context) {
+      prompt += `Context: ${context}. `;
+    }
     
-    # For long context or specific domains
-    if context_length > 100 or requires_domain_knowledge():
-        return GPTModel()
+    if (projectDescription) {
+      prompt += `Project context: ${projectDescription}. `;
+    }
     
-    # Default fallback
-    return mBARTModel()
+    prompt += `Text to translate: "${sourceText}". `;
+    prompt += `Provide only the translation, no additional text or explanations.`;
+    
+    return prompt;
+  }
+}
 ```
 
 ## Backend Implementation
@@ -126,19 +130,19 @@ def select_model(source_lang: str, target_lang: str, context_length: int):
 ### 1. Database Schema Updates
 
 ```sql
--- New table for caching suggestions
+-- New table for caching suggestions (unchanged structure)
 CREATE TABLE ai_translation_suggestions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     translation_key_id UUID REFERENCES translation_keys(id),
-    source_language_id UUID REFERENCES languages(id),
+    source_language_id UUID REFERENCES languages(id), -- Always 'en'
     target_language_id UUID REFERENCES languages(id),
     source_text TEXT NOT NULL,
     suggested_text TEXT NOT NULL,
-    model_name VARCHAR(255) NOT NULL,
-    confidence_score FLOAT,
+    model_name VARCHAR(255) NOT NULL DEFAULT 'gemini-2.5-flash',
+    confidence_score FLOAT DEFAULT 0.95,
     context_used JSONB,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    expires_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP + INTERVAL '7 days'
+    expires_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP + INTERVAL '24 hours'
 );
 
 -- Index for efficient lookups
@@ -154,99 +158,157 @@ ALTER TYPE activity_type ADD VALUE 'ai_suggestion_generated';
 ALTER TYPE activity_type ADD VALUE 'ai_suggestion_applied';
 ```
 
-### 2. Python AI Service
+### 2. Direct Gemini Integration
 
 #### Service Structure
 ```
-ai-service/
-├── app/
-│   ├── __init__.py
-│   ├── main.py              # FastAPI app
-│   ├── models/
-│   │   ├── __init__.py
-│   │   ├── base.py          # Abstract model interface
-│   │   ├── marian.py        # MarianMT implementation
-│   │   ├── m2m100.py        # M2M100 implementation
-│   │   └── openai.py        # OpenAI implementation
+src/
+├── lib/
 │   ├── services/
-│   │   ├── __init__.py
-│   │   ├── inference.py     # Main inference service
-│   │   ├── model_manager.py # Model loading/caching
-│   │   └── context.py       # Context builder
+│   │   └── ai-suggestions.service.ts    # Direct Gemini integration
+│   ├── dal/
+│   │   └── ai-suggestions.ts            # Database cache layer
 │   └── utils/
-│       ├── __init__.py
-│       ├── cache.py         # Redis caching
-│       └── monitoring.py    # Metrics/logging
-├── requirements.txt
-├── Dockerfile
-└── docker-compose.yml
+│       └── gemini.ts                     # Gemini API utilities
+├── server/
+│   └── routers/
+│       └── ai-suggestions.ts            # tRPC endpoints
+└── store/
+    └── slices/
+        └── ai-suggestions.slice.ts      # Redux state management
 ```
 
 #### Core Implementation
 
-```python
-# app/main.py
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from typing import Optional, List
-import redis
-import json
+```typescript
+// src/lib/services/ai-suggestions.service.ts
+export class AISuggestionsService {
+  private geminiApiKey = process.env.GEMINI_API_KEY;
+  private geminiApiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
-app = FastAPI()
-redis_client = redis.Redis(decode_responses=True)
+  constructor(
+    private suggestionsDAL: IAISuggestionsDAL,
+    private translationsDAL: ITranslationsDAL,
+    private projectsDAL: IProjectsDAL,
+    private activitiesDAL: IActivitiesDAL
+  ) {}
 
-class TranslationRequest(BaseModel):
-    source_text: str
-    source_language: str
-    target_language: str
-    context: Optional[str] = None
-    translation_memory: Optional[List[dict]] = None
-    model_preference: Optional[str] = None
+  async getSuggestion(
+    userId: string,
+    projectId: string,
+    translationKeyId: string,
+    targetLanguageId: string
+  ): Promise<TranslationSuggestion> {
+    // Get translation key and source text
+    const translationKey = await this.translationsDAL.getTranslationKey(translationKeyId);
+    const sourceLanguageId = await this.projectsDAL.getDefaultLanguageId(projectId); // Always 'en'
+    
+    // Check database cache first
+    const cached = await this.suggestionsDAL.getCachedSuggestion(
+      translationKeyId,
+      sourceLanguageId,
+      targetLanguageId
+    );
+    
+    if (cached) {
+      return {
+        suggestedText: cached.suggested_text,
+        confidenceScore: cached.confidence_score,
+        modelUsed: cached.model_name,
+        cached: true
+      };
+    }
 
-class TranslationResponse(BaseModel):
-    suggested_text: str
-    confidence_score: float
-    model_used: str
-    cached: bool = False
+    // Get context
+    const project = await this.projectsDAL.getProject(projectId);
+    const targetLanguage = await this.getLanguageById(targetLanguageId);
 
-@app.post("/translate", response_model=TranslationResponse)
-async def translate(request: TranslationRequest):
-    # Check cache first
-    cache_key = f"{request.source_language}:{request.target_language}:{hash(request.source_text)}"
-    cached = redis_client.get(cache_key)
-    if cached:
-        result = json.loads(cached)
-        result['cached'] = True
-        return TranslationResponse(**result)
+    // Call Gemini API directly
+    const response = await this.callGeminiAPI({
+      sourceText: translationKey.source_text,
+      targetLanguage: targetLanguage.code,
+      context: project.description
+    });
+
+    // Cache the suggestion
+    await this.suggestionsDAL.cacheSuggestion({
+      translationKeyId,
+      sourceLanguageId,
+      targetLanguageId,
+      sourceText: translationKey.source_text,
+      suggestedText: response.suggestedText,
+      modelName: 'gemini-2.5-flash',
+      confidenceScore: 0.95,
+      contextUsed: { project_description: project.description }
+    });
+
+    // Log activity
+    await this.activitiesDAL.logActivity({
+      projectId,
+      userId,
+      activityType: 'ai_suggestion_generated',
+      resourceType: 'translation',
+      resourceId: translationKeyId,
+      details: { model: 'gemini-2.5-flash' }
+    });
+
+    return {
+      suggestedText: response.suggestedText,
+      confidenceScore: 0.95,
+      modelUsed: 'gemini-2.5-flash',
+      cached: false
+    };
+  }
+
+  private async callGeminiAPI(params: {
+    sourceText: string;
+    targetLanguage: string;
+    context?: string;
+  }): Promise<{ suggestedText: string }> {
+    const prompt = this.buildGeminiPrompt(params);
     
-    # Select and run model
-    model = model_manager.get_model(
-        request.source_language,
-        request.target_language,
-        request.model_preference
-    )
+    const response = await fetch(
+      `${this.geminiApiUrl}?key=${this.geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }]
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`Gemini API error: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    return {
+      suggestedText: result.candidates[0].content.parts[0].text.trim()
+    };
+  }
+
+  private buildGeminiPrompt(params: {
+    sourceText: string;
+    targetLanguage: string;
+    context?: string;
+  }): string {
+    const { sourceText, targetLanguage, context } = params;
     
-    # Build context
-    context = context_builder.build(
-        request.source_text,
-        request.context,
-        request.translation_memory
-    )
+    let prompt = `You are a translation assistant. Translate the following text from English to ${targetLanguage}. `;
     
-    # Generate translation
-    result = await model.translate(
-        request.source_text,
-        context
-    )
+    if (context) {
+      prompt += `Context: ${context}. `;
+    }
     
-    # Cache result
-    redis_client.setex(
-        cache_key,
-        86400,  # 24 hours
-        json.dumps(result.dict())
-    )
+    prompt += `Text to translate: "${sourceText}". `;
+    prompt += `Provide only the translation, no additional text or explanations.`;
     
-    return result
+    return prompt;
+  }
+}
 ```
 
 ### 3. Node.js Integration
@@ -837,116 +899,162 @@ export const aiSuggestionsRouter = {
 
 ### 1. Caching Strategy
 
-```python
-# Multi-level caching
-class CacheManager:
-    def __init__(self):
-        self.memory_cache = LRUCache(maxsize=1000)
-        self.redis_cache = redis.Redis()
-        
-    async def get_or_compute(self, key: str, compute_fn):
-        # L1: Memory cache
-        if key in self.memory_cache:
-            return self.memory_cache[key]
-        
-        # L2: Redis cache
-        cached = self.redis_cache.get(key)
-        if cached:
-            result = json.loads(cached)
-            self.memory_cache[key] = result
-            return result
-        
-        # Compute and cache
-        result = await compute_fn()
-        self.memory_cache[key] = result
-        self.redis_cache.setex(key, 86400, json.dumps(result))
-        return result
+```typescript
+// Single-level database caching with 24-hour TTL
+class AISuggestionsService {
+  async getSuggestion(
+    userId: string,
+    projectId: string,
+    translationKeyId: string,
+    targetLanguageId: string
+  ): Promise<TranslationSuggestion> {
+    // Check database cache first
+    const cached = await this.suggestionsDAL.getCachedSuggestion(
+      translationKeyId,
+      sourceLanguageId, // Always 'en' for source
+      targetLanguageId
+    );
+    
+    if (cached) {
+      return {
+        suggestedText: cached.suggested_text,
+        confidenceScore: cached.confidence_score,
+        modelUsed: cached.model_name,
+        cached: true
+      };
+    }
+
+    // Call Gemini API directly
+    const response = await this.callGeminiAPI({
+      sourceText: translationKey.source_text,
+      targetLanguage: targetLanguage.code,
+      context: project.description
+    });
+
+    // Cache in database (24-hour TTL)
+    await this.suggestionsDAL.cacheSuggestion({
+      translationKeyId,
+      sourceLanguageId, // Always 'en'
+      targetLanguageId,
+      sourceText: translationKey.source_text,
+      suggestedText: response.suggestedText,
+      modelName: 'gemini-2.5-flash',
+      confidenceScore: 0.95,
+      contextUsed: { project_description: project.description }
+    });
+
+    return {
+      suggestedText: response.suggestedText,
+      confidenceScore: 0.95,
+      modelUsed: 'gemini-2.5-flash',
+      cached: false
+    };
+  }
+
+  private async callGeminiAPI(params: {
+    sourceText: string;
+    targetLanguage: string;
+    context?: string;
+  }): Promise<{ suggestedText: string }> {
+    const prompt = this.buildGeminiPrompt(params);
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }]
+        })
+      }
+    );
+
+    const result = await response.json();
+    return {
+      suggestedText: result.candidates[0].content.parts[0].text.trim()
+    };
+  }
+
+  private buildGeminiPrompt(params: {
+    sourceText: string;
+    targetLanguage: string;
+    context?: string;
+  }): string {
+    const { sourceText, targetLanguage, context } = params;
+    
+    let prompt = `You are a translation assistant. Translate the following text from English to ${targetLanguage}. `;
+    
+    if (context) {
+      prompt += `Context: ${context}. `;
+    }
+    
+    prompt += `Text to translate: "${sourceText}". `;
+    prompt += `Provide only the translation, no additional text or explanations.`;
+    
+    return prompt;
+  }
+}
 ```
 
-### 2. Model Loading Optimization
+### 2. Database Cache Optimization
 
-```python
-# Lazy loading with warmup
-class ModelManager:
-    def __init__(self):
-        self.models = {}
-        self.loading_locks = {}
-        
-    async def get_model(self, model_name: str):
-        if model_name in self.models:
-            return self.models[model_name]
-        
-        # Prevent duplicate loading
-        if model_name not in self.loading_locks:
-            self.loading_locks[model_name] = asyncio.Lock()
-        
-        async with self.loading_locks[model_name]:
-            # Double-check after acquiring lock
-            if model_name in self.models:
-                return self.models[model_name]
-            
-            # Load model
-            model = await self._load_model(model_name)
-            self.models[model_name] = model
-            return model
-    
-    async def warmup_popular_models(self):
-        # Pre-load frequently used models
-        popular_pairs = [
-            ('en', 'es'), ('en', 'fr'), ('en', 'de'),
-            ('en', 'zh'), ('en', 'ja'), ('en', 'ar')
-        ]
-        for source, target in popular_pairs:
-            asyncio.create_task(
-                self.get_model(f"marian-{source}-{target}")
-            )
+```sql
+-- Optimized indexes for fast cache lookups
+CREATE INDEX CONCURRENTLY idx_suggestions_lookup_optimized ON ai_translation_suggestions(
+    translation_key_id, 
+    target_language_id,
+    expires_at
+) WHERE expires_at > NOW();
+
+-- Partial index for active suggestions only
+CREATE INDEX CONCURRENTLY idx_active_suggestions ON ai_translation_suggestions(
+    translation_key_id,
+    target_language_id
+) WHERE expires_at > NOW();
+
+-- Index for analytics queries
+CREATE INDEX CONCURRENTLY idx_suggestions_analytics ON ai_translation_suggestions(
+    created_at,
+    model_name,
+    target_language_id
+);
 ```
 
-### 3. Batch Processing
+### 3. API Response Optimization
 
-```python
-# Batch similar requests
-class BatchProcessor:
-    def __init__(self, batch_size=10, wait_time=0.1):
-        self.batch_size = batch_size
-        self.wait_time = wait_time
-        self.pending = []
-        self.results = {}
-        
-    async def process(self, request_id: str, request: TranslationRequest):
-        # Add to batch
-        future = asyncio.Future()
-        self.pending.append((request_id, request, future))
-        
-        # Process if batch is full
-        if len(self.pending) >= self.batch_size:
-            await self._process_batch()
-        else:
-            # Schedule batch processing
-            asyncio.create_task(self._delayed_process())
-        
-        return await future
-    
-    async def _process_batch(self):
-        if not self.pending:
-            return
-        
-        batch = self.pending
-        self.pending = []
-        
-        # Group by model
-        model_groups = defaultdict(list)
-        for req_id, req, future in batch:
-            model = self._select_model(req)
-            model_groups[model].append((req_id, req, future))
-        
-        # Process each group
-        for model, group in model_groups.items():
-            texts = [req.source_text for _, req, _ in group]
-            results = await model.batch_translate(texts)
-            
-            for (req_id, req, future), result in zip(group, results):
-                future.set_result(result)
+```typescript
+// Optimized response handling
+class OptimizedAIService {
+  async getSuggestionWithFallback(
+    translationKeyId: string,
+    targetLanguageId: string
+  ): Promise<TranslationSuggestion> {
+    try {
+      // Primary: Database cache
+      const cached = await this.getCachedSuggestion(translationKeyId, targetLanguageId);
+      if (cached) return cached;
+
+      // Secondary: Gemini API
+      const geminiResult = await this.callGeminiAPI(/* params */);
+      
+      // Cache the result
+      await this.cacheSuggestion(geminiResult);
+      
+      return geminiResult;
+    } catch (error) {
+      // Fallback: Return empty suggestion with error
+      return {
+        suggestedText: '',
+        confidenceScore: 0,
+        modelUsed: 'none',
+        cached: false,
+        error: 'Translation service temporarily unavailable'
+      };
+    }
+  }
+}
 ```
 
 ## Security Considerations
@@ -1100,97 +1208,118 @@ useKeyboardShortcut('cmd+enter', () => {
 ### 1. Infrastructure
 
 ```yaml
-# docker-compose.yml
+# Simplified deployment - no Python AI service needed
 version: '3.8'
 
 services:
-  ai-service:
-    build: ./ai-service
+  # Only the main Next.js application
+  linguaflow:
+    build: .
     ports:
-      - "8000:8000"
+      - "3000:3000"
     environment:
-      - REDIS_URL=redis://redis:6379
-      - MODEL_CACHE_DIR=/models
-      - CUDA_VISIBLE_DEVICES=0
+      - DATABASE_URL=${DATABASE_URL}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+    depends_on:
+      - postgres
+      - redis
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=linguaflow
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
     volumes:
-      - model-cache:/models
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    
+      - postgres-data:/var/lib/postgresql/data
+
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     volumes:
       - redis-data:/data
 
 volumes:
-  model-cache:
+  postgres-data:
   redis-data:
 ```
 
-### 2. Scaling Strategy
+### 2. Environment Variables
+
+```bash
+# .env.local
+DATABASE_URL=postgresql://postgres:password@localhost:5432/linguaflow
+GEMINI_API_KEY=your_gemini_api_key_here
+SUPABASE_URL=your_supabase_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
+### 3. Simplified Scaling Strategy
 
 ```yaml
-# kubernetes/ai-service-deployment.yaml
+# kubernetes/linguaflow-deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ai-translation-service
+  name: linguaflow
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: ai-translation
+      app: linguaflow
   template:
     metadata:
       labels:
-        app: ai-translation
+        app: linguaflow
     spec:
       containers:
-      - name: ai-service
-        image: linguaflow/ai-service:latest
+      - name: linguaflow
+        image: linguaflow/app:latest
         resources:
           requests:
-            memory: "4Gi"
-            cpu: "2"
-            nvidia.com/gpu: "1"
+            memory: "512Mi"
+            cpu: "250m"
           limits:
-            memory: "8Gi"
-            cpu: "4"
-            nvidia.com/gpu: "1"
+            memory: "1Gi"
+            cpu: "500m"
         env:
-        - name: MODEL_CACHE_DIR
-          value: "/models"
-        volumeMounts:
-        - name: model-cache
-          mountPath: /models
-      volumes:
-      - name: model-cache
-        persistentVolumeClaim:
-          claimName: model-cache-pvc
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: linguaflow-secrets
+              key: gemini-api-key
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: linguaflow-secrets
+              key: database-url
 ```
 
-### 3. Model Deployment Options
+### 4. Deployment Benefits
 
-```python
-# Model serving options
-class ModelServingStrategy:
-    @staticmethod
-    def get_strategy(environment: str):
-        if environment == "development":
-            return LocalModelServing()
-        elif environment == "production":
-            return TorchServeServing()
-        elif environment == "enterprise":
-            return TritonServing()
-        else:
-            return HuggingFaceInference()
+```typescript
+// Simplified deployment advantages
+const deploymentBenefits = {
+  infrastructure: {
+    noPythonService: 'Eliminates Python service deployment complexity',
+    noModelManagement: 'No local model loading or GPU requirements',
+    noRedisCache: 'Uses existing database for caching',
+    simplifiedScaling: 'Only scale the main Next.js application'
+  },
+  cost: {
+    noServerResources: 'No additional server costs for AI models',
+    noGPURequirements: 'No expensive GPU instances needed',
+    payPerUse: 'Only pay for Gemini API calls when used',
+    predictableCosts: 'Fixed API costs per translation'
+  },
+  maintenance: {
+    noModelUpdates: 'No local model version management',
+    noPythonDependencies: 'No Python dependency management',
+    simplifiedMonitoring: 'Only monitor main application',
+    easierDebugging: 'Single codebase to debug'
+  }
+};
 ```
 
 ## Monitoring and Analytics
