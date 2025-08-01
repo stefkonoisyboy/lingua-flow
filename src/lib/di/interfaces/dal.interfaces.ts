@@ -479,3 +479,33 @@ export interface IProjectMembersDAL {
 export interface IUsersDAL {
   getUserByEmail(email: string): Promise<Profile | null>;
 }
+
+// Import Json type from database types
+export type ContextUsedJson =
+  Database["public"]["Tables"]["ai_translation_suggestions"]["Row"]["context_used"];
+
+// AI Suggestions DAL Interface
+export interface IAISuggestionsDAL {
+  cacheSuggestion(data: {
+    translationKeyId: string;
+    sourceLanguageId: string;
+    targetLanguageId: string;
+    sourceText: string;
+    suggestedText: string;
+    modelName: string;
+    confidenceScore: number;
+    contextUsed: ContextUsedJson;
+  }): Promise<
+    Database["public"]["Tables"]["ai_translation_suggestions"]["Row"]
+  >;
+
+  getCachedSuggestion(
+    translationKeyId: string,
+    sourceLanguageId: string,
+    targetLanguageId: string
+  ): Promise<
+    Database["public"]["Tables"]["ai_translation_suggestions"]["Row"] | null
+  >;
+
+  deleteExpiredSuggestions(): Promise<void>;
+}

@@ -15,6 +15,7 @@ import { CommentsDAL } from "../dal/comments";
 import { SyncHistoryDAL } from "../dal/sync-history";
 import { ProjectMembersDAL } from "../dal/project-members";
 import { UsersDAL } from "../dal/users";
+import { AISuggestionsDAL } from "../dal/ai-suggestions";
 
 // Service imports
 import { ProjectsService } from "../services/projects.service";
@@ -41,6 +42,7 @@ import {
   ISyncHistoryDAL,
   IProjectMembersDAL,
   IUsersDAL,
+  IAISuggestionsDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
@@ -69,6 +71,7 @@ export const DI_TOKENS = {
   SYNC_HISTORY_DAL: "SYNC_HISTORY_DAL",
   PROJECT_MEMBERS_DAL: "PROJECT_MEMBERS_DAL",
   USERS_DAL: "USERS_DAL",
+  AISUGGESTIONS_DAL: "AISUGGESTIONS_DAL",
 
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
@@ -171,6 +174,11 @@ export function registerServices(
   container.register<IUsersDAL>(
     DI_TOKENS.USERS_DAL,
     (c) => new UsersDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
+  container.register<IAISuggestionsDAL>(
+    DI_TOKENS.AISUGGESTIONS_DAL,
+    (c) => new AISuggestionsDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
   // Register services
