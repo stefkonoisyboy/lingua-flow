@@ -37,6 +37,8 @@ import { selectSelectedLanguageId } from "@/store/slices/selected-language.slice
 import { useParams } from "next/navigation";
 import { hasPermission } from "@/utils/permissions";
 import { trpc } from "@/utils/trpc";
+import { AISuggestionDisplay } from "./ai-suggestion-display";
+import { MissingTranslationIndicator } from "./missing-translation-indicator";
 
 export type TranslationKey =
   Database["public"]["Tables"]["translation_keys"]["Row"] & {
@@ -196,7 +198,27 @@ export function TranslationsTable({
                       value={translation?.content || ""}
                       placeholder="Enter translation"
                       disabled
+                      error={
+                        !translation?.content ||
+                        translation.content.trim() === ""
+                      }
                     />
+
+                    <MissingTranslationIndicator
+                      show={
+                        !translation?.content ||
+                        translation.content.trim() === ""
+                      }
+                    />
+
+                    {hasTranslationUpdatePermission && (
+                      <AISuggestionDisplay
+                        translationKeyId={key.id}
+                        targetLanguageId={selectedLanguageId}
+                        currentTranslation={translation?.content}
+                        disabled={false}
+                      />
+                    )}
                   </TableCell>
                   <TableCell align="center">
                     <ActionButtons>

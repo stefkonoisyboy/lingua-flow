@@ -15,6 +15,7 @@ import { CommentsDAL } from "../dal/comments";
 import { SyncHistoryDAL } from "../dal/sync-history";
 import { ProjectMembersDAL } from "../dal/project-members";
 import { UsersDAL } from "../dal/users";
+import { AISuggestionsDAL } from "../dal/ai-suggestions";
 
 // Service imports
 import { ProjectsService } from "../services/projects.service";
@@ -26,6 +27,7 @@ import { VersionHistoryService } from "../services/version-history.service";
 import { CommentsService } from "../services/comments.service";
 import { SyncHistoryService } from "../services/sync-history.service";
 import { ProjectMembersService } from "../services/project-members.service";
+import { AISuggestionsService } from "../services/ai-suggestions.service";
 
 // Interface imports
 import {
@@ -41,6 +43,7 @@ import {
   ISyncHistoryDAL,
   IProjectMembersDAL,
   IUsersDAL,
+  IAISuggestionsDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
@@ -52,6 +55,7 @@ import {
   ICommentsService,
   ISyncHistoryService,
   IProjectMembersService,
+  IAISuggestionsService,
 } from "./interfaces/service.interfaces";
 
 // Token constants for dependency injection
@@ -69,6 +73,7 @@ export const DI_TOKENS = {
   SYNC_HISTORY_DAL: "SYNC_HISTORY_DAL",
   PROJECT_MEMBERS_DAL: "PROJECT_MEMBERS_DAL",
   USERS_DAL: "USERS_DAL",
+  AISUGGESTIONS_DAL: "AISUGGESTIONS_DAL",
 
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
@@ -80,6 +85,7 @@ export const DI_TOKENS = {
   COMMENTS_SERVICE: "COMMENTS_SERVICE",
   SYNC_HISTORY_SERVICE: "SYNC_HISTORY_SERVICE",
   PROJECT_MEMBERS_SERVICE: "PROJECT_MEMBERS_SERVICE",
+  AI_SUGGESTIONS_SERVICE: "AI_SUGGESTIONS_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -173,6 +179,11 @@ export function registerServices(
     (c) => new UsersDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
+  container.register<IAISuggestionsDAL>(
+    DI_TOKENS.AISUGGESTIONS_DAL,
+    (c) => new AISuggestionsDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
   // Register services
   container.register<ILanguagesService>(
     DI_TOKENS.LANGUAGES_SERVICE,
@@ -245,6 +256,18 @@ export function registerServices(
         c.resolve(DI_TOKENS.PROJECT_MEMBERS_DAL),
         c.resolve(DI_TOKENS.USERS_DAL),
         c.resolve(DI_TOKENS.ACTIVITIES_DAL)
+      )
+  );
+
+  container.register<IAISuggestionsService>(
+    DI_TOKENS.AI_SUGGESTIONS_SERVICE,
+    (c) =>
+      new AISuggestionsService(
+        c.resolve(DI_TOKENS.AISUGGESTIONS_DAL),
+        c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
+        c.resolve(DI_TOKENS.PROJECTS_DAL),
+        c.resolve(DI_TOKENS.ACTIVITIES_DAL),
+        c.resolve(DI_TOKENS.LANGUAGES_DAL)
       )
   );
 }
