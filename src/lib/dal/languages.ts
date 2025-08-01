@@ -17,4 +17,19 @@ export class LanguagesDAL implements ILanguagesDAL {
 
     return languages;
   }
+
+  async getLanguageById(id: string) {
+    const { data: language, error } = await this.supabase
+      .from("languages")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      // PGRST116 is the error code for no rows returned
+      throw new Error(`Error fetching language: ${error.message}`);
+    }
+
+    return language;
+  }
 }

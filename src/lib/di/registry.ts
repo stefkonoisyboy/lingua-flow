@@ -27,6 +27,7 @@ import { VersionHistoryService } from "../services/version-history.service";
 import { CommentsService } from "../services/comments.service";
 import { SyncHistoryService } from "../services/sync-history.service";
 import { ProjectMembersService } from "../services/project-members.service";
+import { AISuggestionsService } from "../services/ai-suggestions.service";
 
 // Interface imports
 import {
@@ -54,6 +55,7 @@ import {
   ICommentsService,
   ISyncHistoryService,
   IProjectMembersService,
+  IAISuggestionsService,
 } from "./interfaces/service.interfaces";
 
 // Token constants for dependency injection
@@ -83,6 +85,7 @@ export const DI_TOKENS = {
   COMMENTS_SERVICE: "COMMENTS_SERVICE",
   SYNC_HISTORY_SERVICE: "SYNC_HISTORY_SERVICE",
   PROJECT_MEMBERS_SERVICE: "PROJECT_MEMBERS_SERVICE",
+  AI_SUGGESTIONS_SERVICE: "AI_SUGGESTIONS_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -253,6 +256,18 @@ export function registerServices(
         c.resolve(DI_TOKENS.PROJECT_MEMBERS_DAL),
         c.resolve(DI_TOKENS.USERS_DAL),
         c.resolve(DI_TOKENS.ACTIVITIES_DAL)
+      )
+  );
+
+  container.register<IAISuggestionsService>(
+    DI_TOKENS.AI_SUGGESTIONS_SERVICE,
+    (c) =>
+      new AISuggestionsService(
+        c.resolve(DI_TOKENS.AISUGGESTIONS_DAL),
+        c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
+        c.resolve(DI_TOKENS.PROJECTS_DAL),
+        c.resolve(DI_TOKENS.ACTIVITIES_DAL),
+        c.resolve(DI_TOKENS.LANGUAGES_DAL)
       )
   );
 }

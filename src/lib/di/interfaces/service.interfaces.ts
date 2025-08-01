@@ -432,3 +432,28 @@ export interface IProjectMembersService {
     token: string
   ): Promise<{ user: Profile }>; // session type can be refined
 }
+
+// AI Suggestions Service Interface
+export interface TranslationSuggestion {
+  suggestedText: string;
+  confidenceScore: number;
+  modelUsed: string;
+  cached: boolean;
+}
+
+export interface IAISuggestionsService {
+  getSuggestion(
+    userId: string,
+    projectId: string,
+    translationKeyId: string,
+    targetLanguageId: string
+  ): Promise<TranslationSuggestion>;
+
+  applySuggestion(
+    projectId: string,
+    translationId: string,
+    suggestedText: string,
+    modelUsed: string,
+    userId: string
+  ): Promise<{ success: boolean }>;
+}

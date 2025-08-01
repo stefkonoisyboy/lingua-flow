@@ -337,6 +337,10 @@ export interface ILanguagesDAL {
   getAllLanguages(): Promise<
     Database["public"]["Tables"]["languages"]["Row"][]
   >;
+
+  getLanguageById(
+    id: string
+  ): Promise<Database["public"]["Tables"]["languages"]["Row"] | null>;
 }
 
 export interface IPaginationDAL {
