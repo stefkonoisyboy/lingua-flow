@@ -31,7 +31,8 @@ export const aiSuggestionsRouter = router({
     .input(
       z.object({
         projectId: z.string().uuid(),
-        translationId: z.string().uuid(),
+        translationKeyId: z.string().uuid(),
+        targetLanguageId: z.string().uuid(),
         suggestedText: z.string().min(1),
         modelUsed: z.string().min(1),
       })
@@ -44,7 +45,8 @@ export const aiSuggestionsRouter = router({
 
       return await aiSuggestionsService.applySuggestion(
         input.projectId,
-        input.translationId,
+        input.translationKeyId,
+        input.targetLanguageId,
         input.suggestedText,
         input.modelUsed,
         ctx.user.id

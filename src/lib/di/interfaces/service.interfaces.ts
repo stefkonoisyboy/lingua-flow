@@ -451,7 +451,8 @@ export interface IAISuggestionsService {
 
   applySuggestion(
     projectId: string,
-    translationId: string,
+    translationKeyId: string,
+    targetLanguageId: string,
     suggestedText: string,
     modelUsed: string,
     userId: string

@@ -37,8 +37,7 @@ export class AISuggestionsService implements IAISuggestionsService {
     targetLanguageId: string
   ): Promise<TranslationSuggestion> {
     // Get translation key and source text
-    const translationKey = await this.translationsDAL.getTranslationKeyByKey(
-      projectId,
+    const translationKey = await this.translationsDAL.getTranslationKeyById(
       translationKeyId
     );
 
@@ -86,9 +85,19 @@ export class AISuggestionsService implements IAISuggestionsService {
       };
     }
 
+    const translation =
+      await this.translationsDAL.getTranslationByKeyAndLanguage(
+        translationKeyId,
+        sourceLanguage.id
+      );
+
+    if (!translation) {
+      throw new Error("Source translation not found");
+    }
+
     // Call Gemini API directly
     const response = await this.callGeminiAPI({
-      sourceText: translationKey.key,
+      sourceText: translation.content,
       sourceLanguage: sourceLanguage.code,
       targetLanguage: targetLanguage.code,
       context: project.description || undefined,
@@ -99,7 +108,7 @@ export class AISuggestionsService implements IAISuggestionsService {
       translationKeyId,
       sourceLanguageId: sourceLanguage.id,
       targetLanguageId,
-      sourceText: translationKey.key,
+      sourceText: translation.content,
       suggestedText: response.suggestedText,
       modelName: "gemini-2.5-flash",
       confidenceScore: 0.95,
@@ -131,15 +140,17 @@ export class AISuggestionsService implements IAISuggestionsService {
 
   async applySuggestion(
     projectId: string,
-    translationId: string,
+    translationKeyId: string,
+    targetLanguageId: string,
     suggestedText: string,
     modelUsed: string,
     userId: string
   ): Promise<{ success: boolean }> {
     try {
       // Update the translation
-      await this.translationsDAL.updateTranslation(
-        translationId,
+      await this.translationsDAL.createTranslation(
+        translationKeyId,
+        targetLanguageId,
         suggestedText,
         userId
       );
@@ -152,7 +163,8 @@ export class AISuggestionsService implements IAISuggestionsService {
         {
           details: {
             model: modelUsed,
-            translationId,
+            translationKeyId,
+            targetLanguageId,
           },
         }
       );

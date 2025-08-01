@@ -270,6 +270,13 @@ export interface ITranslationsDAL {
   getLatestVersionNumbers(
     translationIds: string[]
   ): Promise<{ translation_id: string; version_number: number }[]>;
+
+  getTranslationKeyById(keyId: string): Promise<TranslationKey | null>;
+
+  getTranslationByKeyAndLanguage(
+    keyId: string,
+    languageId: string
+  ): Promise<Translation | null>;
 }
 
 // IntegrationsDAL Interface

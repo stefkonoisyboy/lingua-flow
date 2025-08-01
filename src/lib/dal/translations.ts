@@ -775,4 +775,38 @@ export class TranslationsDAL implements ITranslationsDAL {
       throw new Error(`Failed to insert version history: ${error.message}`);
     }
   }
+
+  async getTranslationKeyById(keyId: string) {
+    const { data, error } = await this.supabase
+      .from("translation_keys")
+      .select("*")
+      .eq("id", keyId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw new Error(`Failed to get translation key: ${error.message}`);
+    }
+
+    return data;
+  }
+
+  async getTranslationByKeyAndLanguage(keyId: string, languageId: string) {
+    const { data, error } = await this.supabase
+      .from("translations")
+      .select(
+        `
+        *,
+        translation_keys!inner(project_id)
+        `
+      )
+      .eq("key_id", keyId)
+      .eq("language_id", languageId)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw new Error(`Failed to get translation: ${error.message}`);
+    }
+
+    return data;
+  }
 }
