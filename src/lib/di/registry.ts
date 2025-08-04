@@ -292,7 +292,8 @@ export function registerServices(
         c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
         c.resolve(DI_TOKENS.PROJECTS_DAL),
         c.resolve(DI_TOKENS.ACTIVITIES_DAL),
-        c.resolve(DI_TOKENS.LANGUAGES_DAL)
+        c.resolve(DI_TOKENS.LANGUAGES_DAL),
+        c.resolve(DI_TOKENS.TRANSLATION_MEMORY_SERVICE)
       )
   );
 

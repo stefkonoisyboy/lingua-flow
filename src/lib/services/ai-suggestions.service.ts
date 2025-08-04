@@ -9,6 +9,7 @@ import {
 import {
   IAISuggestionsService,
   TranslationSuggestion,
+  ITranslationMemoryService,
 } from "../di/interfaces/service.interfaces";
 
 export class AISuggestionsService implements IAISuggestionsService {
@@ -19,7 +20,8 @@ export class AISuggestionsService implements IAISuggestionsService {
     private translationsDAL: ITranslationsDAL,
     private projectsDAL: IProjectsDAL,
     private activitiesDAL: IActivitiesDAL,
-    private languagesDAL: ILanguagesDAL
+    private languagesDAL: ILanguagesDAL,
+    private translationMemoryService: ITranslationMemoryService
   ) {
     const apiKey = process.env.GEMINI_API_KEY || "";
 
@@ -147,13 +149,68 @@ export class AISuggestionsService implements IAISuggestionsService {
     userId: string
   ): Promise<{ success: boolean }> {
     try {
-      // Update the translation
+      // Get project and language information for memory storage
+      const project = await this.projectsDAL.getProjectById(projectId);
+
+      if (!project) {
+        throw new Error("Project not found");
+      }
+
+      const sourceLanguage = await this.languagesDAL.getLanguageById(
+        project.default_language_id
+      );
+
+      if (!sourceLanguage) {
+        throw new Error("Source language not found");
+      }
+
+      const targetLanguage = await this.languagesDAL.getLanguageById(
+        targetLanguageId
+      );
+
+      if (!targetLanguage) {
+        throw new Error("Target language not found");
+      }
+
+      // Get translation key for context
+      const translationKey = await this.translationsDAL.getTranslationKeyById(
+        translationKeyId
+      );
+
+      if (!translationKey) {
+        throw new Error("Translation key not found");
+      }
+
+      // Get source text for memory storage
+      const sourceTranslation =
+        await this.translationsDAL.getTranslationByKeyAndLanguage(
+          translationKeyId,
+          sourceLanguage.id
+        );
+
+      if (!sourceTranslation) {
+        throw new Error("Source translation not found");
+      }
+
+      // Create the translation
       await this.translationsDAL.createTranslation(
         translationKeyId,
         targetLanguageId,
         suggestedText,
         userId
       );
+
+      // Store in translation memory with AI quality score
+      await this.translationMemoryService.storeTranslation({
+        projectId,
+        sourceLanguageId: sourceLanguage.id,
+        targetLanguageId,
+        sourceText: sourceTranslation.content,
+        targetText: suggestedText,
+        translationKeyName: translationKey.key,
+        qualityScore: 0.8, // AI-applied suggestion (lower than human)
+        createdBy: userId,
+      });
 
       // Log activity
       await this.activitiesDAL.logActivity(

@@ -86,6 +86,7 @@ export class TranslationsService implements ITranslationsService {
     for (const translation of result.translations) {
       await this.storeTranslationInMemory(
         project.default_language_id,
+        translation.language_id,
         translation.key_id,
         translation.content,
         translation.translator_id ?? ""
@@ -121,6 +122,7 @@ export class TranslationsService implements ITranslationsService {
     // Store in translation memory
     await this.storeTranslationInMemory(
       project.default_language_id,
+      updatedTranslation.language_id,
       updatedTranslation.key_id,
       content,
       userId
@@ -130,33 +132,21 @@ export class TranslationsService implements ITranslationsService {
   }
 
   private async storeTranslationInMemory(
-    languageId: string,
+    sourceLanguageId: string,
+    targetLanguageId: string,
     keyId: string,
     content: string,
     userId: string
   ) {
     try {
-      const sourceLanguage = await this.languagesDAL.getLanguageById(
-        languageId
-      );
-
-      if (!sourceLanguage) {
-        console.warn(
-          "Source language not found for memory storage:",
-          languageId
-        );
-
-        return;
-      }
-
       // Get the translation with key information
-      const translation =
+      const sourceTranslation =
         await this.translationsDAL.getTranslationByKeyAndLanguage(
           keyId,
-          sourceLanguage.id
+          sourceLanguageId
         );
 
-      if (!translation) {
+      if (!sourceTranslation) {
         console.warn("Translation not found for memory storage:", keyId);
 
         return;
@@ -164,38 +154,23 @@ export class TranslationsService implements ITranslationsService {
 
       // Get the translation key to access source text and project info
       const translationKey = await this.translationsDAL.getTranslationKeyById(
-        translation.key_id
+        sourceTranslation.key_id
       );
 
       if (!translationKey) {
         console.warn(
           "Translation key not found for memory storage:",
-          translation.key_id
+          sourceTranslation.key_id
         );
 
-        return;
-      }
-
-      // Get the source language (English) translation for this key
-      const sourceTranslation =
-        await this.translationsDAL.getTranslationByKeyAndLanguage(
-          translation.key_id,
-          sourceLanguage.id
-        );
-
-      if (!sourceTranslation) {
-        console.warn(
-          "Source translation not found for memory storage:",
-          translation.key_id
-        );
         return;
       }
 
       // Store in translation memory
       await this.translationMemoryService.storeTranslation({
-        projectId: translation.translation_keys.project_id,
-        sourceLanguageId: sourceLanguage.id,
-        targetLanguageId: translation.language_id,
+        projectId: translationKey.project_id,
+        sourceLanguageId,
+        targetLanguageId,
         sourceText: sourceTranslation.content,
         targetText: content,
         translationKeyName: translationKey.key,
@@ -231,6 +206,7 @@ export class TranslationsService implements ITranslationsService {
     // Store in translation memory
     await this.storeTranslationInMemory(
       project.default_language_id,
+      newTranslation.language_id,
       newTranslation.key_id,
       content,
       userId
