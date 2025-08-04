@@ -30,6 +30,8 @@ import { CommentsService } from "../services/comments.service";
 import { SyncHistoryService } from "../services/sync-history.service";
 import { ProjectMembersService } from "../services/project-members.service";
 import { AISuggestionsService } from "../services/ai-suggestions.service";
+import { TranslationMemoryService } from "../services/translation-memory.service";
+import { MemoryQualityService } from "../services/memory-quality.service";
 
 // Interface imports
 import {
@@ -60,6 +62,8 @@ import {
   ISyncHistoryService,
   IProjectMembersService,
   IAISuggestionsService,
+  ITranslationMemoryService,
+  IMemoryQualityService,
 } from "./interfaces/service.interfaces";
 
 // Token constants for dependency injection
@@ -92,6 +96,8 @@ export const DI_TOKENS = {
   SYNC_HISTORY_SERVICE: "SYNC_HISTORY_SERVICE",
   PROJECT_MEMBERS_SERVICE: "PROJECT_MEMBERS_SERVICE",
   AI_SUGGESTIONS_SERVICE: "AI_SUGGESTIONS_SERVICE",
+  TRANSLATION_MEMORY_SERVICE: "TRANSLATION_MEMORY_SERVICE",
+  MEMORY_QUALITY_SERVICE: "MEMORY_QUALITY_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -285,5 +291,19 @@ export function registerServices(
         c.resolve(DI_TOKENS.ACTIVITIES_DAL),
         c.resolve(DI_TOKENS.LANGUAGES_DAL)
       )
+  );
+
+  container.register<ITranslationMemoryService>(
+    DI_TOKENS.TRANSLATION_MEMORY_SERVICE,
+    (c) =>
+      new TranslationMemoryService(
+        c.resolve(DI_TOKENS.TRANSLATION_MEMORY_DAL),
+        c.resolve(DI_TOKENS.ACTIVITIES_DAL)
+      )
+  );
+
+  container.register<IMemoryQualityService>(
+    DI_TOKENS.MEMORY_QUALITY_SERVICE,
+    () => new MemoryQualityService()
   );
 }

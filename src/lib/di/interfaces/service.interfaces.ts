@@ -1,4 +1,4 @@
-import { Database } from "../../types/database.types";
+import { Database, Json } from "../../types/database.types";
 import { IntegrationConfig } from "../../dal/integrations";
 import {
   Repository,
@@ -457,4 +457,74 @@ export interface IAISuggestionsService {
     modelUsed: string,
     userId: string
   ): Promise<{ success: boolean }>;
+}
+
+export interface ITranslationMemoryService {
+  storeTranslation(data: {
+    projectId: string;
+    sourceLanguageId: string;
+    targetLanguageId: string;
+    sourceText: string;
+    targetText: string;
+    translationKeyName?: string;
+    context?: Json;
+    qualityScore: number;
+    createdBy: string;
+  }): Promise<Database["public"]["Tables"]["translation_memory"]["Row"]>;
+
+  findExactMatch(
+    projectId: string,
+    sourceText: string,
+    targetLanguageId: string
+  ): Promise<Database["public"]["Tables"]["translation_memory"]["Row"] | null>;
+
+  findSimilarMatches(
+    projectId: string,
+    sourceText: string,
+    targetLanguageId: string,
+    threshold?: number,
+    limit?: number
+  ): Promise<Database["public"]["Tables"]["translation_memory"]["Row"][]>;
+
+  getMemoryStats(projectId: string): Promise<{
+    totalEntries: number;
+    averageQuality: number;
+    mostUsedEntries: Database["public"]["Tables"]["translation_memory"]["Row"][];
+  }>;
+
+  cleanupOldEntries(projectId: string, olderThanDays: number): Promise<number>;
+}
+
+export interface IMemoryMatchingService {
+  calculateSimilarity(text1: string, text2: string): number;
+
+  findBestMatches(
+    sourceText: string,
+    candidates: Database["public"]["Tables"]["translation_memory"]["Row"][],
+    threshold?: number,
+    limit?: number
+  ): Database["public"]["Tables"]["translation_memory"]["Row"][];
+
+  rankMatches(
+    matches: Array<{
+      entry: Database["public"]["Tables"]["translation_memory"]["Row"];
+      similarity: number;
+    }>
+  ): Database["public"]["Tables"]["translation_memory"]["Row"][];
+}
+
+export interface IMemoryQualityService {
+  calculateQualityScore(
+    source: "human" | "ai_applied" | "ai_generated" | "human_corrected",
+    usageCount?: number,
+    ageInDays?: number
+  ): number;
+
+  shouldPromoteEntry(
+    entry: Database["public"]["Tables"]["translation_memory"]["Row"]
+  ): boolean;
+
+  shouldDemoteEntry(
+    entry: Database["public"]["Tables"]["translation_memory"]["Row"]
+  ): boolean;
 }

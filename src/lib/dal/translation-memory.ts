@@ -92,7 +92,9 @@ export class TranslationMemoryDAL implements ITranslationMemoryDAL {
       .order("usage_count", { ascending: false })
       .limit(100); // Limit candidates for performance
 
-    if (error) throw error;
+    if (error) {
+      throw error;
+    }
 
     // Calculate similarity scores and filter by threshold
     const matches = candidates
