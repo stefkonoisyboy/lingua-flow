@@ -16,6 +16,8 @@ import { SyncHistoryDAL } from "../dal/sync-history";
 import { ProjectMembersDAL } from "../dal/project-members";
 import { UsersDAL } from "../dal/users";
 import { AISuggestionsDAL } from "../dal/ai-suggestions";
+import { TranslationMemoryDAL } from "../dal/translation-memory";
+import { MemoryCacheDAL } from "../dal/memory-cache";
 
 // Service imports
 import { ProjectsService } from "../services/projects.service";
@@ -44,6 +46,8 @@ import {
   IProjectMembersDAL,
   IUsersDAL,
   IAISuggestionsDAL,
+  ITranslationMemoryDAL,
+  IMemoryCacheDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
@@ -74,6 +78,8 @@ export const DI_TOKENS = {
   PROJECT_MEMBERS_DAL: "PROJECT_MEMBERS_DAL",
   USERS_DAL: "USERS_DAL",
   AISUGGESTIONS_DAL: "AISUGGESTIONS_DAL",
+  TRANSLATION_MEMORY_DAL: "TRANSLATION_MEMORY_DAL",
+  MEMORY_CACHE_DAL: "MEMORY_CACHE_DAL",
 
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
@@ -182,6 +188,16 @@ export function registerServices(
   container.register<IAISuggestionsDAL>(
     DI_TOKENS.AISUGGESTIONS_DAL,
     (c) => new AISuggestionsDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
+  container.register<ITranslationMemoryDAL>(
+    DI_TOKENS.TRANSLATION_MEMORY_DAL,
+    (c) => new TranslationMemoryDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
+  container.register<IMemoryCacheDAL>(
+    DI_TOKENS.MEMORY_CACHE_DAL,
+    (c) => new MemoryCacheDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
   // Register services

@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { IntegrationConfig } from "../../dal/integrations";
-import { Database } from "../../types/database.types";
+import { Database, Json } from "../../types/database.types";
 
 export type TranslationInsert = {
   key_id: string;
@@ -519,4 +519,64 @@ export interface IAISuggestionsDAL {
   >;
 
   deleteExpiredSuggestions(): Promise<void>;
+}
+
+export interface ITranslationMemoryDAL {
+  storeTranslation(data: {
+    projectId: string;
+    sourceLanguageId: string;
+    targetLanguageId: string;
+    sourceText: string;
+    targetText: string;
+    translationKeyName?: string;
+    context?: Json;
+    qualityScore: number;
+    createdBy: string;
+  }): Promise<Database["public"]["Tables"]["translation_memory"]["Row"]>;
+
+  findExactMatch(
+    projectId: string,
+    sourceText: string,
+    targetLanguageId: string
+  ): Promise<Database["public"]["Tables"]["translation_memory"]["Row"] | null>;
+
+  findSimilarMatches(
+    projectId: string,
+    sourceText: string,
+    targetLanguageId: string,
+    threshold?: number,
+    limit?: number
+  ): Promise<Database["public"]["Tables"]["translation_memory"]["Row"][]>;
+
+  updateUsageCount(memoryId: string): Promise<void>;
+
+  getMemoryStats(projectId: string): Promise<{
+    totalEntries: number;
+    averageQuality: number;
+    mostUsedEntries: Database["public"]["Tables"]["translation_memory"]["Row"][];
+  }>;
+
+  cleanupOldEntries(projectId: string, olderThanDays: number): Promise<number>;
+}
+
+export interface IMemoryCacheDAL {
+  cacheSimilarityScore(
+    memoryId: string,
+    sourceTextHash: string,
+    similarityScore: number
+  ): Promise<void>;
+
+  getCachedSimilarityScores(
+    sourceTextHash: string,
+    limit?: number
+  ): Promise<
+    Array<{
+      memoryId: string;
+      similarityScore: number;
+    }>
+  >;
+
+  clearCacheForMemory(memoryId: string): Promise<void>;
+
+  cleanupExpiredCache(olderThanHours: number): Promise<number>;
 }
