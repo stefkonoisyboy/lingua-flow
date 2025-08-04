@@ -176,12 +176,14 @@ export interface ITranslationsService {
   updateTranslationKey(keyId: string, newKey: string): Promise<TranslationKey>;
 
   updateTranslation(
+    projectId: string,
     translationId: string,
     content: string,
     userId: string
   ): Promise<Database["public"]["Tables"]["translations"]["Row"]>;
 
   createTranslation(
+    projectId: string,
     keyId: string,
     languageId: string,
     content: string,

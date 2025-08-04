@@ -1,8 +1,13 @@
 import {
   IIntegrationsDAL,
+  ILanguagesDAL,
+  IProjectsDAL,
   ITranslationsDAL,
 } from "../di/interfaces/dal.interfaces";
-import { ITranslationsService } from "../di/interfaces/service.interfaces";
+import {
+  ITranslationsService,
+  ITranslationMemoryService,
+} from "../di/interfaces/service.interfaces";
 
 const DEFAULT_PAGE_SIZE = 10;
 const DEFAULT_PAGE = 1;
@@ -10,7 +15,10 @@ const DEFAULT_PAGE = 1;
 export class TranslationsService implements ITranslationsService {
   constructor(
     private readonly translationsDAL: ITranslationsDAL,
-    private readonly integrationsDAL: IIntegrationsDAL
+    private readonly integrationsDAL: IIntegrationsDAL,
+    private readonly translationMemoryService: ITranslationMemoryService,
+    private readonly languagesDAL: ILanguagesDAL,
+    private readonly projectsDAL: IProjectsDAL
   ) {}
 
   async getTranslationKeys(
@@ -61,12 +69,30 @@ export class TranslationsService implements ITranslationsService {
     }
 
     // Create the key and translations
-    return await this.translationsDAL.createTranslationKeyWithTranslations(
-      projectId,
-      key,
-      translations,
-      description
-    );
+    const result =
+      await this.translationsDAL.createTranslationKeyWithTranslations(
+        projectId,
+        key,
+        translations,
+        description
+      );
+
+    const project = await this.projectsDAL.getProjectById(projectId);
+
+    if (!project?.default_language_id) {
+      throw new Error("Project default language not found");
+    }
+
+    for (const translation of result.translations) {
+      await this.storeTranslationInMemory(
+        project.default_language_id,
+        translation.key_id,
+        translation.content,
+        translation.translator_id ?? ""
+      );
+    }
+
+    return result;
   }
 
   async updateTranslationKey(keyId: string, newKey: string) {
@@ -74,29 +100,143 @@ export class TranslationsService implements ITranslationsService {
   }
 
   async updateTranslation(
+    projectId: string,
     translationId: string,
     content: string,
     userId: string
   ) {
-    return await this.translationsDAL.updateTranslation(
+    // Update the translation
+    const updatedTranslation = await this.translationsDAL.updateTranslation(
       translationId,
       content,
       userId
     );
+
+    const project = await this.projectsDAL.getProjectById(projectId);
+
+    if (!project?.default_language_id) {
+      throw new Error("Project default language not found");
+    }
+
+    // Store in translation memory
+    await this.storeTranslationInMemory(
+      project.default_language_id,
+      updatedTranslation.key_id,
+      content,
+      userId
+    );
+
+    return updatedTranslation;
+  }
+
+  private async storeTranslationInMemory(
+    languageId: string,
+    keyId: string,
+    content: string,
+    userId: string
+  ) {
+    try {
+      const sourceLanguage = await this.languagesDAL.getLanguageById(
+        languageId
+      );
+
+      if (!sourceLanguage) {
+        console.warn(
+          "Source language not found for memory storage:",
+          languageId
+        );
+
+        return;
+      }
+
+      // Get the translation with key information
+      const translation =
+        await this.translationsDAL.getTranslationByKeyAndLanguage(
+          keyId,
+          sourceLanguage.id
+        );
+
+      if (!translation) {
+        console.warn("Translation not found for memory storage:", keyId);
+
+        return;
+      }
+
+      // Get the translation key to access source text and project info
+      const translationKey = await this.translationsDAL.getTranslationKeyById(
+        translation.key_id
+      );
+
+      if (!translationKey) {
+        console.warn(
+          "Translation key not found for memory storage:",
+          translation.key_id
+        );
+
+        return;
+      }
+
+      // Get the source language (English) translation for this key
+      const sourceTranslation =
+        await this.translationsDAL.getTranslationByKeyAndLanguage(
+          translation.key_id,
+          sourceLanguage.id
+        );
+
+      if (!sourceTranslation) {
+        console.warn(
+          "Source translation not found for memory storage:",
+          translation.key_id
+        );
+        return;
+      }
+
+      // Store in translation memory
+      await this.translationMemoryService.storeTranslation({
+        projectId: translation.translation_keys.project_id,
+        sourceLanguageId: sourceLanguage.id,
+        targetLanguageId: translation.language_id,
+        sourceText: sourceTranslation.content,
+        targetText: content,
+        translationKeyName: translationKey.key,
+        qualityScore: 1.0, // Human translation
+        createdBy: userId,
+      });
+    } catch (error) {
+      // Log error but don't fail the translation update
+      console.error("Failed to store translation in memory:", error);
+    }
   }
 
   async createTranslation(
+    projectId: string,
     keyId: string,
     languageId: string,
     content: string,
     userId: string
   ) {
-    return await this.translationsDAL.createTranslation(
+    const newTranslation = await this.translationsDAL.createTranslation(
       keyId,
       languageId,
       content,
       userId
     );
+
+    const project = await this.projectsDAL.getProjectById(projectId);
+
+    if (!project?.default_language_id) {
+      throw new Error("Project default language not found");
+    }
+
+    // Store in translation memory
+    await this.storeTranslationInMemory(
+      project.default_language_id,
+      newTranslation.key_id,
+      content,
+      userId
+    );
+
+    return newTranslation;
   }
 
   /**
