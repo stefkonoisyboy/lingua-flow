@@ -531,6 +531,8 @@ export interface ITranslationMemoryDAL {
     translationKeyName?: string;
     context?: Json;
     qualityScore: number;
+    sourceEmbedding?: number[];
+    targetEmbedding?: number[];
     createdBy: string;
   }): Promise<Database["public"]["Tables"]["translation_memory"]["Row"]>;
 
@@ -546,6 +548,14 @@ export interface ITranslationMemoryDAL {
     targetLanguageId: string,
     threshold?: number,
     limit?: number
+  ): Promise<Database["public"]["Tables"]["translation_memory"]["Row"][]>;
+
+  findSimilarByEmbedding(
+    projectId: string,
+    sourceEmbedding: number[],
+    targetLanguageId: string,
+    threshold: number,
+    limit: number
   ): Promise<Database["public"]["Tables"]["translation_memory"]["Row"][]>;
 
   updateUsageCount(memoryId: string): Promise<void>;

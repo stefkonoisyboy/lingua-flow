@@ -14,23 +14,49 @@ export class TranslationMemoryDAL implements ITranslationMemoryDAL {
     translationKeyName?: string;
     context?: Json;
     qualityScore: number;
+    sourceEmbedding?: number[];
+    targetEmbedding?: number[];
     createdBy: string;
   }) {
+    const insertData: {
+      project_id: string;
+      source_language_id: string;
+      target_language_id: string;
+      source_text: string;
+      target_text: string;
+      translation_key_name?: string;
+      context?: Json;
+      quality_score: number;
+      created_by: string;
+      usage_count: number;
+      last_used: string;
+      source_embedding?: string;
+      target_embedding?: string;
+    } = {
+      project_id: data.projectId,
+      source_language_id: data.sourceLanguageId,
+      target_language_id: data.targetLanguageId,
+      source_text: data.sourceText,
+      target_text: data.targetText,
+      translation_key_name: data.translationKeyName,
+      context: data.context,
+      quality_score: data.qualityScore,
+      created_by: data.createdBy,
+      usage_count: 0,
+      last_used: new Date().toISOString(),
+    };
+
+    // Add embeddings if provided (store as JSON strings)
+    if (data.sourceEmbedding) {
+      insertData.source_embedding = JSON.stringify(data.sourceEmbedding);
+    }
+    if (data.targetEmbedding) {
+      insertData.target_embedding = JSON.stringify(data.targetEmbedding);
+    }
+
     const { data: memory, error } = await this.supabase
       .from("translation_memory")
-      .insert({
-        project_id: data.projectId,
-        source_language_id: data.sourceLanguageId,
-        target_language_id: data.targetLanguageId,
-        source_text: data.sourceText,
-        target_text: data.targetText,
-        translation_key_name: data.translationKeyName,
-        context: data.context,
-        quality_score: data.qualityScore,
-        created_by: data.createdBy,
-        usage_count: 0,
-        last_used: new Date().toISOString(),
-      })
+      .insert(insertData)
       .select()
       .single();
 
@@ -71,17 +97,6 @@ export class TranslationMemoryDAL implements ITranslationMemoryDAL {
     threshold: number = 0.7,
     limit: number = 5
   ) {
-    // First try exact match
-    const exactMatch = await this.findExactMatch(
-      projectId,
-      sourceText,
-      targetLanguageId
-    );
-
-    if (exactMatch) {
-      return [exactMatch];
-    }
-
     // Get candidates for similarity matching
     const { data: candidates, error } = await this.supabase
       .from("translation_memory")
@@ -210,6 +225,31 @@ export class TranslationMemoryDAL implements ITranslationMemoryDAL {
     }
 
     return count || 0;
+  }
+
+  async findSimilarByEmbedding(
+    projectId: string,
+    sourceEmbedding: number[],
+    targetLanguageId: string,
+    threshold: number,
+    limit: number
+  ) {
+    const { data: matches, error } = await this.supabase.rpc(
+      "match_memory_embeddings",
+      {
+        query_embedding: JSON.stringify(sourceEmbedding),
+        match_threshold: threshold,
+        match_count: limit,
+        p_project_id: projectId,
+        p_target_language_id: targetLanguageId,
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    return matches || [];
   }
 
   private calculateSimilarity(text1: string, text2: string): number {

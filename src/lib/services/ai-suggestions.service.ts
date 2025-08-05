@@ -260,6 +260,30 @@ export class AISuggestionsService implements IAISuggestionsService {
     }
   }
 
+  async generateEmbedding(text: string): Promise<number[]> {
+    try {
+      const response = await this.ai.models.embedContent({
+        model: "gemini-embedding-001",
+        contents: text,
+      });
+
+      if (!response.embeddings || response.embeddings.length === 0) {
+        throw new Error("Invalid embedding response from Gemini API");
+      }
+
+      const values = response.embeddings[0].values;
+
+      if (!values) {
+        throw new Error("Invalid embedding values from Gemini API");
+      }
+
+      return values;
+    } catch (error) {
+      console.error("Gemini embedding API call failed:", error);
+      throw new Error("Embedding generation failed");
+    }
+  }
+
   private buildGeminiPrompt(params: {
     sourceText: string;
     sourceLanguage: string;

@@ -21,6 +21,8 @@ CREATE TABLE translation_memory (
     translation_key_name VARCHAR(255), -- For context
     context JSONB, -- Additional context (project description, etc.)
     quality_score FLOAT DEFAULT 1.0, -- 1.0 = human, 0.8 = AI-applied, etc.
+    source_embedding vector(768), -- Gemini embedding for source text
+    target_embedding vector(768), -- Gemini embedding for target text
     created_by UUID REFERENCES profiles(id),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -47,6 +49,13 @@ CREATE INDEX idx_memory_similarity ON translation_memory_cache(
 CREATE INDEX idx_memory_quality ON translation_memory(
     project_id, quality_score DESC, created_at DESC
 );
+
+-- Vector similarity indexes (requires pgvector extension)
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE INDEX idx_memory_source_embedding ON translation_memory 
+USING ivfflat (source_embedding vector_cosine_ops);
+CREATE INDEX idx_memory_target_embedding ON translation_memory 
+USING ivfflat (target_embedding vector_cosine_ops);
 ```
 
 ### 1.2 Core Services
