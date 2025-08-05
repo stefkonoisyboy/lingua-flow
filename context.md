@@ -202,6 +202,333 @@ Key Features:
 - Translation memory suggestions
 - Translation status management (pending, in_progress, reviewed, approved)
 
+### 7. AI-Powered Translation Memory System
+
+#### Overview
+
+The translation memory system provides intelligent, context-aware translation suggestions by leveraging previously translated content. It combines exact matching, fuzzy text similarity, and semantic vector similarity to deliver highly accurate and consistent translations.
+
+#### Backend Implementation
+
+**Core Components:**
+
+1. **Translation Memory Database Schema**
+   ```sql
+   -- Translation memory storage with vector embeddings
+   CREATE TABLE translation_memory (
+       id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+       project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+       source_language_id UUID REFERENCES languages(id),
+       target_language_id UUID REFERENCES languages(id),
+       source_text TEXT NOT NULL,
+       target_text TEXT NOT NULL,
+       translation_key_name VARCHAR(255),
+       context JSONB,
+       quality_score FLOAT DEFAULT 1.0,
+       source_embedding vector(768),
+       target_embedding vector(768),
+       created_by UUID REFERENCES profiles(id),
+       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+       usage_count INTEGER DEFAULT 0,
+       last_used TIMESTAMP WITH TIME ZONE
+   );
+
+   -- Vector similarity indexes (requires pgvector extension)
+   CREATE EXTENSION IF NOT EXISTS vector;
+   CREATE INDEX idx_memory_source_embedding ON translation_memory 
+   USING ivfflat (source_embedding vector_cosine_ops);
+   CREATE INDEX idx_memory_target_embedding ON translation_memory 
+   USING ivfflat (target_embedding vector_cosine_ops);
+   ```
+
+2. **DAL Layer (TranslationMemoryDAL)**
+   - **storeTranslation**: Stores translations with optional embeddings
+   - **findExactMatch**: Fast exact text matching
+   - **findSimilarMatches**: Fuzzy matching using pg_trgm trigram similarity
+   - **findSimilarByEmbedding**: Semantic similarity using pgvector
+   - **updateUsageCount**: Tracks memory entry usage
+   - **getMemoryStats**: Analytics and statistics
+   - **cleanupOldEntries**: Maintenance and cleanup
+
+3. **Service Layer (TranslationMemoryService)**
+   - **Automatic embedding generation** using Gemini API
+   - **Hybrid search strategy**: Exact → Fuzzy → Semantic
+   - **Quality scoring**: Human (1.0), AI-applied (0.8), AI-generated (0.7)
+   - **Usage tracking**: Increments usage count on memory access
+   - **Error handling**: Graceful fallbacks for embedding failures
+
+4. **Memory Quality Service (MemoryQualityService)**
+   - **Quality calculation**: Base scores with usage and age adjustments
+   - **Promotion/demotion logic**: Entry lifecycle management
+   - **Cleanup decisions**: Automatic removal of low-quality entries
+   - **Age decay**: Quality reduction over time for unused entries
+
+#### Gemini API Integration
+
+**Embedding Generation:**
+```typescript
+// Uses Gemini's dedicated embedding model
+async generateEmbedding(text: string): Promise<number[]> {
+  const response = await this.ai.models.embedContent({
+    model: "gemini-embedding-001",
+    contents: text,
+  });
+  return response.embeddings[0].values;
+}
+```
+
+**Enhanced AI Prompts:**
+```typescript
+// Memory-enhanced prompt building
+private buildGeminiPrompt(params: {
+  sourceText: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  context?: string;
+  memoryMatches?: Database["public"]["Tables"]["translation_memory"]["Row"][];
+}): string {
+  let prompt = `You are a translation assistant. Translate the following text from ${sourceLanguage} to ${targetLanguage}. `;
+  
+  if (context) {
+    prompt += `Context: ${context}. `;
+  }
+
+  // Add memory matches as reference examples
+  if (memoryMatches && memoryMatches.length > 0) {
+    prompt += `\n\nUse these similar translations as reference:\n`;
+    memoryMatches.forEach((match, index) => {
+      prompt += `${index + 1}. "${match.source_text}" → "${match.target_text}"\n`;
+    });
+    prompt += `\n`;
+  }
+
+  prompt += `Text to translate: "${sourceText}". `;
+  prompt += `Provide only the translation, no additional text or explanations.`;
+
+  return prompt;
+}
+```
+
+**Dynamic Confidence Scoring:**
+```typescript
+private calculateConfidenceScore(memoryMatches: Database["public"]["Tables"]["translation_memory"]["Row"][]): number {
+  if (memoryMatches.length === 0) {
+    return 0.7; // Base confidence for pure AI generation
+  }
+
+  // Calculate average quality score of memory matches
+  const averageQuality = memoryMatches.reduce(
+    (sum, match) => sum + (match.quality_score || 0),
+    0
+  ) / memoryMatches.length;
+
+  // Calculate confidence based on quality and number of matches
+  const qualityBoost = Math.min(averageQuality * 0.2, 0.2);
+  const matchCountBoost = Math.min(memoryMatches.length * 0.05, 0.1);
+
+  const baseConfidence = 0.8;
+  const totalConfidence = baseConfidence + qualityBoost + matchCountBoost;
+
+  return Math.min(0.98, Math.max(0.7, totalConfidence));
+}
+```
+
+#### Search Strategies
+
+**1. Exact Match (Fastest)**
+- Direct text comparison
+- Returns immediately if found
+- Updates usage count
+
+**2. Fuzzy Match (Fast)**
+- Uses PostgreSQL pg_trgm extension
+- Trigram similarity for text variations
+- Configurable similarity threshold
+
+**3. Semantic Match (Most Accurate)**
+- Uses pgvector with Gemini embeddings
+- Cosine similarity for meaning-based matching
+- Handles cross-language semantic relationships
+
+#### Database Functions
+
+**Fuzzy Search Function:**
+```sql
+CREATE OR REPLACE FUNCTION fuzzy_match_memory(
+  p_project_id uuid,
+  p_target_language_id uuid,
+  p_source_text text,
+  p_similarity_threshold float,
+  p_limit int
+)
+RETURNS TABLE (
+  -- Full translation_memory row structure
+  similarity double precision
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    tm.*,
+    CAST(similarity(tm.source_text, p_source_text) AS double precision) as similarity
+  FROM translation_memory tm
+  WHERE tm.project_id = p_project_id
+    AND tm.target_language_id = p_target_language_id
+    AND similarity(tm.source_text, p_source_text) >= p_similarity_threshold
+  ORDER BY 
+    similarity(tm.source_text, p_source_text) DESC,
+    tm.quality_score DESC,
+    tm.usage_count DESC
+  LIMIT p_limit;
+END;
+$$;
+```
+
+**Vector Similarity Function:**
+```sql
+CREATE OR REPLACE FUNCTION match_memory_embeddings(
+  query_embedding vector(768),
+  match_threshold float,
+  match_count int,
+  p_project_id uuid,
+  p_target_language_id uuid
+)
+RETURNS TABLE (
+  -- Full translation_memory row structure
+  similarity double precision
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    tm.*,
+    1 - (tm.source_embedding <=> query_embedding) as similarity
+  FROM translation_memory tm
+  WHERE tm.project_id = p_project_id
+    AND tm.target_language_id = p_target_language_id
+    AND tm.source_embedding IS NOT NULL
+    AND 1 - (tm.source_embedding <=> query_embedding) >= match_threshold
+  ORDER BY tm.source_embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$;
+```
+
+#### Automatic Memory Storage
+
+**Integration Points:**
+1. **Manual Translation Updates**: Stores when users save translations
+2. **AI Suggestion Application**: Stores when AI suggestions are applied
+3. **Import Operations**: Stores imported translations
+4. **Quality Scoring**: Human (1.0), AI-applied (0.8), AI-generated (0.7)
+
+**Storage Process:**
+```typescript
+// Automatic storage in TranslationService
+async updateTranslation(translationId: string, content: string, userId: string) {
+  const updatedTranslation = await this.translationsDAL.updateTranslation(
+    translationId, content, userId
+  );
+
+  // Store in translation memory
+  await this.storeTranslationInMemory(updatedTranslation, userId);
+
+  return updatedTranslation;
+}
+```
+
+#### Frontend Integration
+
+**AI Suggestions Enhancement:**
+- **Memory-enhanced prompts**: AI uses previous translations as context
+- **Dynamic confidence scores**: Based on memory match quality and quantity
+- **Memory attribution**: UI shows when suggestions use memory
+- **Quality indicators**: Visual feedback on suggestion confidence
+
+**Translation Interface:**
+- **Memory indicators**: Shows when translations are based on memory
+- **Quality badges**: Visual representation of translation quality
+- **Usage tracking**: Displays how frequently translations are used
+- **Memory statistics**: Project-level memory analytics
+
+#### Performance Optimizations
+
+**Database Optimizations:**
+- **Vector indexes**: Fast semantic similarity search
+- **Trigram indexes**: Efficient fuzzy text matching
+- **Composite indexes**: Optimized for common query patterns
+- **Batch operations**: Efficient memory storage and updates
+
+**Caching Strategy:**
+- **Embedding caching**: Reduces API calls to Gemini
+- **Memory result caching**: Caches frequent search results
+- **Quality score caching**: Pre-computed quality scores
+
+**Search Performance:**
+- **Hybrid approach**: Fast exact matches, accurate semantic search
+- **Progressive search**: Tries fastest methods first
+- **Configurable limits**: Prevents performance degradation
+- **Error recovery**: Graceful fallbacks for failed searches
+
+#### Quality Management
+
+**Quality Scoring System:**
+- **Human translations**: 1.0 (highest quality)
+- **Human-corrected AI**: 0.95
+- **AI-applied suggestions**: 0.8
+- **AI-generated**: 0.7 (lowest quality)
+
+**Quality Decay:**
+- **Age-based decay**: Older entries lose quality over time
+- **Usage-based boost**: Frequently used entries gain quality
+- **Automatic cleanup**: Removes low-quality, unused entries
+
+**Promotion/Demotion Logic:**
+- **High usage + high quality**: Promoted entries
+- **Low usage + low quality**: Demoted entries
+- **Automatic lifecycle**: Entry quality management
+
+#### Error Handling
+
+**Graceful Degradation:**
+- **Embedding failures**: Falls back to text-based search
+- **Database errors**: Continues with reduced functionality
+- **API timeouts**: Retry mechanisms with exponential backoff
+- **Memory service unavailable**: Pure AI generation continues
+
+**Monitoring and Logging:**
+- **Memory hit rates**: Tracks memory effectiveness
+- **Quality metrics**: Monitors translation quality improvements
+- **Performance metrics**: Tracks search response times
+- **Error tracking**: Comprehensive error logging
+
+#### Security Considerations
+
+**Data Privacy:**
+- **Project isolation**: Memory entries are project-specific
+- **User permissions**: Memory access follows project permissions
+- **Data retention**: Automatic cleanup of old entries
+- **Export controls**: Memory data export capabilities
+
+**API Security:**
+- **Gemini API key management**: Secure key storage
+- **Rate limiting**: Prevents API abuse
+- **Error sanitization**: Limited error information exposure
+- **Input validation**: All inputs validated and sanitized
+
+#### Future Enhancements
+
+**Planned Features:**
+- **Cross-project memory**: Shared memory across projects
+- **Memory analytics dashboard**: Detailed usage analytics
+- **Manual memory management**: User control over memory entries
+- **Advanced quality algorithms**: Machine learning-based quality scoring
+- **Multi-format support**: Support for different translation file formats
+- **Real-time collaboration**: Live memory updates during collaboration
+
 - Comment and Feedback System
   - Backend Implementation:
     - DAL Layer (CommentsDAL):
