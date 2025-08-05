@@ -116,7 +116,7 @@ export class TranslationMemoryDAL implements ITranslationMemoryDAL {
     return matches || [];
   }
 
-  async updateUsageCount(memoryId: string): Promise<void> {
+  async updateUsageCount(memoryId: string) {
     // First get the current usage count
     const { data: currentMemory, error: fetchError } = await this.supabase
       .from("translation_memory")

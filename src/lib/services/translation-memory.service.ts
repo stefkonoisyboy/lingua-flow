@@ -196,6 +196,7 @@ export class TranslationMemoryService implements ITranslationMemoryService {
       const response = await this.ai.models.embedContent({
         model: "gemini-embedding-001",
         contents: text,
+        config: { outputDimensionality: 768 },
       });
 
       if (!response.embeddings || response.embeddings.length === 0) {
