@@ -97,39 +97,23 @@ export class TranslationMemoryDAL implements ITranslationMemoryDAL {
     threshold: number = 0.7,
     limit: number = 5
   ) {
-    // Get candidates for similarity matching
-    const { data: candidates, error } = await this.supabase
-      .from("translation_memory")
-      .select("*")
-      .eq("project_id", projectId)
-      .eq("target_language_id", targetLanguageId)
-      .order("quality_score", { ascending: false })
-      .order("usage_count", { ascending: false })
-      .limit(100); // Limit candidates for performance
+    // Use PostgreSQL trigram similarity for better fuzzy matching
+    const { data: matches, error } = await this.supabase.rpc(
+      "fuzzy_match_memory",
+      {
+        p_project_id: projectId,
+        p_target_language_id: targetLanguageId,
+        p_source_text: sourceText,
+        p_similarity_threshold: threshold,
+        p_limit: limit,
+      }
+    );
 
     if (error) {
       throw error;
     }
 
-    // Calculate similarity scores and filter by threshold
-    const matches = candidates
-      .map((candidate) => ({
-        ...candidate,
-        similarity: this.calculateSimilarity(sourceText, candidate.source_text),
-      }))
-      .filter((match) => match.similarity >= threshold)
-      .sort((a, b) => {
-        // Sort by similarity first, then by quality and usage
-        if (Math.abs(a.similarity - b.similarity) > 0.1) {
-          return b.similarity - a.similarity;
-        }
-
-        return (b.quality_score || 0) - (a.quality_score || 0);
-      })
-      .slice(0, limit)
-      .map(({ ...candidate }) => candidate);
-
-    return matches;
+    return matches || [];
   }
 
   async updateUsageCount(memoryId: string): Promise<void> {
