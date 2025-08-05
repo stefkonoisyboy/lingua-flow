@@ -1,0 +1,281 @@
+import { SupabaseClient } from "@supabase/supabase-js";
+import { Database, Json } from "../types/database.types";
+import { ITranslationMemoryDAL } from "../di/interfaces/dal.interfaces";
+
+export class TranslationMemoryDAL implements ITranslationMemoryDAL {
+  constructor(private supabase: SupabaseClient<Database>) {}
+
+  async storeTranslation(data: {
+    projectId: string;
+    sourceLanguageId: string;
+    targetLanguageId: string;
+    sourceText: string;
+    targetText: string;
+    translationKeyName?: string;
+    context?: Json;
+    qualityScore: number;
+    sourceEmbedding?: number[];
+    targetEmbedding?: number[];
+    createdBy: string;
+  }) {
+    const insertData: {
+      project_id: string;
+      source_language_id: string;
+      target_language_id: string;
+      source_text: string;
+      target_text: string;
+      translation_key_name?: string;
+      context?: Json;
+      quality_score: number;
+      created_by: string;
+      usage_count: number;
+      last_used: string;
+      source_embedding?: string;
+      target_embedding?: string;
+    } = {
+      project_id: data.projectId,
+      source_language_id: data.sourceLanguageId,
+      target_language_id: data.targetLanguageId,
+      source_text: data.sourceText,
+      target_text: data.targetText,
+      translation_key_name: data.translationKeyName,
+      context: data.context,
+      quality_score: data.qualityScore,
+      created_by: data.createdBy,
+      usage_count: 0,
+      last_used: new Date().toISOString(),
+    };
+
+    // Add embeddings if provided (store as JSON strings)
+    if (data.sourceEmbedding) {
+      insertData.source_embedding = JSON.stringify(data.sourceEmbedding);
+    }
+    if (data.targetEmbedding) {
+      insertData.target_embedding = JSON.stringify(data.targetEmbedding);
+    }
+
+    const { data: memory, error } = await this.supabase
+      .from("translation_memory")
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (error) {
+      throw error;
+    }
+
+    return memory;
+  }
+
+  async findExactMatch(
+    projectId: string,
+    sourceText: string,
+    targetLanguageId: string
+  ) {
+    const { data, error } = await this.supabase
+      .from("translation_memory")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("source_text", sourceText)
+      .eq("target_language_id", targetLanguageId)
+      .order("quality_score", { ascending: false })
+      .order("usage_count", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (error && error.code !== "PGRST116") {
+      throw error;
+    }
+
+    return data;
+  }
+
+  async findSimilarMatches(
+    projectId: string,
+    sourceText: string,
+    targetLanguageId: string,
+    threshold: number = 0.7,
+    limit: number = 5
+  ) {
+    // Use PostgreSQL trigram similarity for better fuzzy matching
+    const { data: matches, error } = await this.supabase.rpc(
+      "fuzzy_match_memory",
+      {
+        p_project_id: projectId,
+        p_target_language_id: targetLanguageId,
+        p_source_text: sourceText,
+        p_similarity_threshold: threshold,
+        p_limit: limit,
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    return matches || [];
+  }
+
+  async updateUsageCount(memoryId: string) {
+    // First get the current usage count
+    const { data: currentMemory, error: fetchError } = await this.supabase
+      .from("translation_memory")
+      .select("usage_count")
+      .eq("id", memoryId)
+      .single();
+
+    if (fetchError) {
+      throw fetchError;
+    }
+
+    // Update with incremented count
+    const { error } = await this.supabase
+      .from("translation_memory")
+      .update({
+        usage_count: (currentMemory?.usage_count || 0) + 1,
+        last_used: new Date().toISOString(),
+      })
+      .eq("id", memoryId);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  async getMemoryStats(projectId: string) {
+    // Get total entries
+    const { count: totalEntries, error: countError } = await this.supabase
+      .from("translation_memory")
+      .select("*", { count: "exact", head: true })
+      .eq("project_id", projectId);
+
+    if (countError) {
+      throw countError;
+    }
+
+    // Get average quality
+    const { data: qualityData, error: qualityError } = await this.supabase
+      .from("translation_memory")
+      .select("quality_score")
+      .eq("project_id", projectId)
+      .not("quality_score", "is", null);
+
+    if (qualityError) {
+      throw qualityError;
+    }
+
+    const averageQuality =
+      qualityData.length > 0
+        ? qualityData.reduce(
+            (sum, entry) => sum + (entry.quality_score || 0),
+            0
+          ) / qualityData.length
+        : 0;
+
+    // Get most used entries
+    const { data: mostUsedEntries, error: usageError } = await this.supabase
+      .from("translation_memory")
+      .select("*")
+      .eq("project_id", projectId)
+      .order("usage_count", { ascending: false })
+      .order("quality_score", { ascending: false })
+      .limit(10);
+
+    if (usageError) {
+      throw usageError;
+    }
+
+    return {
+      totalEntries: totalEntries || 0,
+      averageQuality,
+      mostUsedEntries: mostUsedEntries || [],
+    };
+  }
+
+  async cleanupOldEntries(projectId: string, olderThanDays: number) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
+
+    const { count, error } = await this.supabase
+      .from("translation_memory")
+      .delete()
+      .eq("project_id", projectId)
+      .lt("created_at", cutoffDate.toISOString())
+      .lt("quality_score", 0.5) // Only delete low-quality entries
+      .lt("usage_count", 1); // Only delete unused entries
+
+    if (error) {
+      throw error;
+    }
+
+    return count || 0;
+  }
+
+  async findSimilarByEmbedding(
+    projectId: string,
+    sourceEmbedding: number[],
+    targetLanguageId: string,
+    threshold: number,
+    limit: number
+  ) {
+    const { data: matches, error } = await this.supabase.rpc(
+      "match_memory_embeddings",
+      {
+        query_embedding: JSON.stringify(sourceEmbedding),
+        match_threshold: threshold,
+        match_count: limit,
+        p_project_id: projectId,
+        p_target_language_id: targetLanguageId,
+      }
+    );
+
+    if (error) {
+      throw error;
+    }
+
+    return matches || [];
+  }
+
+  private calculateSimilarity(text1: string, text2: string): number {
+    // Simple Levenshtein distance-based similarity
+    const distance = this.levenshteinDistance(
+      text1.toLowerCase(),
+      text2.toLowerCase()
+    );
+
+    const maxLength = Math.max(text1.length, text2.length);
+
+    if (maxLength === 0) {
+      return 1.0;
+    }
+
+    return 1 - distance / maxLength;
+  }
+
+  private levenshteinDistance(str1: string, str2: string) {
+    const matrix = Array(str2.length + 1)
+      .fill(null)
+      .map(() => Array(str1.length + 1).fill(null));
+
+    for (let i = 0; i <= str1.length; i++) {
+      matrix[0][i] = i;
+    }
+
+    for (let j = 0; j <= str2.length; j++) {
+      matrix[j][0] = j;
+    }
+
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1, // deletion
+          matrix[j - 1][i] + 1, // insertion
+          matrix[j - 1][i - 1] + indicator // substitution
+        );
+      }
+    }
+
+    return matrix[str2.length][str1.length];
+  }
+}

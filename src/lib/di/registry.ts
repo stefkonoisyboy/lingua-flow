@@ -16,6 +16,8 @@ import { SyncHistoryDAL } from "../dal/sync-history";
 import { ProjectMembersDAL } from "../dal/project-members";
 import { UsersDAL } from "../dal/users";
 import { AISuggestionsDAL } from "../dal/ai-suggestions";
+import { TranslationMemoryDAL } from "../dal/translation-memory";
+import { MemoryCacheDAL } from "../dal/memory-cache";
 
 // Service imports
 import { ProjectsService } from "../services/projects.service";
@@ -28,6 +30,8 @@ import { CommentsService } from "../services/comments.service";
 import { SyncHistoryService } from "../services/sync-history.service";
 import { ProjectMembersService } from "../services/project-members.service";
 import { AISuggestionsService } from "../services/ai-suggestions.service";
+import { TranslationMemoryService } from "../services/translation-memory.service";
+import { MemoryQualityService } from "../services/memory-quality.service";
 
 // Interface imports
 import {
@@ -44,6 +48,8 @@ import {
   IProjectMembersDAL,
   IUsersDAL,
   IAISuggestionsDAL,
+  ITranslationMemoryDAL,
+  IMemoryCacheDAL,
 } from "./interfaces/dal.interfaces";
 import {
   IProjectsService,
@@ -56,6 +62,8 @@ import {
   ISyncHistoryService,
   IProjectMembersService,
   IAISuggestionsService,
+  ITranslationMemoryService,
+  IMemoryQualityService,
 } from "./interfaces/service.interfaces";
 
 // Token constants for dependency injection
@@ -74,6 +82,8 @@ export const DI_TOKENS = {
   PROJECT_MEMBERS_DAL: "PROJECT_MEMBERS_DAL",
   USERS_DAL: "USERS_DAL",
   AISUGGESTIONS_DAL: "AISUGGESTIONS_DAL",
+  TRANSLATION_MEMORY_DAL: "TRANSLATION_MEMORY_DAL",
+  MEMORY_CACHE_DAL: "MEMORY_CACHE_DAL",
 
   // Service tokens
   PROJECTS_SERVICE: "PROJECTS_SERVICE",
@@ -86,6 +96,8 @@ export const DI_TOKENS = {
   SYNC_HISTORY_SERVICE: "SYNC_HISTORY_SERVICE",
   PROJECT_MEMBERS_SERVICE: "PROJECT_MEMBERS_SERVICE",
   AI_SUGGESTIONS_SERVICE: "AI_SUGGESTIONS_SERVICE",
+  TRANSLATION_MEMORY_SERVICE: "TRANSLATION_MEMORY_SERVICE",
+  MEMORY_QUALITY_SERVICE: "MEMORY_QUALITY_SERVICE",
 
   // Core dependencies
   SUPABASE: "SUPABASE",
@@ -184,6 +196,16 @@ export function registerServices(
     (c) => new AISuggestionsDAL(c.resolve(DI_TOKENS.SUPABASE))
   );
 
+  container.register<ITranslationMemoryDAL>(
+    DI_TOKENS.TRANSLATION_MEMORY_DAL,
+    (c) => new TranslationMemoryDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
+  container.register<IMemoryCacheDAL>(
+    DI_TOKENS.MEMORY_CACHE_DAL,
+    (c) => new MemoryCacheDAL(c.resolve(DI_TOKENS.SUPABASE))
+  );
+
   // Register services
   container.register<ILanguagesService>(
     DI_TOKENS.LANGUAGES_SERVICE,
@@ -222,7 +244,10 @@ export function registerServices(
     (c) =>
       new TranslationsService(
         c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
-        c.resolve(DI_TOKENS.INTEGRATIONS_DAL)
+        c.resolve(DI_TOKENS.INTEGRATIONS_DAL),
+        c.resolve(DI_TOKENS.TRANSLATION_MEMORY_SERVICE),
+        c.resolve(DI_TOKENS.LANGUAGES_DAL),
+        c.resolve(DI_TOKENS.PROJECTS_DAL)
       )
   );
 
@@ -267,7 +292,22 @@ export function registerServices(
         c.resolve(DI_TOKENS.TRANSLATIONS_DAL),
         c.resolve(DI_TOKENS.PROJECTS_DAL),
         c.resolve(DI_TOKENS.ACTIVITIES_DAL),
-        c.resolve(DI_TOKENS.LANGUAGES_DAL)
+        c.resolve(DI_TOKENS.LANGUAGES_DAL),
+        c.resolve(DI_TOKENS.TRANSLATION_MEMORY_SERVICE)
       )
+  );
+
+  container.register<ITranslationMemoryService>(
+    DI_TOKENS.TRANSLATION_MEMORY_SERVICE,
+    (c) =>
+      new TranslationMemoryService(
+        c.resolve(DI_TOKENS.TRANSLATION_MEMORY_DAL),
+        c.resolve(DI_TOKENS.ACTIVITIES_DAL)
+      )
+  );
+
+  container.register<IMemoryQualityService>(
+    DI_TOKENS.MEMORY_QUALITY_SERVICE,
+    () => new MemoryQualityService()
   );
 }

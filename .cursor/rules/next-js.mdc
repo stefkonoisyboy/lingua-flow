@@ -56,6 +56,7 @@ alwaysApply: true
     - Always use DI (Dependency injection) for services and DALs and resolve the dependencies in the routers by using the DI container. The DI container will be attached to ctx which we can use in the routers
     - Always updated 'updated_at' column on a given table if available and if you perform an update operation
     - Always follow this structure when implementing a new feature: DAL -> Service layer -> Routers -> Front-End
+    - NEVER write unit tests until I say so
     
     General preferences:
     

@@ -96,6 +96,7 @@ export const translationsRouter = router({
       );
 
       return await translationsService.updateTranslation(
+        input.projectId,
         input.translationId,
         input.content,
         ctx.user.id
@@ -118,6 +119,7 @@ export const translationsRouter = router({
       );
 
       return await translationsService.createTranslation(
+        input.projectId,
         input.keyId,
         input.languageId,
         input.content,
